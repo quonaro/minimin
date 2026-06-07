@@ -30,17 +30,17 @@
       </div>
       <div class="mt-6 flex gap-2">
         <button
-          class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          class="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition-colors"
         >
           Start
         </button>
         <button
-          class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+          class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
         >
           Stop
         </button>
         <button
-          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
         >
           Restart
         </button>

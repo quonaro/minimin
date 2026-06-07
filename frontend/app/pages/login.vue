@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen flex bg-gray-50 dark:bg-gray-900">
+  <div class="min-h-screen flex bg-gray-50 dark:bg-background-dark">
     <!-- Left Side -->
     <div
-      class="hidden md:flex md:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-primary-900"
+      class="hidden md:flex md:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-100 via-gray-200 to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900"
     >
       <!-- Abstract background shapes -->
       <div class="absolute inset-0 opacity-20">
@@ -10,16 +10,27 @@
           class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary blur-3xl animate-blob"
         />
         <div
-          class="absolute top-1/2 right-0 w-80 h-80 rounded-full bg-emerald-400 blur-3xl animate-blob animation-delay-2000"
+          class="absolute top-1/2 right-0 w-80 h-80 rounded-full bg-primary-300 blur-3xl animate-blob animation-delay-2000"
         />
         <div
-          class="absolute -bottom-32 left-1/3 w-96 h-96 rounded-full bg-teal-600 blur-3xl animate-blob animation-delay-4000"
+          class="absolute -bottom-32 left-1/3 w-96 h-96 rounded-full bg-primary-700 blur-3xl animate-blob animation-delay-4000"
         />
       </div>
 
       <!-- Dot pattern overlay -->
       <div
-        class="absolute inset-0 opacity-10"
+        class="absolute inset-0 opacity-10 dark:hidden"
+        style="
+          background-image: radial-gradient(
+            circle,
+            rgba(0, 0, 0, 0.5) 1px,
+            transparent 1px
+          );
+          background-size: 24px 24px;
+        "
+      />
+      <div
+        class="absolute inset-0 opacity-10 hidden dark:block"
         style="
           background-image: radial-gradient(
             circle,
@@ -32,34 +43,30 @@
 
       <!-- Content -->
       <div class="relative z-10 flex flex-col justify-between p-12 w-full">
-        <div class="flex items-center gap-3">
-          <!-- Cube icon -->
-          <svg
-            class="w-10 h-10 text-primary"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
-            />
-          </svg>
-          <span class="text-2xl font-bold text-white tracking-tight">
-            MC Orchestrator
-          </span>
+        <div class="flex items-center justify-center gap-4 pt-4">
+          <img src="/img/MiniMin_L.png" alt="MiniMin" class="h-20 w-auto" />
+          <img
+            src="/img/MiniMin_T.png"
+            alt="MiniMin"
+            class="h-14 w-auto dark:hidden"
+          />
+          <img
+            src="/img/MiniMin_T_light.png"
+            alt="MiniMin"
+            class="h-14 w-auto hidden dark:block"
+          />
         </div>
 
         <div class="max-w-lg">
           <h2
-            class="text-4xl xl:text-5xl font-bold text-white leading-tight mb-6"
+            class="text-4xl xl:text-5xl font-bold text-gray-900 dark:text-white leading-tight mb-6"
           >
             Manage your Minecraft servers with
             <span class="text-primary">ease</span>
           </h2>
-          <p class="text-lg text-gray-300 leading-relaxed mb-8">
+          <p
+            class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-8"
+          >
             A lightweight, web-based control panel for your Minecraft server
             agents. Deploy, monitor, and manage multiple servers from a single
             dashboard.
@@ -68,7 +75,7 @@
             href="https://github.com"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 text-white transition-all group"
+            class="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-gray-900/10 hover:bg-gray-900/20 dark:bg-white/10 dark:hover:bg-white/20 backdrop-blur-sm border border-gray-900/10 dark:border-white/10 text-gray-900 dark:text-white transition-all group"
           >
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path
@@ -92,33 +99,66 @@
           </a>
         </div>
 
-        <div class="text-sm text-gray-400">
-          &copy; {{ new Date().getFullYear() }} MC Orchestrator. Open source.
+        <div class="text-sm text-gray-500 dark:text-gray-400">
+          &copy; {{ new Date().getFullYear() }} MiniMin. Open source.
         </div>
       </div>
     </div>
 
     <!-- Right Side -->
-    <div class="w-full md:w-1/2 flex items-center justify-center p-6 lg:p-12">
+    <div
+      class="w-full md:w-1/2 flex items-center justify-center p-6 lg:p-12 relative"
+    >
+      <button
+        @click="toggleColorMode"
+        class="absolute top-4 right-4 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        aria-label="Toggle theme"
+      >
+        <svg
+          v-if="colorMode.value === 'dark'"
+          class="w-5 h-5"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+          />
+        </svg>
+        <svg
+          v-else
+          class="w-5 h-5"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+          />
+        </svg>
+      </button>
       <div class="w-full max-w-sm">
         <div class="md:hidden text-center mb-8">
-          <div class="flex items-center justify-center gap-2 mb-4">
-            <svg
-              class="w-8 h-8 text-primary"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
-              />
-            </svg>
-            <span class="text-xl font-bold text-gray-900 dark:text-white">
-              MC Orchestrator
-            </span>
+          <div class="mb-4 flex items-center justify-center gap-2">
+            <img src="/img/MiniMin_L.png" alt="MiniMin" class="h-10 w-auto" />
+            <img
+              src="/img/MiniMin_T.png"
+              alt="MiniMin"
+              class="h-8 w-auto dark:hidden"
+            />
+            <img
+              src="/img/MiniMin_T_light.png"
+              alt="MiniMin"
+              class="h-8 w-auto hidden dark:block"
+            />
           </div>
         </div>
 
@@ -207,6 +247,11 @@
 </template>
 
 <script setup lang="ts">
+const colorMode = useColorMode();
+
+function toggleColorMode() {
+  colorMode.preference = colorMode.value === "dark" ? "light" : "dark";
+}
 const { login, isAuthenticated } = useAuth();
 const apiKeyInput = ref("");
 const loading = ref(false);
@@ -214,7 +259,7 @@ const error = ref("");
 
 // Redirect if already authenticated
 if (isAuthenticated.value) {
-  await navigateTo("/servers");
+  await navigateTo("/agents");
 }
 
 async function handleLogin() {
@@ -224,7 +269,7 @@ async function handleLogin() {
   try {
     const success = await login(apiKeyInput.value);
     if (success) {
-      await navigateTo("/servers");
+      await navigateTo("/agents");
     } else {
       error.value = "Invalid password or connection failed";
     }

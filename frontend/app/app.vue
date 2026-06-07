@@ -1,7 +1,6 @@
 <template>
-  <div class="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-    <Sidebar v-if="showGlobalSidebar" />
-    <AgentSidebar v-else-if="showAgentSidebar" />
+  <div class="flex min-h-screen bg-gray-50 dark:bg-background-dark">
+    <Sidebar v-if="hasSidebar" />
     <main
       :class="{
         'flex-1': !hasSidebar,
@@ -15,23 +14,16 @@
 </template>
 
 <script setup lang="ts">
-import AgentSidebar from "./components/AgentSidebar.vue";
-
 const route = useRoute();
 
-const showGlobalSidebar = computed(() => {
-  return (
-    route.path !== "/login" &&
-    !route.path.startsWith("/agent") &&
-    !route.path.startsWith("/agents")
-  );
-});
-
-const showAgentSidebar = computed(() => {
-  return route.path.startsWith("/agent");
-});
-
-const hasSidebar = computed(
-  () => showGlobalSidebar.value || showAgentSidebar.value,
-);
+const hasSidebar = computed(() => route.path !== "/login");
 </script>
+
+<style>
+* {
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+</style>

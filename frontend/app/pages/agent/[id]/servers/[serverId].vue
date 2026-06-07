@@ -26,18 +26,31 @@
       </h1>
     </div>
 
-    <div v-if="server" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+    <div
+      v-if="server"
+      class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6"
+    >
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <span class="font-semibold text-gray-700 dark:text-gray-300">Server ID:</span>
-          <span class="ml-2 text-gray-900 dark:text-white">{{ server.server_id }}</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300"
+            >Server ID:</span
+          >
+          <span class="ml-2 text-gray-900 dark:text-white">{{
+            server.server_id
+          }}</span>
         </div>
         <div>
-          <span class="font-semibold text-gray-700 dark:text-gray-300">Agent ID:</span>
-          <span class="ml-2 text-gray-900 dark:text-white">{{ server.agent_id }}</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300"
+            >Agent ID:</span
+          >
+          <span class="ml-2 text-gray-900 dark:text-white">{{
+            server.agent_id
+          }}</span>
         </div>
         <div>
-          <span class="font-semibold text-gray-700 dark:text-gray-300">Status:</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300"
+            >Status:</span
+          >
           <span
             :class="getStatusColor(server.status)"
             class="px-2 py-1 rounded text-sm ml-2"
@@ -46,26 +59,38 @@
           </span>
         </div>
         <div>
-          <span class="font-semibold text-gray-700 dark:text-gray-300">Game Port:</span>
-          <span class="ml-2 text-gray-900 dark:text-white">{{ server.game_port }}</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300"
+            >Game Port:</span
+          >
+          <span class="ml-2 text-gray-900 dark:text-white">{{
+            server.game_port
+          }}</span>
         </div>
         <div>
-          <span class="font-semibold text-gray-700 dark:text-gray-300">Engine:</span>
-          <span class="ml-2 text-gray-900 dark:text-white">{{ server.engine }}</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300"
+            >Engine:</span
+          >
+          <span class="ml-2 text-gray-900 dark:text-white">{{
+            server.engine
+          }}</span>
         </div>
         <div>
-          <span class="font-semibold text-gray-700 dark:text-gray-300">Version:</span>
-          <span class="ml-2 text-gray-900 dark:text-white">{{ server.version }}</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300"
+            >Version:</span
+          >
+          <span class="ml-2 text-gray-900 dark:text-white">{{
+            server.version
+          }}</span>
         </div>
       </div>
       <div class="mt-6 flex gap-2">
         <button
-          class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-medium"
+          class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
         >
           Start
         </button>
         <button
-          class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors font-medium"
+          class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium"
         >
           Stop
         </button>
@@ -101,7 +126,9 @@ const { data } = await useApiFetch<{ body: Server[] }>("/servers");
 
 if (data.value && typeof data.value === "object" && "body" in data.value) {
   const servers = (data.value as any).body as Server[];
-  server.value = servers.find((s) => s.id === serverId && s.agent_id === agentId.value) || null;
+  server.value =
+    servers.find((s) => s.id === serverId && s.agent_id === agentId.value) ||
+    null;
 }
 
 function getStatusColor(status: string) {
