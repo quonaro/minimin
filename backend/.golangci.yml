@@ -1,0 +1,44 @@
+version: "2"
+
+run:
+  timeout: 5m
+  go: "1.26"
+
+linters:
+  default: none
+  enable:
+  - errcheck
+  - govet
+  - ineffassign
+  - staticcheck
+  - unused
+  - misspell
+  - revive
+  - unconvert
+  - bodyclose
+  - prealloc
+  - gocritic
+  - exhaustive
+  - makezero
+
+  settings:
+    govet:
+      enable-all: true
+    revive:
+      rules:
+      - name: exported
+      - name: var-naming
+    gocritic:
+      enabled-tags:
+      - performance
+      - style
+      - experimental
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+  - gofmt
+  - goimports
