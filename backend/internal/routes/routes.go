@@ -6,6 +6,7 @@ import (
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/jwt"
 	"orchestrator/internal/middleware"
+	"orchestrator/internal/status"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -25,7 +26,7 @@ func removeErrorsTransformer(ctx huma.Context, status string, v any) (any, error
 }
 
 // SetupRoutes wires Huma/Chi router with all orchestrator endpoints.
-func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service) http.Handler {
+func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, store *status.Store) http.Handler {
 	chiRouter := chi.NewRouter()
 
 	// CORS middleware
@@ -58,6 +59,9 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service) ht
 	chiRouter.Post("/api/auth/login", h.LoginHTTP)
 	chiRouter.Post("/api/auth/logout", h.LogoutHTTP)
 
+	// WebSocket endpoint for agent statuses (public, no auth required for simplicity)
+	chiRouter.Get("/ws/agents", store.ServeHTTP)
+
 	// Protected endpoints
 	chiRouter.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware(jwtService))
@@ -70,6 +74,13 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service) ht
 			Summary:       "Register a new agent",
 			DefaultStatus: http.StatusCreated,
 		}, h.CreateAgent)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "check-agent",
+			Method:      http.MethodPost,
+			Path:        "/agents/check",
+			Summary:     "Check agent connectivity",
+		}, h.CheckAgent)
 
 		huma.Register(hapi, huma.Operation{
 			OperationID: "list-agents",

@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"orchestrator/internal/db"
 	"orchestrator/internal/jwt"
+	"orchestrator/internal/status"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
@@ -20,11 +23,12 @@ type Handler struct {
 	DB     *db.DB
 	APIKey string
 	JWT    *jwt.Service
+	Status *status.Store
 }
 
 // NewHandler creates a new Handler.
-func NewHandler(database *db.DB, apiKey string, jwtService *jwt.Service) *Handler {
-	return &Handler{DB: database, APIKey: apiKey, JWT: jwtService}
+func NewHandler(database *db.DB, apiKey string, jwtService *jwt.Service, store *status.Store) *Handler {
+	return &Handler{DB: database, APIKey: apiKey, JWT: jwtService, Status: store}
 }
 
 // CreateAgentInput is the input for POST /agents.
@@ -88,8 +92,10 @@ type GetAgentOutput struct {
 
 // GetAgent returns a single agent by ID.
 func (h *Handler) GetAgent(ctx context.Context, input *GetAgentInput) (*GetAgentOutput, error) {
+	slog.Info("GetAgent called", "id", input.ID)
 	agent, ok := h.DB.GetAgent(input.ID)
 	if !ok {
+		slog.Warn("agent not found in DB", "id", input.ID)
 		return nil, huma.Error404NotFound("agent not found", nil)
 	}
 	return &GetAgentOutput{Body: agent}, nil
@@ -115,6 +121,48 @@ func (h *Handler) DeleteAgent(ctx context.Context, input *DeleteAgentInput) (*De
 		slog.Warn("failed to delete agent cache", "agent_id", input.ID, "error", err)
 	}
 	return &DeleteAgentOutput{}, nil
+}
+
+// CheckAgentInput is the input for POST /agents/check.
+type CheckAgentInput struct {
+	Body struct {
+		Host   string `json:"host" doc:"Agent host (e.g., http://localhost:8080)"`
+		APIKey string `json:"api_key" doc:"Agent API key for authentication"`
+	}
+}
+
+// CheckAgentOutputBody is the body of CheckAgentOutput.
+type CheckAgentOutputBody struct {
+	Valid bool   `json:"valid"`
+	Error string `json:"error,omitempty"`
+}
+
+// CheckAgentOutput is the output for POST /agents/check.
+type CheckAgentOutput struct {
+	Body CheckAgentOutputBody
+}
+
+// CheckAgent verifies connectivity to an agent by calling its /api/v1/agent/key endpoint.
+func (h *Handler) CheckAgent(ctx context.Context, input *CheckAgentInput) (*CheckAgentOutput, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	url := strings.TrimSuffix(input.Body.Host, "/") + "/api/v1/agent/key"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("failed to create request", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+input.Body.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return &CheckAgentOutput{Body: CheckAgentOutputBody{Valid: false, Error: "agent unreachable"}}, nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return &CheckAgentOutput{Body: CheckAgentOutputBody{Valid: false, Error: "invalid response from agent"}}, nil
+	}
+
+	return &CheckAgentOutput{Body: CheckAgentOutputBody{Valid: true}}, nil
 }
 
 // GetOrchestratorKeyInput is the input for GET /agent/key.
@@ -271,4 +319,43 @@ func (h *Handler) LogoutHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+// CheckAllAgents pings every registered agent and updates the in-memory status store.
+func (h *Handler) CheckAllAgents() {
+	agents, err := h.DB.ListAgents()
+	if err != nil {
+		slog.Error("failed to list agents for health check", "error", err)
+		return
+	}
+
+	var wg sync.WaitGroup
+	for _, agent := range agents {
+		wg.Add(1)
+		go func(a db.Agent) {
+			defer wg.Done()
+			online := h.pingAgent(a.Host, a.APIKey)
+			h.Status.Set(a.ID, online)
+		}(agent)
+	}
+	wg.Wait()
+	h.Status.Broadcast()
+}
+
+func (h *Handler) pingAgent(host, apiKey string) bool {
+	client := &http.Client{Timeout: 5 * time.Second}
+	url := strings.TrimSuffix(host, "/") + "/api/v1/agent/key"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	return resp.StatusCode == http.StatusOK
 }

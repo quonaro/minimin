@@ -13,6 +13,7 @@ import (
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/jwt"
 	"orchestrator/internal/routes"
+	"orchestrator/internal/status"
 
 	"github.com/joho/godotenv"
 )
@@ -38,7 +39,7 @@ func main() {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(log)
 
-	slog.Info("starting orchestrator", "bind", apiBind, "db", dbPath)
+	slog.Info("starting orchestrator", "bind", apiBind, "db", dbPath, "cwd", ".")
 
 	database, err := db.Open(dbPath)
 	if err != nil {
@@ -47,9 +48,11 @@ func main() {
 	}
 	defer func() { _ = database.Close() }()
 
+	statusStore := status.NewStore()
+
 	jwtService := jwt.NewService(jwtSecret)
-	h := handlers.NewHandler(database, apiKey, jwtService)
-	router := routes.SetupRoutes(h, apiKey, jwtService)
+	h := handlers.NewHandler(database, apiKey, jwtService, statusStore)
+	router := routes.SetupRoutes(h, apiKey, jwtService, statusStore)
 
 	slog.Info("orchestrator API listening", "addr", apiBind)
 	server := &http.Server{Addr: apiBind, Handler: router}
@@ -57,6 +60,16 @@ func main() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTP server error", "error", err)
 			os.Exit(1)
+		}
+	}()
+
+	// Run initial health check and start periodic checker every 30 seconds.
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		h.CheckAllAgents()
+		for range ticker.C {
+			h.CheckAllAgents()
 		}
 	}()
 

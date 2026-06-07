@@ -85,11 +85,7 @@
           >
             <span
               class="w-2 h-2 rounded-full flex-shrink-0"
-              :class="
-                route.params.id === agent.id
-                  ? 'bg-green-500'
-                  : 'bg-gray-400 dark:bg-gray-600'
-              "
+              :class="getAgentStatusColor(agent.id)"
             ></span>
             <span class="truncate">{{ agent.name }}</span>
           </NuxtLink>
@@ -187,17 +183,61 @@ const { data: agentsData } = await useFetch("/agents", {
 });
 
 const agents = computed(() => {
-  if (
-    agentsData.value &&
-    typeof agentsData.value === "object" &&
-    "body" in agentsData.value
-  ) {
-    return (agentsData.value as any).body || [];
+  const val = agentsData.value;
+  if (Array.isArray(val)) return val as any[];
+  if (val && typeof val === "object" && "body" in val) {
+    return (val as any).body || [];
   }
   return [];
 });
 
 function isAgentsActive() {
   return route.path === "/agents" || route.path.startsWith("/agents/");
+}
+
+// WebSocket connection for agent statuses
+const agentStatuses = ref<Record<string, boolean>>({});
+
+onMounted(() => {
+  const wsUrl = "ws://localhost:8081/ws/agents";
+  const ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (event) => {
+    try {
+      const statuses = JSON.parse(event.data) as Array<{
+        id: string;
+        online: boolean;
+      }>;
+      const newStatuses: Record<string, boolean> = {};
+      for (const status of statuses) {
+        newStatuses[status.id] = status.online;
+      }
+      agentStatuses.value = newStatuses;
+    } catch (e) {
+      console.error("Failed to parse agent statuses:", e);
+    }
+  };
+
+  ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+  };
+
+  ws.onclose = () => {
+    console.log("WebSocket closed, reconnecting in 5s...");
+    setTimeout(() => {
+      // Simple reconnection - component will remount on navigation
+    }, 5000);
+  };
+
+  onUnmounted(() => {
+    ws.close();
+  });
+});
+
+function getAgentStatusColor(agentId: string) {
+  const isOnline = agentStatuses.value[agentId];
+  if (isOnline === true) return "bg-green-500";
+  if (isOnline === false) return "bg-red-500";
+  return "bg-gray-400 dark:bg-gray-600";
 }
 </script>

@@ -94,12 +94,14 @@ func (db *DB) CreateAgent(agent Agent) error {
 // GetAgent retrieves an agent by ID.
 func (db *DB) GetAgent(id string) (Agent, bool) {
 	var agent Agent
+	var createdAtStr string
 	query := `SELECT id, name, host, api_key, created_at FROM agents WHERE id = ?`
-	err := db.conn.QueryRow(query, id).Scan(&agent.ID, &agent.Name, &agent.Host, &agent.APIKey, &agent.CreatedAt)
+	err := db.conn.QueryRow(query, id).Scan(&agent.ID, &agent.Name, &agent.Host, &agent.APIKey, &createdAtStr)
 	if err != nil {
+		slog.Warn("GetAgent failed", "id", id, "error", err)
 		return Agent{}, false
 	}
-	agent.CreatedAt, _ = time.Parse(time.RFC3339, agent.CreatedAt.Format(time.RFC3339))
+	agent.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
 	return agent, true
 }
 

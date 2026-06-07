@@ -405,12 +405,24 @@ async function checkConnection() {
   error.value = "";
 
   try {
-    const url = form.host.replace(/\/$/, "") + "/api/v1/agent/key";
-    await $fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${form.api_key}` },
-    });
-    checkStatus.value = "success";
+    const result = await $fetch<{ valid: boolean; error?: string }>(
+      "/agents/check",
+      {
+        baseURL: useApiBase(),
+        method: "POST",
+        credentials: "include",
+        body: {
+          host: form.host,
+          api_key: form.api_key,
+        },
+      },
+    );
+    if (result.valid) {
+      checkStatus.value = "success";
+    } else {
+      checkStatus.value = "error";
+      checkError.value = result.error || "Connection failed";
+    }
   } catch (err: any) {
     checkStatus.value = "error";
     checkError.value =

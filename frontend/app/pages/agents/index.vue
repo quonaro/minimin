@@ -101,15 +101,18 @@ interface Agent {
 
 const showForm = ref(false);
 
-const agents = ref<Agent[]>([]);
-
-const { data } = await useFetch("/agents", {
+const { data: agentsData } = await useFetch("/agents", {
   baseURL: useApiBase(),
   credentials: "include",
   key: "agents",
 });
 
-if (data.value && typeof data.value === "object" && "body" in data.value) {
-  agents.value = (data.value as any).body;
-}
+const agents = computed<Agent[]>(() => {
+  const val = agentsData.value;
+  if (Array.isArray(val)) return val as Agent[];
+  if (val && typeof val === "object" && "body" in val) {
+    return (val as any).body || [];
+  }
+  return [];
+});
 </script>
