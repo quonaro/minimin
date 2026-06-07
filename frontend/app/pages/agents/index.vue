@@ -21,10 +21,11 @@
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
+      <NuxtLink
         v-for="agent in agents"
         :key="agent.id"
-        class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
+        :to="`/agent/${agent.id}/`"
+        class="block bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
       >
         <div class="mb-4">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
@@ -60,19 +61,26 @@
           </div>
         </div>
 
-        <div class="flex gap-2">
-          <button
-            class="flex-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
+        <div
+          class="flex items-center gap-2 text-primary font-medium text-sm mt-4"
+        >
+          <span>Open agent</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            Edit
-          </button>
-          <button
-            class="flex-1 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 border border-red-200 dark:border-red-900/30 rounded-lg transition-colors"
-          >
-            Delete
-          </button>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
         </div>
-      </div>
+      </NuxtLink>
     </div>
   </div>
 </template>
