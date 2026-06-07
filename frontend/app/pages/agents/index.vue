@@ -10,6 +10,7 @@
         </p>
       </div>
       <button
+        @click="showForm = true"
         class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
       >
         Add Agent
@@ -82,6 +83,7 @@
         </div>
       </NuxtLink>
     </div>
+    <AgentFormModal v-model="showForm" />
   </div>
 </template>
 
@@ -96,6 +98,8 @@ interface Agent {
   host: string;
   created_at: string;
 }
+
+const showForm = ref(false);
 
 const agents = ref<Agent[]>([]);
 
