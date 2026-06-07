@@ -4,12 +4,12 @@
   >
     <div class="p-4 border-b border-gray-200 dark:border-border-dark">
       <div class="flex items-center justify-between mb-4">
-        <img src="/img/MiniMin_L.png" alt="MiniMin" class="h-10 w-auto" />
+        <img src="/img/MiniMin_L.avif" alt="MiniMin" class="h-10 w-auto" />
         <img
           :src="
             colorMode.value === 'dark'
-              ? '/img/MiniMin_T_light.png'
-              : '/img/MiniMin_T.png'
+              ? '/img/MiniMin_T_light.avif'
+              : '/img/MiniMin_T.avif'
           "
           alt="MiniMin"
           class="h-9 w-auto"
@@ -34,8 +34,12 @@
     <nav v-if="selectedAgentId" class="flex-1 p-4 space-y-2">
       <NuxtLink
         :to="`/agent/${selectedAgentId}/servers`"
-        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-primary/10 dark:hover:bg-primary/20"
-        :class="isAgentNavActive('servers') ? 'bg-primary/20 text-primary' : ''"
+        class="flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+        :class="
+          isAgentNavActive('servers')
+            ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+            : ''
+        "
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -67,7 +71,7 @@
     >
       <button
         @click="toggleColorMode"
-        class="group flex items-center gap-2 px-3 py-3 rounded-lg transition-all hover:bg-primary/10 dark:hover:bg-primary/20"
+        class="group flex items-center gap-2 px-2 py-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-800"
       >
         <svg
           v-if="colorMode.value === 'dark'"
@@ -107,7 +111,7 @@
       </button>
       <button
         @click="logout"
-        class="group flex items-center gap-2 px-3 py-3 rounded-lg transition-all hover:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400"
+        class="group flex items-center gap-2 px-2 py-2 rounded-xl transition-all hover:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -145,6 +149,8 @@ function toggleColorMode() {
 const { data: agentsData } = await useFetch("/agents", {
   baseURL: useApiBase(),
   credentials: "include",
+  server: false,
+  key: "agents",
 });
 
 const agents = computed(() => {

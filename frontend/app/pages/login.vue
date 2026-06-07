@@ -44,14 +44,14 @@
       <!-- Content -->
       <div class="relative z-10 flex flex-col justify-between p-12 w-full">
         <div class="flex items-center justify-center gap-4 pt-4">
-          <img src="/img/MiniMin_L.png" alt="MiniMin" class="h-20 w-auto" />
+          <img src="/img/MiniMin_L.avif" alt="MiniMin" class="h-20 w-auto" />
           <img
-            src="/img/MiniMin_T.png"
+            src="/img/MiniMin_T.avif"
             alt="MiniMin"
             class="h-14 w-auto dark:hidden"
           />
           <img
-            src="/img/MiniMin_T_light.png"
+            src="/img/MiniMin_T_light.avif"
             alt="MiniMin"
             class="h-14 w-auto hidden dark:block"
           />
@@ -148,14 +148,14 @@
       <div class="w-full max-w-sm">
         <div class="md:hidden text-center mb-8">
           <div class="mb-4 flex items-center justify-center gap-2">
-            <img src="/img/MiniMin_L.png" alt="MiniMin" class="h-10 w-auto" />
+            <img src="/img/MiniMin_L.avif" alt="MiniMin" class="h-10 w-auto" />
             <img
-              src="/img/MiniMin_T.png"
+              src="/img/MiniMin_T.avif"
               alt="MiniMin"
               class="h-8 w-auto dark:hidden"
             />
             <img
-              src="/img/MiniMin_T_light.png"
+              src="/img/MiniMin_T_light.avif"
               alt="MiniMin"
               class="h-8 w-auto hidden dark:block"
             />
