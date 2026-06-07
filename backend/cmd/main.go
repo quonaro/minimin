@@ -12,6 +12,7 @@ import (
 	"orchestrator/internal/db"
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/jwt"
+	"orchestrator/internal/logger"
 	"orchestrator/internal/routes"
 	"orchestrator/internal/status"
 
@@ -25,6 +26,8 @@ func main() {
 	apiKey := getEnv("ORCHESTRATOR_API_KEY", "")
 	jwtSecret := getEnv("JWT_SECRET", "")
 	dbPath := getEnv("DB_PATH", "orchestrator.db")
+	logLevel := getEnv("ORCHESTRATOR_LOG_LEVEL", "info")
+	logFormat := getEnv("ORCHESTRATOR_LOG_FORMAT", "text")
 
 	if apiKey == "" {
 		slog.Error("ORCHESTRATOR_API_KEY must be set")
@@ -36,7 +39,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	log := logger.Init(logLevel, logFormat)
 	slog.SetDefault(log)
 
 	slog.Info("starting orchestrator", "bind", apiBind, "db", dbPath, "cwd", ".")

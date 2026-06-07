@@ -92,7 +92,7 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 		huma.Register(hapi, huma.Operation{
 			OperationID: "get-agent",
 			Method:      http.MethodGet,
-			Path:        "/agents/{id}",
+			Path:        "/agent/{id}",
 			Summary:     "Get agent by ID",
 		}, h.GetAgent)
 

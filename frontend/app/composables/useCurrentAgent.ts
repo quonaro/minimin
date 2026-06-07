@@ -11,7 +11,7 @@ export function useCurrentAgent() {
 
   const agentId = computed(() => route.params.id as string);
 
-  const url = computed(() => (agentId.value ? `/agents/${agentId.value}` : ''));
+  const url = computed(() => (agentId.value ? `/agent/${agentId.value}` : ''));
 
   const { data, pending, error } = useApiFetch<{ body: Agent }>(url, {
     server: false,
