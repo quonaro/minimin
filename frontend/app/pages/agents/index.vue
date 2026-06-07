@@ -102,6 +102,7 @@ const agents = ref<Agent[]>([]);
 const { data } = await useFetch("/agents", {
   baseURL: useApiBase(),
   credentials: "include",
+  key: "agents",
 });
 
 if (data.value && typeof data.value === "object" && "body" in data.value) {

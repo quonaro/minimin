@@ -30,11 +30,37 @@
       </select>
     </div>
 
-    <!-- Agent Nav -->
-    <nav v-if="selectedAgentId" class="flex-1 p-4 space-y-2">
+    <nav class="flex-1 p-4 space-y-2">
       <NuxtLink
+        to="/agents"
+        class="group flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+        :class="
+          isAgentsActive()
+            ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+            : ''
+        "
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+          />
+        </svg>
+        <span>Agents</span>
+      </NuxtLink>
+
+      <NuxtLink
+        v-if="selectedAgentId"
         :to="`/agent/${selectedAgentId}/servers`"
-        class="flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+        class="group flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
         :class="
           isAgentNavActive('servers')
             ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
@@ -43,7 +69,7 @@
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="w-5 h-5"
+          class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -59,13 +85,6 @@
       </NuxtLink>
     </nav>
 
-    <!-- Empty State -->
-    <div v-else class="flex-1 flex items-center justify-center p-4">
-      <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
-        Select an agent to get started
-      </p>
-    </div>
-
     <div
       class="p-4 border-t border-gray-200 dark:border-border-dark flex items-center justify-center gap-2"
     >
@@ -76,7 +95,7 @@
         <svg
           v-if="colorMode.value === 'dark'"
           xmlns="http://www.w3.org/2000/svg"
-          class="w-5 h-5 shrink-0"
+          class="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -91,7 +110,7 @@
         <svg
           v-else
           xmlns="http://www.w3.org/2000/svg"
-          class="w-5 h-5 shrink-0"
+          class="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -115,7 +134,7 @@
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="w-5 h-5 shrink-0"
+          class="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:translate-x-0.5"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -149,7 +168,6 @@ function toggleColorMode() {
 const { data: agentsData } = await useFetch("/agents", {
   baseURL: useApiBase(),
   credentials: "include",
-  server: false,
   key: "agents",
 });
 
@@ -185,5 +203,9 @@ function onAgentChange() {
 
 function isAgentNavActive(segment: string) {
   return route.path.includes(`/agent/${selectedAgentId.value}/${segment}`);
+}
+
+function isAgentsActive() {
+  return route.path === "/agents" || route.path.startsWith("/agents/");
 }
 </script>
