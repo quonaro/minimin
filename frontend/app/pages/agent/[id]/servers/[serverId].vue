@@ -36,7 +36,7 @@
             >Server ID:</span
           >
           <span class="ml-2 text-gray-900 dark:text-white">{{
-            server.server_id
+            server.serverId
           }}</span>
         </div>
         <div>
@@ -61,7 +61,7 @@
             >Game Port:</span
           >
           <span class="ml-2 text-gray-900 dark:text-white">{{
-            server.game_port
+            server.gamePort
           }}</span>
         </div>
         <div>
@@ -69,7 +69,7 @@
             >Engine:</span
           >
           <span class="ml-2 text-gray-900 dark:text-white">{{
-            server.engine_type
+            server.engineType
           }}</span>
         </div>
         <div>
@@ -77,7 +77,7 @@
             >Version:</span
           >
           <span class="ml-2 text-gray-900 dark:text-white">{{
-            server.game_version
+            server.gameVersion
           }}</span>
         </div>
       </div>
@@ -105,11 +105,11 @@
 
 <script setup lang="ts">
 interface Server {
-  server_id: string;
+  serverId: string;
   status: string;
-  game_port: number;
-  engine_type: string;
-  game_version: string;
+  gamePort: number;
+  engineType: string;
+  gameVersion: string;
 }
 
 const route = useRoute();
@@ -125,7 +125,7 @@ const { data } = await useApiFetch<Server | { body: Server }>(
 if (data.value && typeof data.value === "object") {
   if ("body" in data.value) {
     server.value = (data.value as any).body as Server;
-  } else if ("server_id" in data.value) {
+  } else if ("serverId" in data.value) {
     server.value = data.value as Server;
   }
 }

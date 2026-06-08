@@ -60,8 +60,8 @@ type Agent struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Host      string    `json:"host"`
-	APIKey    string    `json:"api_key,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	APIKey    string    `json:"apiKey,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // CreateAgent inserts a new agent into the database.

@@ -2,8 +2,8 @@ interface Agent {
   id: string;
   name: string;
   host: string;
-  api_key: string;
-  created_at: string;
+  apiKey: string;
+  createdAt: string;
 }
 
 export function useCurrentAgent() {

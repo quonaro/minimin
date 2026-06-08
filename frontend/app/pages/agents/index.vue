@@ -57,7 +57,7 @@
             </svg>
             <span
               >Created:
-              {{ new Date(agent.created_at).toLocaleDateString() }}</span
+              {{ new Date(agent.createdAt).toLocaleDateString() }}</span
             >
           </div>
         </div>
@@ -96,7 +96,7 @@ interface Agent {
   id: string;
   name: string;
   host: string;
-  created_at: string;
+  createdAt: string;
 }
 
 const showForm = ref(false);

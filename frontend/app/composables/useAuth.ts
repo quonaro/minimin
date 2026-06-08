@@ -12,7 +12,7 @@ export const useAuth = () => {
     try {
       const response = await $fetch<LoginResponse>('/api/auth/login', {
         method: 'POST',
-        body: { api_key: key },
+        body: { apiKey: key },
         credentials: 'include', // Important for httpOnly cookies
       })
 

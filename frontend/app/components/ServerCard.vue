@@ -7,7 +7,7 @@
         <h3
           class="text-lg font-semibold text-gray-900 dark:text-white truncate"
         >
-          {{ server.server_id }}
+          {{ server.serverId }}
         </h3>
       </div>
       <span
@@ -32,26 +32,26 @@
         class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
       >
         <Network class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
-        <span>Port {{ server.game_port || "-" }}</span>
+        <span>Port {{ server.gamePort || "-" }}</span>
       </div>
 
       <div
         class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
       >
         <Cpu class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
-        <span>{{ server.engine_type }}</span>
+        <span>{{ server.engineType }}</span>
       </div>
 
       <div
         class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
       >
         <Tag class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
-        <span>{{ server.game_version }}</span>
+        <span>{{ server.gameVersion }}</span>
       </div>
     </div>
 
     <NuxtLink
-      :to="`/agent/${agentId}/servers/${server.server_id}`"
+      :to="`/agent/${agentId}/servers/${server.serverId}`"
       class="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-medium text-sm"
     >
       View Details
@@ -73,12 +73,12 @@ import {
 } from "lucide-vue-next";
 
 interface Server {
-  server_id: string;
+  serverId: string;
   status: string;
-  game_port: number;
-  engine_type: string;
-  game_version: string;
-  started_at?: string;
+  gamePort: number;
+  engineType: string;
+  gameVersion: string;
+  startedAt?: string;
 }
 
 const props = defineProps<{
@@ -102,10 +102,10 @@ const statusIcon = computed(() => {
 });
 
 const uptime = computed(() => {
-  if (props.server.status !== "running" || !props.server.started_at) {
+  if (props.server.status !== "running" || !props.server.startedAt) {
     return "";
   }
-  const start = new Date(props.server.started_at).getTime();
+  const start = new Date(props.server.startedAt).getTime();
   return formatDuration(Date.now() - start);
 });
 </script>

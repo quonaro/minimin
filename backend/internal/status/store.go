@@ -87,7 +87,7 @@ func (s *Store) All() []AgentStatus {
 func (s *Store) Broadcast() {
 	payload := struct {
 		Statuses    []AgentStatus `json:"statuses"`
-		NextCheckAt time.Time     `json:"next_check_at"`
+		NextCheckAt time.Time     `json:"nextCheckAt"`
 	}{
 		Statuses:    s.All(),
 		NextCheckAt: s.NextCheckAt(),
@@ -116,7 +116,7 @@ func (s *Store) AddClient(conn *websocket.Conn) {
 
 	payload := struct {
 		Statuses    []AgentStatus `json:"statuses"`
-		NextCheckAt time.Time     `json:"next_check_at"`
+		NextCheckAt time.Time     `json:"nextCheckAt"`
 	}{
 		Statuses:    s.All(),
 		NextCheckAt: s.NextCheckAt(),

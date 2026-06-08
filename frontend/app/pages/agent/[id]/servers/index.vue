@@ -22,7 +22,7 @@
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <ServerCard
         v-for="server in servers"
-        :key="server.server_id"
+        :key="server.serverId"
         :server="server"
         :agent-id="agentId"
       />
@@ -36,12 +36,12 @@ definePageMeta({
 });
 
 interface Server {
-  server_id: string;
+  serverId: string;
   status: string;
-  game_port: number;
-  engine_type: string;
-  game_version: string;
-  started_at?: string;
+  gamePort: number;
+  engineType: string;
+  gameVersion: string;
+  startedAt?: string;
 }
 
 const { agentId, agent, pending } = useCurrentAgent();

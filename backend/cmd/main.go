@@ -42,7 +42,7 @@ func main() {
 	log := logger.Init(logLevel, logFormat)
 	slog.SetDefault(log)
 
-	slog.Info("starting orchestrator", "bind", apiBind, "db", dbPath, "cwd", ".")
+	slog.Info("Starting WebUI", "bind", apiBind, "db", dbPath, "cwd", ".")
 
 	database, err := db.Open(dbPath)
 	if err != nil {

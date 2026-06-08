@@ -37,7 +37,7 @@ type CreateAgentInput struct {
 	Body struct {
 		Name   string `json:"name" doc:"Agent name"`
 		Host   string `json:"host" doc:"Agent host (e.g., http://localhost:8080)"`
-		APIKey string `json:"api_key" doc:"Agent API key for authentication"`
+		APIKey string `json:"apiKey" doc:"Agent API key for authentication"`
 	}
 }
 
@@ -129,7 +129,7 @@ func (h *Handler) DeleteAgent(ctx context.Context, input *DeleteAgentInput) (*De
 type CheckAgentInput struct {
 	Body struct {
 		Host   string `json:"host" doc:"Agent host (e.g., http://localhost:8080)"`
-		APIKey string `json:"api_key" doc:"Agent API key for authentication"`
+		APIKey string `json:"apiKey" doc:"Agent API key for authentication"`
 	}
 }
 
@@ -283,7 +283,7 @@ func (h *Handler) ProxyAgent(w http.ResponseWriter, r *http.Request) {
 // LoginInput is the input for POST /auth/login.
 type LoginInput struct {
 	Body struct {
-		APIKey string `json:"api_key" doc:"Orchestrator API key"`
+		APIKey string `json:"apiKey" doc:"Orchestrator API key"`
 	}
 }
 
@@ -315,7 +315,7 @@ func (h *Handler) Login(ctx context.Context, input *LoginInput) (*LoginOutput, e
 // LoginHTTP is a regular HTTP handler for login that sets httpOnly cookie.
 func (h *Handler) LoginHTTP(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		APIKey string `json:"api_key"`
+		APIKey string `json:"apiKey"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -94,7 +94,7 @@
                 </label>
                 <input
                   id="agent-api-key"
-                  v-model="form.api_key"
+                  v-model="form.apiKey"
                   type="text"
                   required
                   placeholder="agent-api-key"
@@ -398,7 +398,7 @@ function generateDockerName() {
 const form = reactive({
   name: "",
   host: "",
-  api_key: "",
+  apiKey: "",
 });
 
 const loading = ref(false);
@@ -416,7 +416,7 @@ function close() {
 function resetForm() {
   form.name = generateDockerName();
   form.host = "";
-  form.api_key = "";
+  form.apiKey = "";
   error.value = "";
   loading.value = false;
   checking.value = false;
@@ -426,7 +426,7 @@ function resetForm() {
 }
 
 async function checkConnection() {
-  if (!form.host || !form.api_key) {
+  if (!form.host || !form.apiKey) {
     checkStatus.value = "error";
     checkError.value = "Host and API key are required";
     return;
@@ -446,7 +446,7 @@ async function checkConnection() {
         credentials: "include",
         body: {
           host: form.host,
-          api_key: form.api_key,
+          apiKey: form.apiKey,
         },
       },
     );
@@ -488,7 +488,7 @@ async function submit() {
       body: {
         name: form.name,
         host: form.host,
-        api_key: form.api_key,
+        apiKey: form.apiKey,
       },
     });
 
