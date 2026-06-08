@@ -144,7 +144,10 @@
             Operators
           </h2>
         </div>
-        <div v-if="opsLoading" class="text-gray-500 dark:text-neutral-400 text-sm">
+        <div
+          v-if="opsLoading"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
           Loading...
         </div>
         <div
@@ -195,7 +198,10 @@
             Whitelist
           </h2>
         </div>
-        <div v-if="wlLoading" class="text-gray-500 dark:text-neutral-400 text-sm">
+        <div
+          v-if="wlLoading"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
           Loading...
         </div>
         <div v-else-if="wlError" class="text-red-500 dark:text-red-400 text-sm">
@@ -301,6 +307,46 @@
       </div>
     </div>
 
+    <!-- Event History -->
+    <div
+      class="mt-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
+    >
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">
+        Event History
+      </h2>
+      <PlayerEventLog :events="eventLog" />
+    </div>
+
+    <!-- All-Time Players -->
+    <div
+      class="mt-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
+    >
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+          All Players
+        </h2>
+        <span class="text-xs text-gray-500 dark:text-neutral-400">
+          {{ allPlayers.length }}
+        </span>
+      </div>
+      <div class="mb-3">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search players..."
+          class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+        />
+      </div>
+      <PlayerAllTimeList
+        :players="allPlayers"
+        :filter="searchQuery"
+        @kick="openReasonModal('kick', $event)"
+        @ban="openReasonModal('ban', $event)"
+        @op="sendRcon(`op ${$event}`)"
+        @wladd="sendRcon(`whitelist add ${$event}`)"
+      />
+    </div>
+
     <!-- Reason Modal -->
     <div
       v-if="modalOpen"
@@ -347,6 +393,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import PlayerEventLog, {
+  type PlayerEvent,
+} from "~/components/PlayerEventLog.vue";
+import PlayerAllTimeList, {
+  type AllTimePlayer,
+} from "~/components/PlayerAllTimeList.vue";
 
 definePageMeta({
   middleware: "auth",
@@ -384,6 +436,10 @@ const bansLoading = ref(true);
 const bansError = ref<string | null>(null);
 const bansList = ref<PlayerEntry[]>([]);
 
+const eventLog = ref<PlayerEvent[]>([]);
+const allPlayers = ref<AllTimePlayer[]>([]);
+const searchQuery = ref("");
+
 const refreshing = ref(false);
 const wsStatus = ref("Connecting...");
 
@@ -392,9 +448,166 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let unmounted = false;
 let reconnectAttempts = 0;
 let socketCounter = 0;
+let eventCounter = 0;
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
+
+function lsKey(): string {
+  return `mc-players-${agentId.value}-${serverId}`;
+}
+
+function loadAllPlayers() {
+  try {
+    const raw = localStorage.getItem(lsKey());
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, number>;
+      allPlayers.value = Object.entries(parsed).map(([name, lastSeen]) => ({
+        name,
+        lastSeen,
+      }));
+    }
+  } catch {
+    allPlayers.value = [];
+  }
+}
+
+function saveAllPlayers() {
+  const map: Record<string, number> = {};
+  for (const p of allPlayers.value) {
+    map[p.name] = p.lastSeen;
+  }
+  localStorage.setItem(lsKey(), JSON.stringify(map));
+}
+
+function upsertPlayer(name: string, ts: number) {
+  const idx = allPlayers.value.findIndex((p) => p.name === name);
+  if (idx !== -1) {
+    allPlayers.value[idx]!.lastSeen = ts;
+  } else {
+    allPlayers.value.push({ name, lastSeen: ts });
+  }
+  saveAllPlayers();
+}
+
+function addEvent(ev: Omit<PlayerEvent, "id">) {
+  eventLog.value.unshift({ ...ev, id: `${ev.ts}-${++eventCounter}` });
+  if (eventLog.value.length > 200) {
+    eventLog.value = eventLog.value.slice(0, 200);
+  }
+}
+
+function stripMC(s: string): string {
+  return s.replace(/§./g, "").trim();
+}
+
+function parseLogTimestamp(line: string): number {
+  const m = line.match(/^\[(\d{2}):(\d{2}):(\d{2})\]/);
+  if (!m) return Date.now();
+
+  const now = new Date();
+  let ts = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    parseInt(m[1] as string, 10),
+    parseInt(m[2] as string, 10),
+    parseInt(m[3] as string, 10),
+  ).getTime();
+
+  if (ts > Date.now()) {
+    ts -= 24 * 60 * 60 * 1000;
+  }
+  return ts;
+}
+
+function handleLogLine(line: string) {
+  const ts = parseLogTimestamp(line);
+
+  const joinMatch = line.match(/]:\s*(\S+) joined the game/);
+  if (joinMatch && joinMatch[1]) {
+    const name = stripMC(joinMatch[1] as string);
+    if (!onlinePlayers.value.includes(name)) {
+      onlinePlayers.value.push(name);
+    }
+    upsertPlayer(name, ts);
+    addEvent({ ts, type: "join", player: name });
+    return;
+  }
+
+  const leftMatch = line.match(/]:\s*(\S+) left the game/);
+  if (leftMatch && leftMatch[1]) {
+    const name = stripMC(leftMatch[1] as string);
+    onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
+    upsertPlayer(name, ts);
+    addEvent({ ts, type: "leave", player: name });
+    return;
+  }
+
+  const lostMatch = line.match(/]:\s*(\S+) lost connection:/);
+  if (lostMatch && lostMatch[1]) {
+    const name = stripMC(lostMatch[1] as string);
+    onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
+    upsertPlayer(name, ts);
+    addEvent({ ts, type: "leave", player: name });
+    return;
+  }
+
+  const opMatch = line.match(/Made (\S+) a server operator/);
+  if (opMatch && opMatch[1]) {
+    addEvent({ ts, type: "op", player: stripMC(opMatch[1] as string) });
+    return;
+  }
+
+  const deopMatch = line.match(/Made (\S+) no longer a server operator/);
+  if (deopMatch && deopMatch[1]) {
+    addEvent({ ts, type: "deop", player: stripMC(deopMatch[1] as string) });
+    return;
+  }
+
+  const banMatch = line.match(/Banned player (\S+?):?\s*(.*)/);
+  if (banMatch && banMatch[1]) {
+    addEvent({
+      ts,
+      type: "ban",
+      player: stripMC(banMatch[1] as string),
+      reason: banMatch[2]?.trim() || undefined,
+    });
+    return;
+  }
+
+  const unbanMatch = line.match(/Unbanned player (\S+)/);
+  if (unbanMatch && unbanMatch[1]) {
+    addEvent({ ts, type: "unban", player: stripMC(unbanMatch[1] as string) });
+    return;
+  }
+
+  const wlAddMatch = line.match(/Added (\S+) to the whitelist/);
+  if (wlAddMatch && wlAddMatch[1]) {
+    addEvent({ ts, type: "wladd", player: stripMC(wlAddMatch[1] as string) });
+    return;
+  }
+
+  const wlRemMatch = line.match(/Removed (\S+) from the whitelist/);
+  if (wlRemMatch && wlRemMatch[1]) {
+    addEvent({
+      ts,
+      type: "wlremove",
+      player: stripMC(wlRemMatch[1] as string),
+    });
+    return;
+  }
+
+  const kickMatch = line.match(/Kicked (\S+?):?\s*(.*)/);
+  if (kickMatch && kickMatch[1]) {
+    addEvent({
+      ts,
+      type: "kick",
+      player: stripMC(kickMatch[1] as string),
+      reason: kickMatch[2]?.trim() || undefined,
+    });
+  }
+}
 
 function connectLogsWS() {
   if (ws) {
@@ -428,37 +641,7 @@ function connectLogsWS() {
     const text = String(e.data);
     const lines = text.split("\n");
     for (const line of lines) {
-      const idxJoin = line.indexOf(" joined the game");
-      if (idxJoin !== -1) {
-        const prefix = line.slice(0, idxJoin);
-        const nameMatch = prefix.match(/]:\s*(\S+)$/);
-        if (nameMatch && nameMatch[1]) {
-          const name = nameMatch[1];
-          if (!onlinePlayers.value.includes(name)) {
-            onlinePlayers.value.push(name);
-          }
-        }
-        continue;
-      }
-      const idxLeft = line.indexOf(" left the game");
-      if (idxLeft !== -1) {
-        const prefix = line.slice(0, idxLeft);
-        const nameMatch = prefix.match(/]:\s*(\S+)$/);
-        if (nameMatch && nameMatch[1]) {
-          const name = nameMatch[1];
-          onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
-        }
-        continue;
-      }
-      const idxLost = line.indexOf(" lost connection:");
-      if (idxLost !== -1) {
-        const prefix = line.slice(0, idxLost);
-        const nameMatch = prefix.match(/]:\s*(\S+)$/);
-        if (nameMatch && nameMatch[1]) {
-          const name = nameMatch[1];
-          onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
-        }
-      }
+      handleLogLine(line);
     }
   };
 
@@ -628,6 +811,7 @@ function confirmModal() {
 }
 
 onMounted(() => {
+  loadAllPlayers();
   refreshAll();
   connectLogsWS();
   pollTimer = setInterval(refreshAll, 15000);

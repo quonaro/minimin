@@ -44,9 +44,14 @@
             <input
               ref="fileInput"
               type="file"
-              accept="image/png"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp"
               class="hidden"
-              @change="uploadIcon"
+              @change="onIconFileSelect"
+            />
+            <server-icon-editor
+              v-model="showIconEditor"
+              :file="selectedIconFile"
+              @save="uploadProcessedIcon"
             />
           </div>
 
@@ -323,6 +328,8 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const editingPort = ref(false);
 const tempPort = ref<number | null>(null);
 const portLoading = ref(false);
+const showIconEditor = ref(false);
+const selectedIconFile = ref<File | null>(null);
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
@@ -337,13 +344,18 @@ const uptime = computed(() => {
   return formatDuration(Date.now() - start);
 });
 
-async function uploadIcon(event: Event) {
+function onIconFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
+  const file = input.files?.[0] ?? null;
   if (!file) return;
+  selectedIconFile.value = file;
+  showIconEditor.value = true;
+  input.value = "";
+}
 
+async function uploadProcessedIcon(blob: Blob) {
   const formData = new FormData();
-  formData.append("icon", file);
+  formData.append("icon", blob, "icon.png");
 
   try {
     await $fetch(`/agent/${agentId.value}/servers/${serverId}/icon`, {
@@ -358,8 +370,6 @@ async function uploadIcon(event: Event) {
   } catch (err: any) {
     const msg = err?.data?.detail || err?.message || "Failed to upload icon";
     showToast("error", "Upload failed", { description: msg });
-  } finally {
-    input.value = "";
   }
 }
 
