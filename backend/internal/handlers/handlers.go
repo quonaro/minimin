@@ -370,6 +370,12 @@ func (h *Handler) LogoutHTTP(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
+// GetAgentStatuses returns the current status of all agents.
+func (h *Handler) GetAgentStatuses(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(h.Status.All())
+}
+
 // CheckAllAgents pings every registered agent and updates the in-memory status store.
 func (h *Handler) CheckAllAgents() {
 	agents, err := h.DB.ListAgents()
@@ -401,7 +407,6 @@ func (h *Handler) CheckAllAgents() {
 		}(agent)
 	}
 	wg.Wait()
-	h.Status.Broadcast()
 }
 
 func (h *Handler) pingAgent(host, apiKey string) bool {

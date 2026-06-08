@@ -62,15 +62,15 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 	chiRouter.Post("/api/auth/login", h.LoginHTTP)
 	chiRouter.Post("/api/auth/logout", h.LogoutHTTP)
 
-	// WebSocket endpoint for agent statuses (public, no auth required for simplicity)
-	chiRouter.Get("/ws/agents", store.ServeHTTP)
-
 	// SSE endpoint for notifications (public for simplicity; could be protected)
 	chiRouter.Get("/api/events", broadcaster.ServeHTTP)
 
 	// Protected endpoints
 	chiRouter.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware(jwtService))
+
+		// Agent status endpoint
+		chiRouter.Get("/agents/status", h.GetAgentStatuses)
 
 		// Agent endpoints
 		huma.Register(hapi, huma.Operation{

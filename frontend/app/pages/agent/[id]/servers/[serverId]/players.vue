@@ -504,6 +504,8 @@ let eventCounter = 0;
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
 
+const { lastEvent } = useEventSource();
+
 function lsKey(): string {
   return `mc-players-${agentId.value}-${serverId}`;
 }
@@ -612,46 +614,60 @@ function handleLogLine(line: string) {
 
   const opMatch = line.match(/Made (\S+) a server operator/);
   if (opMatch && opMatch[1]) {
-    addEvent({ ts, type: "op", player: stripMC(opMatch[1] as string) });
+    const name = stripMC(opMatch[1] as string);
+    addEvent({ ts, type: "op", player: name });
+    if (!opsList.value.some((op) => op.name === name)) {
+      opsList.value.push({ name });
+    }
     return;
   }
 
   const deopMatch = line.match(/Made (\S+) no longer a server operator/);
   if (deopMatch && deopMatch[1]) {
-    addEvent({ ts, type: "deop", player: stripMC(deopMatch[1] as string) });
+    const name = stripMC(deopMatch[1] as string);
+    addEvent({ ts, type: "deop", player: name });
+    opsList.value = opsList.value.filter((op) => op.name !== name);
     return;
   }
 
   const banMatch = line.match(/Banned player ([^:\s]+)(?::\s*(.*))?/);
   if (banMatch && banMatch[1]) {
-    addEvent({
-      ts,
-      type: "ban",
-      player: stripMC(banMatch[1] as string),
-      reason: banMatch[2]?.trim() || undefined,
-    });
+    const name = stripMC(banMatch[1] as string);
+    const reason = banMatch[2]?.trim() || undefined;
+    addEvent({ ts, type: "ban", player: name, reason });
+    if (!bansList.value.some((ban) => ban.name === name)) {
+      bansList.value.push({
+        name,
+        reason,
+        created: new Date(ts).toISOString(),
+      });
+    }
     return;
   }
 
   const unbanMatch = line.match(/Unbanned player (\S+)/);
   if (unbanMatch && unbanMatch[1]) {
-    addEvent({ ts, type: "unban", player: stripMC(unbanMatch[1] as string) });
+    const name = stripMC(unbanMatch[1] as string);
+    addEvent({ ts, type: "unban", player: name });
+    bansList.value = bansList.value.filter((ban) => ban.name !== name);
     return;
   }
 
   const wlAddMatch = line.match(/Added (\S+) to the whitelist/);
   if (wlAddMatch && wlAddMatch[1]) {
-    addEvent({ ts, type: "wladd", player: stripMC(wlAddMatch[1] as string) });
+    const name = stripMC(wlAddMatch[1] as string);
+    addEvent({ ts, type: "wladd", player: name });
+    if (!wlList.value.some((entry) => entry.name === name)) {
+      wlList.value.push({ name });
+    }
     return;
   }
 
   const wlRemMatch = line.match(/Removed (\S+) from the whitelist/);
   if (wlRemMatch && wlRemMatch[1]) {
-    addEvent({
-      ts,
-      type: "wlremove",
-      player: stripMC(wlRemMatch[1] as string),
-    });
+    const name = stripMC(wlRemMatch[1] as string);
+    addEvent({ ts, type: "wlremove", player: name });
+    wlList.value = wlList.value.filter((entry) => entry.name !== name);
     return;
   }
 
@@ -778,8 +794,6 @@ const modalReason = ref("");
 const modalTitle = computed(() =>
   modalAction.value === "kick" ? "Kick Player" : "Ban Player",
 );
-
-let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 async function fetchOnline() {
   onlineLoading.value = true;
@@ -910,15 +924,17 @@ onMounted(() => {
   loadAllPlayers();
   refreshAll();
   connectLogsWS();
-  pollTimer = setInterval(refreshAll, 15000);
+
+  watch(lastEvent, (evt) => {
+    if (!evt || evt.type !== "server.status") return;
+    if (evt.agentId === agentId.value && evt.serverId === serverId) {
+      refreshAll();
+    }
+  });
 });
 
 onUnmounted(() => {
   unmounted = true;
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;

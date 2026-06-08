@@ -1,13 +1,8 @@
 package status
 
 import (
-	"encoding/json"
-	"log/slog"
-	"net/http"
 	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 // AgentStatus represents the online status of a single agent.
@@ -16,12 +11,10 @@ type AgentStatus struct {
 	Online bool   `json:"online"`
 }
 
-// Store holds in-memory agent health statuses and manages WebSocket clients.
+// Store holds in-memory agent health statuses.
 type Store struct {
 	mu            sync.RWMutex
 	statuses      map[string]bool
-	clients       map[*websocket.Conn]bool
-	upgrader      websocket.Upgrader
 	lastCheckAt   time.Time
 	checkInterval time.Duration
 }
@@ -30,10 +23,6 @@ type Store struct {
 func NewStore() *Store {
 	return &Store{
 		statuses: make(map[string]bool),
-		clients:  make(map[*websocket.Conn]bool),
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
-		},
 	}
 }
 
@@ -81,78 +70,4 @@ func (s *Store) All() []AgentStatus {
 		result = append(result, AgentStatus{ID: id, Online: online})
 	}
 	return result
-}
-
-// Broadcast marshals the current statuses and sends them to all connected clients.
-func (s *Store) Broadcast() {
-	payload := struct {
-		Statuses    []AgentStatus `json:"statuses"`
-		NextCheckAt time.Time     `json:"nextCheckAt"`
-	}{
-		Statuses:    s.All(),
-		NextCheckAt: s.NextCheckAt(),
-	}
-	msg, err := json.Marshal(payload)
-	if err != nil {
-		slog.Error("failed to marshal agent statuses", "error", err)
-		return
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for client := range s.clients {
-		if err := client.WriteMessage(websocket.TextMessage, msg); err != nil {
-			client.Close()
-			delete(s.clients, client)
-		}
-	}
-}
-
-// AddClient registers a new WebSocket client and immediately sends current statuses.
-func (s *Store) AddClient(conn *websocket.Conn) {
-	s.mu.Lock()
-	s.clients[conn] = true
-	s.mu.Unlock()
-
-	payload := struct {
-		Statuses    []AgentStatus `json:"statuses"`
-		NextCheckAt time.Time     `json:"nextCheckAt"`
-	}{
-		Statuses:    s.All(),
-		NextCheckAt: s.NextCheckAt(),
-	}
-	msg, err := json.Marshal(payload)
-	if err != nil {
-		slog.Error("failed to marshal initial statuses", "error", err)
-		return
-	}
-	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-		slog.Warn("failed to send initial statuses", "error", err)
-	}
-}
-
-// RemoveClient unregisters a WebSocket client.
-func (s *Store) RemoveClient(conn *websocket.Conn) {
-	s.mu.Lock()
-	delete(s.clients, conn)
-	s.mu.Unlock()
-	conn.Close()
-}
-
-// ServeHTTP upgrades the HTTP connection to WebSocket and keeps it open.
-func (s *Store) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	conn, err := s.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		slog.Warn("websocket upgrade failed", "error", err)
-		return
-	}
-	s.AddClient(conn)
-	defer s.RemoveClient(conn)
-
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			break
-		}
-	}
 }

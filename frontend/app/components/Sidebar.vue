@@ -175,27 +175,6 @@
           </div>
         </template>
       </div>
-
-      <div
-        v-if="nextCheckAt"
-        class="mt-auto pt-2 text-xs text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-3.5 h-3.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <span>Next check in {{ countdown }}</span>
-      </div>
     </nav>
 
     <div
@@ -316,16 +295,19 @@ const currentServerName = computed(() => {
 const { lastEvent } = useEventSource();
 
 watch(lastEvent, (evt) => {
-  if (!evt || evt.type !== "server.status") return;
-  if (evt.agentId !== agentId.value) return;
+  if (!evt) return;
 
-  if (evt.serverId === serverId.value && evt.newStatus) {
-    currentServerStatus.value = evt.newStatus;
-  }
+  if (evt.type === "server.status") {
+    if (evt.agentId !== agentId.value) return;
 
-  const server = agentServers.value.find((s) => s.serverId === evt.serverId);
-  if (server) {
-    server.status = evt.newStatus || server.status;
+    if (evt.serverId === serverId.value && evt.newStatus) {
+      currentServerStatus.value = evt.newStatus;
+    }
+
+    const server = agentServers.value.find((s) => s.serverId === evt.serverId);
+    if (server) {
+      server.status = evt.newStatus || server.status;
+    }
   }
 });
 
@@ -402,77 +384,29 @@ function isAgentsActive() {
   return route.path === "/agents" || route.path.startsWith("/agents/");
 }
 
-// WebSocket connection for agent statuses
+// Agent statuses via SSE
 const agentStatuses = ref<Record<string, boolean>>({});
-const nextCheckAt = ref<Date | null>(null);
-const countdown = ref<string>("");
 
-let countdownTimer: ReturnType<typeof setInterval> | null = null;
-
-function updateCountdown() {
-  if (!nextCheckAt.value) {
-    countdown.value = "";
-    return;
+onMounted(async () => {
+  try {
+    const statuses = await $fetch<Array<{ id: string; online: boolean }>>(
+      "/agents/status",
+      { baseURL: useApiBase(), credentials: "include" },
+    );
+    for (const s of statuses) {
+      agentStatuses.value[s.id] = s.online;
+    }
+  } catch (e) {
+    console.error("Failed to load initial agent statuses:", e);
   }
-  const diff = Math.max(
-    0,
-    Math.ceil((nextCheckAt.value.getTime() - Date.now()) / 1000),
-  );
-  const m = Math.floor(diff / 60);
-  const s = diff % 60;
-  countdown.value = m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${s}s`;
-}
+});
 
-onMounted(() => {
-  const wsUrl = "ws://localhost:8081/ws/agents";
-  const ws = new WebSocket(wsUrl);
-
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      if (Array.isArray(data)) {
-        // Legacy format fallback
-        const newStatuses: Record<string, boolean> = {};
-        for (const status of data) {
-          newStatuses[status.id] = status.online;
-        }
-        agentStatuses.value = newStatuses;
-        return;
-      }
-      const statuses = data.statuses as Array<{ id: string; online: boolean }>;
-      const newStatuses: Record<string, boolean> = {};
-      for (const status of statuses) {
-        newStatuses[status.id] = status.online;
-      }
-      agentStatuses.value = newStatuses;
-      if (data.next_check_at) {
-        nextCheckAt.value = new Date(data.next_check_at as string);
-        updateCountdown();
-      }
-    } catch (e) {
-      console.error("Failed to parse agent statuses:", e);
-    }
-  };
-
-  ws.onerror = (error) => {
-    console.error("WebSocket error:", error);
-  };
-
-  ws.onclose = () => {
-    console.log("WebSocket closed, reconnecting in 5s...");
-    setTimeout(() => {
-      // Simple reconnection - component will remount on navigation
-    }, 5000);
-  };
-
-  countdownTimer = setInterval(updateCountdown, 1000);
-
-  onUnmounted(() => {
-    ws.close();
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
-    }
-  });
+watch(lastEvent, (evt) => {
+  if (!evt || evt.type !== "agent.status") return;
+  const isOnline = evt.newStatus === "online";
+  if (evt.agentId) {
+    agentStatuses.value[evt.agentId] = isOnline;
+  }
 });
 
 function getAgentStatusColor(agentId: string) {
