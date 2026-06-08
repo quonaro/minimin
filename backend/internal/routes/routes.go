@@ -56,7 +56,10 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 	config.CreateHooks = nil
 	config.SchemasPath = ""
 	config.Transformers = append(config.Transformers, removeErrorsTransformer)
-	hapi := humachi.New(chiRouter, config)
+
+	protectedRouter := chi.NewRouter()
+	protectedRouter.Use(middleware.AuthMiddleware(jwtService))
+	hapi := humachi.New(protectedRouter, config)
 
 	// Public endpoints
 	chiRouter.Post("/api/auth/login", h.LoginHTTP)
@@ -66,11 +69,9 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 	chiRouter.Get("/api/events", broadcaster.ServeHTTP)
 
 	// Protected endpoints
-	chiRouter.Group(func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware(jwtService))
-
+	protectedRouter.Group(func(r chi.Router) {
 		// Agent status endpoint
-		chiRouter.Get("/agents/status", h.GetAgentStatuses)
+		r.Get("/agents/status", h.GetAgentStatuses)
 
 		// Agent endpoints
 		huma.Register(hapi, huma.Operation{
@@ -185,6 +186,8 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 			Summary:     "Get orchestrator API key",
 		}, h.GetOrchestratorKey)
 	})
+
+	chiRouter.Mount("/", protectedRouter)
 
 	return chiRouter
 }
