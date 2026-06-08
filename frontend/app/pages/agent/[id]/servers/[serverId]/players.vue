@@ -589,18 +589,24 @@ function handleLogLine(line: string) {
   const leftMatch = line.match(/]:\s*(\S+) left the game/);
   if (leftMatch && leftMatch[1]) {
     const name = stripMC(leftMatch[1] as string);
+    const wasOnline = onlinePlayers.value.includes(name);
     onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
     upsertPlayer(name, ts);
-    addEvent({ ts, type: "leave", player: name });
+    if (wasOnline) {
+      addEvent({ ts, type: "leave", player: name });
+    }
     return;
   }
 
   const lostMatch = line.match(/]:\s*(\S+) lost connection:/);
   if (lostMatch && lostMatch[1]) {
     const name = stripMC(lostMatch[1] as string);
+    const wasOnline = onlinePlayers.value.includes(name);
     onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
     upsertPlayer(name, ts);
-    addEvent({ ts, type: "leave", player: name });
+    if (wasOnline) {
+      addEvent({ ts, type: "leave", player: name });
+    }
     return;
   }
 
@@ -651,10 +657,12 @@ function handleLogLine(line: string) {
 
   const kickMatch = line.match(/Kicked ([^:\s]+)(?::\s*(.*))?/);
   if (kickMatch && kickMatch[1]) {
+    const name = stripMC(kickMatch[1] as string);
+    onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
     addEvent({
       ts,
       type: "kick",
-      player: stripMC(kickMatch[1] as string),
+      player: name,
       reason: kickMatch[2]?.trim() || undefined,
     });
     return;
