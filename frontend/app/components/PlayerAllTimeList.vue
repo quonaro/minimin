@@ -9,6 +9,7 @@ export interface AllTimePlayer {
 const props = defineProps<{
   players: AllTimePlayer[];
   filter?: string;
+  online?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -63,6 +64,7 @@ function formatLastSeen(ts: number): string {
       </span>
       <div class="flex items-center gap-1 shrink-0">
         <button
+          v-if="online?.includes(p.name)"
           class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50"
           @click="emit('kick', p.name)"
         >

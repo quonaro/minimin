@@ -9,6 +9,9 @@ import {
   FilePlus,
   FileMinus,
   Swords,
+  Skull,
+  Trophy,
+  Package,
 } from "lucide-vue-next";
 
 export interface PlayerEvent {
@@ -23,7 +26,10 @@ export interface PlayerEvent {
     | "op"
     | "deop"
     | "wladd"
-    | "wlremove";
+    | "wlremove"
+    | "death"
+    | "advancement"
+    | "obtained";
   player: string;
   reason?: string;
 }
@@ -89,6 +95,24 @@ const typeMeta: Record<
     icon: FileMinus,
     color: "text-gray-600 dark:text-neutral-400",
     bg: "bg-gray-100 dark:bg-neutral-700/50",
+  },
+  death: {
+    label: "died",
+    icon: Skull,
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-100 dark:bg-red-900/30",
+  },
+  advancement: {
+    label: "advancement",
+    icon: Trophy,
+    color: "text-yellow-600 dark:text-yellow-400",
+    bg: "bg-yellow-100 dark:bg-yellow-900/30",
+  },
+  obtained: {
+    label: "obtained",
+    icon: Package,
+    color: "text-teal-600 dark:text-teal-400",
+    bg: "bg-teal-100 dark:bg-teal-900/30",
   },
 };
 

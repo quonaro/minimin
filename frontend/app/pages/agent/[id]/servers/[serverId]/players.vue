@@ -56,6 +56,55 @@
       </div>
     </div>
 
+    <!-- Offline Actions -->
+    <div
+      class="mb-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
+    >
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">
+        Offline Actions
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-neutral-400 mb-3">
+        Manage a player who has never joined.
+      </p>
+      <div
+        class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+      >
+        <input
+          v-model="offlineName"
+          type="text"
+          placeholder="Player name..."
+          class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+          @keydown.enter.prevent="sendRcon(`ban ${offlineName.trim()}`)"
+        />
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            class="text-sm px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+            @click="openReasonModal('ban', offlineName.trim())"
+          >
+            Ban
+          </button>
+          <button
+            class="text-sm px-3 py-2 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50"
+            @click="sendRcon(`op ${offlineName.trim()}`)"
+          >
+            Op
+          </button>
+          <button
+            class="text-sm px-3 py-2 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
+            @click="sendRcon(`whitelist add ${offlineName.trim()}`)"
+          >
+            Whitelist
+          </button>
+          <button
+            class="text-sm px-3 py-2 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
+            @click="sendRcon(`pardon ${offlineName.trim()}`)"
+          >
+            Unban
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Online Players -->
       <div
@@ -321,25 +370,26 @@
     <div
       class="mt-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
     >
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-          All Players
-        </h2>
-        <span class="text-xs text-gray-500 dark:text-neutral-400">
-          {{ allPlayers.length }}
-        </span>
-      </div>
-      <div class="mb-3">
+      <div class="flex items-center justify-between mb-3 gap-3">
+        <div class="flex items-center gap-2 shrink-0">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+            All Players
+          </h2>
+          <span class="text-xs text-gray-500 dark:text-neutral-400">
+            {{ allPlayers.length }}
+          </span>
+        </div>
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Search players..."
-          class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+          class="max-w-[16rem] px-3 py-1.5 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
         />
       </div>
       <PlayerAllTimeList
         :players="allPlayers"
         :filter="searchQuery"
+        :online="onlinePlayers"
         @kick="openReasonModal('kick', $event)"
         @ban="openReasonModal('ban', $event)"
         @op="sendRcon(`op ${$event}`)"
@@ -439,6 +489,7 @@ const bansList = ref<PlayerEntry[]>([]);
 const eventLog = ref<PlayerEvent[]>([]);
 const allPlayers = ref<AllTimePlayer[]>([]);
 const searchQuery = ref("");
+const offlineName = ref("");
 
 const refreshing = ref(false);
 const wsStatus = ref("Connecting...");
@@ -506,14 +557,14 @@ function parseLogTimestamp(line: string): number {
   if (!m) return Date.now();
 
   const now = new Date();
-  let ts = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
+  let ts = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
     parseInt(m[1] as string, 10),
     parseInt(m[2] as string, 10),
     parseInt(m[3] as string, 10),
-  ).getTime();
+  );
 
   if (ts > Date.now()) {
     ts -= 24 * 60 * 60 * 1000;
@@ -565,7 +616,7 @@ function handleLogLine(line: string) {
     return;
   }
 
-  const banMatch = line.match(/Banned player (\S+?):?\s*(.*)/);
+  const banMatch = line.match(/Banned player ([^:\s]+)(?::\s*(.*))?/);
   if (banMatch && banMatch[1]) {
     addEvent({
       ts,
@@ -598,13 +649,50 @@ function handleLogLine(line: string) {
     return;
   }
 
-  const kickMatch = line.match(/Kicked (\S+?):?\s*(.*)/);
+  const kickMatch = line.match(/Kicked ([^:\s]+)(?::\s*(.*))?/);
   if (kickMatch && kickMatch[1]) {
     addEvent({
       ts,
       type: "kick",
       player: stripMC(kickMatch[1] as string),
       reason: kickMatch[2]?.trim() || undefined,
+    });
+    return;
+  }
+
+  const deathMatch = line.match(
+    /]:\s*(\S+) (was .+|died|drowned|fell .+|burned .+|suffocated .+|tried to swim .+|froze to death|starved to death|withered away|hit the ground too hard|experienced kinetic energy|went up in flames|discovered .+)/,
+  );
+  if (deathMatch && deathMatch[1]) {
+    addEvent({
+      ts,
+      type: "death",
+      player: stripMC(deathMatch[1] as string),
+      reason: stripMC(deathMatch[2] as string),
+    });
+    return;
+  }
+
+  const advMatch = line.match(
+    /]:\s*(\S+) has (made the advancement|reached the goal|completed the challenge) \[(.+)\]/,
+  );
+  if (advMatch && advMatch[1]) {
+    addEvent({
+      ts,
+      type: "advancement",
+      player: stripMC(advMatch[1] as string),
+      reason: stripMC(advMatch[3] as string),
+    });
+    return;
+  }
+
+  const obtMatch = line.match(/]:\s*(\S+) has obtained \[(.+)\]/);
+  if (obtMatch && obtMatch[1]) {
+    addEvent({
+      ts,
+      type: "obtained",
+      player: stripMC(obtMatch[1] as string),
+      reason: stripMC(obtMatch[2] as string),
     });
   }
 }
