@@ -122,7 +122,7 @@
         </div>
         <template v-for="item in serverNav" :key="item.to">
           <NuxtLink
-            v-if="!item.requiresRunning || currentServerStatus === 'running'"
+            v-if="!isServerNavItemDisabled(item)"
             :to="item.to"
             class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
             :class="
@@ -155,7 +155,7 @@
           <div
             v-else
             class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-400 dark:text-neutral-600 cursor-not-allowed opacity-60 select-none"
-            :title="`${item.label} is available only when the server is running`"
+            :title="getDisabledReason(item)"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -265,9 +265,17 @@ interface Server {
   name?: string;
 }
 
+interface ServerNavItem {
+  label: string;
+  to: string;
+  icon: string;
+  requiresRunning?: boolean;
+}
+
 const { servers: agentServers, refresh: refreshServers } = useServers(agentId);
 
 const currentServerStatus = ref("");
+const serverFilesInitialized = ref(true);
 
 watch(
   [agentServers, serverId],
@@ -310,6 +318,35 @@ watch(lastEvent, (evt) => {
     }
   }
 });
+
+watch(
+  [agentId, serverId],
+  async ([newAgentId, newServerId]) => {
+    if (!newAgentId || !newServerId) {
+      serverFilesInitialized.value = true;
+      return;
+    }
+
+    try {
+      const res = await $fetch<
+        { initialized?: boolean } | { body?: { initialized?: boolean } }
+      >(`/agent/${newAgentId}/servers/${newServerId}/config`, {
+        baseURL: useApiBase(),
+        credentials: "include",
+      });
+
+      const initializedRoot = (res as { initialized?: boolean })?.initialized;
+      const initializedBody = (res as { body?: { initialized?: boolean } })
+        ?.body?.initialized;
+      const initialized: boolean = initializedRoot ?? initializedBody ?? true;
+
+      serverFilesInitialized.value = initialized;
+    } catch (err: any) {
+      serverFilesInitialized.value = true;
+    }
+  },
+  { immediate: true },
+);
 
 function getServerStatusColor(status: string) {
   switch (status) {
@@ -358,8 +395,28 @@ const serverNav = computed(() => {
       icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
       requiresRunning: true,
     },
-  ];
+  ] as ServerNavItem[];
 });
+
+function isServerNavItemDisabled(item: ServerNavItem) {
+  if (item.label !== "Overview" && !serverFilesInitialized.value) {
+    return true;
+  }
+  if (item.requiresRunning && currentServerStatus.value !== "running") {
+    return true;
+  }
+  return false;
+}
+
+function getDisabledReason(item: ServerNavItem) {
+  if (item.label !== "Overview" && !serverFilesInitialized.value) {
+    return `${item.label} is available only after server files are initialized`;
+  }
+  if (item.requiresRunning && currentServerStatus.value !== "running") {
+    return `${item.label} is available only when the server is running`;
+  }
+  return `${item.label} is currently unavailable`;
+}
 
 function toggleColorMode() {
   colorMode.preference = colorMode.value === "dark" ? "light" : "dark";
