@@ -11,6 +11,7 @@ const emit = defineEmits<{
   (e: "save", blob: Blob): void;
 }>();
 
+
 const pixelSize = ref(4);
 const fileSize = ref(0);
 const canvasRef = ref<HTMLCanvasElement | null>(null);

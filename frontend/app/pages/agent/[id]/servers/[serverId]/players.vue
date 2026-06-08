@@ -1,12 +1,12 @@
 <template>
   <div class="p-6">
-    <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
+    <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
           Players
         </h1>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-4">
         <div class="flex items-center gap-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -29,7 +29,7 @@
             />
           </svg>
           <span
-            class="text-xs"
+            class="text-xs leading-none"
             :class="{
               'text-green-500': wsStatus === 'Connected',
               'text-red-500':
@@ -47,7 +47,7 @@
           </button>
         </div>
         <button
-          class="text-xs rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 px-3 py-1.5"
+          class="text-xs leading-none rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 focus:outline-none px-2 py-0.5"
           :disabled="refreshing"
           @click="refreshAll"
         >
