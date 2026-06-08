@@ -11,18 +11,22 @@ export function useCurrentAgent() {
 
   const agentId = computed(() => route.params.id as string);
 
-  const url = computed(() => (agentId.value ? `/agent/${agentId.value}` : ''));
-
-  const { data, pending, error } = useApiFetch<{ body: Agent }>(url, {
-    server: false,
-    lazy: false,
+  const { data: agentsData, pending, error } = useFetch('/agents', {
+    baseURL: useApiBase(),
+    credentials: 'include',
+    key: 'agents',
   });
 
   const agent = computed<Agent | null>(() => {
-    if (data.value && typeof data.value === "object" && "body" in data.value) {
-      return (data.value as any).body as Agent;
+    if (!agentsData.value || !agentId.value) return null;
+    let list: any[] = [];
+    const val = agentsData.value;
+    if (Array.isArray(val)) {
+      list = val;
+    } else if (typeof val === 'object' && 'body' in val) {
+      list = (val as any).body || [];
     }
-    return null;
+    return list.find((a: any) => a.id === agentId.value) || null;
   });
 
   return {
