@@ -72,23 +72,45 @@
         </div>
 
         <div v-if="agents.length > 0" class="ml-4 space-y-0.5">
-          <NuxtLink
-            v-for="agent in agents"
-            :key="agent.id"
-            :to="`/agent/${agent.id}/servers`"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-            :class="
-              route.params.id === agent.id
-                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                : 'text-gray-600 dark:text-gray-400'
-            "
-          >
-            <span
-              class="w-2 h-2 rounded-full flex-shrink-0"
-              :class="getAgentStatusColor(agent.id)"
-            ></span>
-            <span class="truncate">{{ agent.name }}</span>
-          </NuxtLink>
+          <template v-for="agent in agents" :key="agent.id">
+            <NuxtLink
+              :to="`/agent/${agent.id}/servers`"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+              :class="
+                route.params.id === agent.id
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                  : 'text-gray-600 dark:text-gray-400'
+              "
+            >
+              <span
+                class="w-2 h-2 rounded-full flex-shrink-0"
+                :class="getAgentStatusColor(agent.id)"
+              ></span>
+              <span class="truncate">{{ agent.name }}</span>
+            </NuxtLink>
+            <div
+              v-if="agent.id === agentId && agentServers.length > 0"
+              class="ml-4 space-y-0.5"
+            >
+              <NuxtLink
+                v-for="server in agentServers"
+                :key="server.serverId"
+                :to="`/agent/${agent.id}/servers/${server.serverId}`"
+                class="flex items-center gap-2 px-3 py-1 rounded-lg text-xs transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                :class="
+                  route.params.serverId === server.serverId
+                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-gray-500'
+                "
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  :class="getServerStatusColor(server.status)"
+                ></span>
+                <span class="truncate">{{ server.serverId }}</span>
+              </NuxtLink>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -230,6 +252,38 @@ const { logout } = useAuth();
 
 const serverId = computed(() => route.params.serverId as string | undefined);
 const agentId = computed(() => route.params.id as string | undefined);
+
+interface Server {
+  serverId: string;
+  status: string;
+}
+
+const serversUrl = computed(() =>
+  agentId.value ? `/agent/${agentId.value}/servers` : null,
+);
+const { data: serversData } = await useApiFetch(serversUrl as any, {
+  key: computed(() => `agent-servers-${agentId.value ?? "none"}`),
+});
+
+const agentServers = computed(() => {
+  const val = serversData.value;
+  if (Array.isArray(val)) return val as Server[];
+  if (val && typeof val === "object" && "body" in val) {
+    return (val as any).body || [];
+  }
+  return [];
+});
+
+function getServerStatusColor(status: string) {
+  switch (status) {
+    case "running":
+      return "bg-green-500";
+    case "exited":
+      return "bg-red-500";
+    default:
+      return "bg-gray-400 dark:bg-gray-500";
+  }
+}
 
 const serverNav = computed(() => {
   if (!agentId.value || !serverId.value) return [];

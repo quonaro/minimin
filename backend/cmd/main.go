@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"orchestrator/internal/db"
+	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/jwt"
 	"orchestrator/internal/logger"
@@ -54,9 +56,11 @@ func main() {
 	statusStore := status.NewStore()
 	statusStore.SetCheckInterval(30 * time.Second)
 
+	broadcaster := events.NewBroadcaster()
+
 	jwtService := jwt.NewService(jwtSecret)
-	h := handlers.NewHandler(database, apiKey, jwtService, statusStore)
-	router := routes.SetupRoutes(h, apiKey, jwtService, statusStore)
+	h := handlers.NewHandler(database, apiKey, jwtService, statusStore, broadcaster)
+	router := routes.SetupRoutes(h, apiKey, jwtService, statusStore, broadcaster)
 
 	slog.Info("orchestrator API listening", "addr", apiBind)
 	server := &http.Server{Addr: apiBind, Handler: router}
@@ -76,6 +80,25 @@ func main() {
 		for range ticker.C {
 			statusStore.SetLastCheck(time.Now())
 			h.CheckAllAgents()
+		}
+	}()
+
+	// Poll server statuses from online agents with adaptive speed.
+	go func() {
+		lastKnown := &sync.Map{}
+		slow := 15 * time.Second
+		fast := 2 * time.Second
+		ticker := time.NewTicker(slow)
+		defer ticker.Stop()
+
+		hasPending := h.PollServerStatuses(lastKnown)
+		for range ticker.C {
+			hasPending = h.PollServerStatuses(lastKnown)
+			if hasPending {
+				ticker.Reset(fast)
+			} else {
+				ticker.Reset(slow)
+			}
 		}
 	}()
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"orchestrator/internal/db"
+	"orchestrator/internal/events"
 	"orchestrator/internal/jwt"
 	"orchestrator/internal/status"
 
@@ -25,11 +26,12 @@ type Handler struct {
 	APIKey string
 	JWT    *jwt.Service
 	Status *status.Store
+	Events *events.Broadcaster
 }
 
 // NewHandler creates a new Handler.
-func NewHandler(database *db.DB, apiKey string, jwtService *jwt.Service, store *status.Store) *Handler {
-	return &Handler{DB: database, APIKey: apiKey, JWT: jwtService, Status: store}
+func NewHandler(database *db.DB, apiKey string, jwtService *jwt.Service, store *status.Store, broadcaster *events.Broadcaster) *Handler {
+	return &Handler{DB: database, APIKey: apiKey, JWT: jwtService, Status: store, Events: broadcaster}
 }
 
 // CreateAgentInput is the input for POST /agents.
@@ -267,9 +269,32 @@ func (h *Handler) ProxyAgent(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "agent unreachable"})
+		if h.Events != nil {
+			h.Events.Broadcast(events.Event{
+				Type:    "action.error",
+				AgentID: agentID,
+				Message: "Agent unreachable: " + agent.Host,
+			})
+		}
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
+
+	if h.Events != nil {
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			h.Events.Broadcast(events.Event{
+				Type:    "action.success",
+				AgentID: agentID,
+				Message: fmt.Sprintf("Action on %s succeeded", agent.Name),
+			})
+		} else if resp.StatusCode >= 400 {
+			h.Events.Broadcast(events.Event{
+				Type:    "action.error",
+				AgentID: agentID,
+				Message: fmt.Sprintf("Action on %s failed (%d)", agent.Name, resp.StatusCode),
+			})
+		}
+	}
 
 	for k, vv := range resp.Header {
 		for _, v := range vv {
@@ -379,8 +404,21 @@ func (h *Handler) CheckAllAgents() {
 		wg.Add(1)
 		go func(a db.Agent) {
 			defer wg.Done()
+			oldOnline := h.Status.Get(a.ID)
 			online := h.pingAgent(a.Host, a.APIKey)
 			h.Status.Set(a.ID, online)
+			if oldOnline != online {
+				status := "offline"
+				if online {
+					status = "online"
+				}
+				h.Events.Broadcast(events.Event{
+					Type:      "agent.status",
+					AgentID:   a.ID,
+					NewStatus: status,
+					Message:   fmt.Sprintf("Agent %s is now %s", a.Name, status),
+				})
+			}
 		}(agent)
 	}
 	wg.Wait()
@@ -403,4 +441,117 @@ func (h *Handler) pingAgent(host, apiKey string) bool {
 	defer func() { _ = resp.Body.Close() }()
 
 	return resp.StatusCode == http.StatusOK
+}
+
+// agentServer is a minimal representation of a server returned by an agent.
+type agentServer struct {
+	ServerID      string `json:"serverId"`
+	Status        string `json:"status"`
+	DesiredStatus string `json:"desiredStatus"`
+}
+
+// PollServerStatuses polls every online agent for its server list, compares
+// with the previous snapshot, and emits SSE events when a server's status or
+// desired status changes. It returns true if any server has a pending operation.
+func (h *Handler) PollServerStatuses(lastKnown *sync.Map) bool {
+	agents, err := h.DB.ListAgents()
+	if err != nil {
+		slog.Error("failed to list agents for server poll", "error", err)
+		return false
+	}
+
+	var wg sync.WaitGroup
+	pending := make(chan bool, len(agents))
+	for _, agent := range agents {
+		if !h.Status.Get(agent.ID) {
+			continue // skip offline agents
+		}
+		wg.Add(1)
+		go func(a db.Agent) {
+			defer wg.Done()
+			url := strings.TrimSuffix(a.Host, "/") + "/api/v1/servers"
+			req, err := http.NewRequest(http.MethodGet, url, nil)
+			if err != nil {
+				return
+			}
+			req.Header.Set("Authorization", "Bearer "+a.APIKey)
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Do(req)
+			if err != nil {
+				return
+			}
+			defer func() { _ = resp.Body.Close() }()
+			if resp.StatusCode != http.StatusOK {
+				return
+			}
+
+			var body struct {
+				Body []agentServer `json:"body"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				// Try raw array fallback
+				resp.Body.Close()
+				req2, _ := http.NewRequest(http.MethodGet, url, nil)
+				req2.Header.Set("Authorization", "Bearer "+a.APIKey)
+				resp2, err2 := client.Do(req2)
+				if err2 != nil {
+					return
+				}
+				defer func() { _ = resp2.Body.Close() }()
+				var list []agentServer
+				if err2 = json.NewDecoder(resp2.Body).Decode(&list); err2 != nil {
+					return
+				}
+				body.Body = list
+			}
+
+			for _, srv := range body.Body {
+				key := a.ID + "/" + srv.ServerID
+				desiredKey := key + ":desired"
+
+				prevStatus, loadedStatus := lastKnown.Load(key)
+				prevDesired, loadedDesired := lastKnown.Load(desiredKey)
+
+				changed := false
+				if !loadedStatus || prevStatus != srv.Status {
+					lastKnown.Store(key, srv.Status)
+					changed = true
+				}
+				if !loadedDesired || prevDesired != srv.DesiredStatus {
+					lastKnown.Store(desiredKey, srv.DesiredStatus)
+					changed = true
+				}
+
+				if loadedStatus && changed {
+					oldStatus := ""
+					if loadedStatus {
+						oldStatus = prevStatus.(string)
+					}
+					h.Events.Broadcast(events.Event{
+						Type:          "server.status",
+						AgentID:       a.ID,
+						ServerID:      srv.ServerID,
+						OldStatus:     oldStatus,
+						NewStatus:     srv.Status,
+						DesiredStatus: srv.DesiredStatus,
+						Message:       fmt.Sprintf("Server %s is now %s", srv.ServerID, srv.Status),
+					})
+				}
+
+				if srv.DesiredStatus != "" && srv.DesiredStatus != srv.Status {
+					pending <- true
+				}
+			}
+		}(agent)
+	}
+	wg.Wait()
+	close(pending)
+
+	hasPending := false
+	for v := range pending {
+		if v {
+			hasPending = true
+		}
+	}
+	return hasPending
 }

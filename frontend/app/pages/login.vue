@@ -253,6 +253,7 @@ function toggleColorMode() {
   colorMode.preference = colorMode.value === "dark" ? "light" : "dark";
 }
 const { login, isAuthenticated } = useAuth();
+const { show: showToast } = useToast();
 const apiKeyInput = ref("");
 const loading = ref(false);
 const error = ref("");
@@ -269,12 +270,15 @@ async function handleLogin() {
   try {
     const success = await login(apiKeyInput.value);
     if (success) {
+      showToast("success", "Signed in successfully");
       await navigateTo("/agents");
     } else {
       error.value = "Invalid password or connection failed";
+      showToast("error", "Sign in failed", { description: error.value });
     }
   } catch (e) {
     error.value = "Invalid password or connection failed";
+    showToast("error", "Sign in failed", { description: error.value });
   } finally {
     loading.value = false;
   }

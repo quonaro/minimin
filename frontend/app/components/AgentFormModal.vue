@@ -425,6 +425,8 @@ function resetForm() {
   confirmShown.value = false;
 }
 
+const { show: showToast } = useToast();
+
 async function checkConnection() {
   if (!form.host || !form.apiKey) {
     checkStatus.value = "error";
@@ -452,14 +454,21 @@ async function checkConnection() {
     );
     if (result.valid) {
       checkStatus.value = "success";
+      showToast("success", "Connection OK", {
+        description: `Agent at ${form.host} responded.`,
+      });
     } else {
       checkStatus.value = "error";
       checkError.value = result.error || "Connection failed";
+      showToast("error", "Connection failed", {
+        description: checkError.value,
+      });
     }
   } catch (err: any) {
     checkStatus.value = "error";
     checkError.value =
       err?.data?.detail || err?.message || "Could not reach agent";
+    showToast("error", "Connection failed", { description: checkError.value });
   } finally {
     checking.value = false;
   }
@@ -492,11 +501,17 @@ async function submit() {
       },
     });
 
+    showToast("success", "Agent registered", {
+      description: `${form.name} was added successfully.`,
+    });
     await refreshNuxtData("agents");
     close();
   } catch (err: any) {
     error.value =
       err?.data?.detail || err?.message || "Failed to register agent";
+    showToast("error", "Failed to register agent", {
+      description: error.value,
+    });
   } finally {
     loading.value = false;
   }

@@ -55,6 +55,14 @@
           >
             {{ server.status }}
           </span>
+          <span
+            v-if="
+              server.desiredStatus && server.desiredStatus !== server.status
+            "
+            class="ml-2 text-xs text-gray-500 dark:text-gray-400 italic"
+          >
+            ({{ server.desiredStatus }}…)
+          </span>
         </div>
         <div>
           <span class="font-semibold text-gray-700 dark:text-gray-300"
@@ -83,17 +91,23 @@
       </div>
       <div class="mt-6 flex gap-2">
         <button
-          class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+          :disabled="actionLoading || server?.status === 'running' || isPending"
+          class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="doAction('start')"
         >
           Start
         </button>
         <button
-          class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium"
+          :disabled="actionLoading || server?.status !== 'running' || isPending"
+          class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="doAction('stop')"
         >
           Stop
         </button>
         <button
-          class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+          :disabled="actionLoading || isPending"
+          class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="doAction('restart')"
         >
           Restart
         </button>
@@ -111,6 +125,7 @@ definePageMeta({
 interface Server {
   serverId: string;
   status: string;
+  desiredStatus?: string;
   gamePort: number;
   engineType: string;
   gameVersion: string;
@@ -118,11 +133,14 @@ interface Server {
 
 const route = useRoute();
 const { agentId } = useCurrentAgent();
+const { show: showToast } = useToast();
+const { lastEvent } = useEventSource();
 
 const serverId = route.params.serverId as string;
 const server = ref<Server | null>(null);
+const actionLoading = ref(false);
 
-const { data } = await useApiFetch<Server | { body: Server }>(
+const { data, refresh } = await useApiFetch<Server | { body: Server }>(
   `/agent/${agentId.value}/servers/${serverId}`,
 );
 
@@ -134,6 +152,30 @@ if (data.value && typeof data.value === "object") {
   }
 }
 
+watch(data, (val) => {
+  if (val && typeof val === "object") {
+    if ("body" in val) {
+      server.value = (val as any).body as Server;
+    } else if ("serverId" in val) {
+      server.value = val as Server;
+    }
+  }
+});
+
+watch(lastEvent, (evt) => {
+  if (!evt || evt.type !== "server.status") return;
+  if (evt.agentId !== agentId.value || evt.serverId !== serverId) return;
+  if (!server.value) return;
+  server.value.status = evt.newStatus || server.value.status;
+  server.value.desiredStatus = evt.desiredStatus;
+});
+
+const isPending = computed(() => {
+  if (!server.value) return false;
+  const d = server.value.desiredStatus;
+  return !!d && d !== server.value.status;
+});
+
 function getStatusColor(status: string) {
   switch (status) {
     case "running":
@@ -142,6 +184,32 @@ function getStatusColor(status: string) {
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
       return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+  }
+}
+
+async function doAction(action: "start" | "stop" | "restart") {
+  actionLoading.value = true;
+  try {
+    await $fetch(`/agent/${agentId.value}/servers/${serverId}/${action}`, {
+      baseURL: useApiBase(),
+      method: "POST",
+      credentials: "include",
+    });
+    showToast("info", `Server ${action} requested`, {
+      description: `${serverId} — operation in progress.`,
+    });
+    await refresh();
+  } catch (err: any) {
+    const status = err?.status || err?.statusCode;
+    const msg =
+      err?.data?.detail || err?.message || `Failed to ${action} server`;
+    if (status === 409) {
+      showToast("error", "Operation in progress", { description: msg });
+    } else {
+      showToast("error", `Server ${action} failed`, { description: msg });
+    }
+  } finally {
+    actionLoading.value = false;
   }
 }
 </script>

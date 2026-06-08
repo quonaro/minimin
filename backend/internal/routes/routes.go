@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 
+	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/jwt"
 	"orchestrator/internal/middleware"
@@ -26,7 +27,7 @@ func removeErrorsTransformer(ctx huma.Context, status string, v any) (any, error
 }
 
 // SetupRoutes wires Huma/Chi router with all orchestrator endpoints.
-func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, store *status.Store) http.Handler {
+func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, store *status.Store, broadcaster *events.Broadcaster) http.Handler {
 	chiRouter := chi.NewRouter()
 
 	// CORS middleware
@@ -61,6 +62,9 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 
 	// WebSocket endpoint for agent statuses (public, no auth required for simplicity)
 	chiRouter.Get("/ws/agents", store.ServeHTTP)
+
+	// SSE endpoint for notifications (public for simplicity; could be protected)
+	chiRouter.Get("/api/events", broadcaster.ServeHTTP)
 
 	// Protected endpoints
 	chiRouter.Group(func(r chi.Router) {
