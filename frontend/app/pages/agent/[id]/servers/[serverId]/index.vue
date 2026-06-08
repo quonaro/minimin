@@ -104,6 +104,10 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: "auth",
+});
+
 interface Server {
   serverId: string;
   status: string;
