@@ -120,38 +120,60 @@
         >
           Server ({{ currentServerName }})
         </div>
-        <NuxtLink
-          v-for="item in serverNav"
-          :key="item.to"
-          :to="item.to"
-          class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-          :class="
-            route.path === item.to
-              ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-              : 'text-gray-600 dark:text-gray-400'
-          "
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5 flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <template v-for="item in serverNav" :key="item.to">
+          <NuxtLink
+            v-if="!item.requiresRunning || currentServerStatus === 'running'"
+            :to="item.to"
+            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+            :class="
+              route.path === item.to
+                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'text-gray-600 dark:text-gray-400'
+            "
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              :d="item.icon"
-            />
-          </svg>
-          <span>{{ item.label }}</span>
-          <span
-            v-if="item.label === 'Overview'"
-            class="w-2 h-2 rounded-full flex-shrink-0 ml-auto"
-            :class="getServerStatusColor(currentServerStatus)"
-          ></span>
-        </NuxtLink>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                :d="item.icon"
+              />
+            </svg>
+            <span>{{ item.label }}</span>
+            <span
+              v-if="item.label === 'Overview'"
+              class="w-2 h-2 rounded-full flex-shrink-0 ml-auto"
+              :class="getServerStatusColor(currentServerStatus)"
+            ></span>
+          </NuxtLink>
+          <div
+            v-else
+            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60 select-none"
+            :title="`${item.label} is available only when the server is running`"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                :d="item.icon"
+              />
+            </svg>
+            <span>{{ item.label }}</span>
+          </div>
+        </template>
       </div>
 
       <div
@@ -374,11 +396,13 @@ const serverNav = computed(() => {
       label: "Console",
       to: `${base}/console`,
       icon: "M8 9l3 3-3 3m5 0h3",
+      requiresRunning: true,
     },
     {
       label: "Players",
       to: `${base}/players`,
       icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
+      requiresRunning: true,
     },
   ];
 });
