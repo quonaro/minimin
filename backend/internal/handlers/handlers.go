@@ -631,3 +631,91 @@ func (h *Handler) WSAgentLogs(w http.ResponseWriter, r *http.Request) {
 	<-errChan
 	slog.Info("WSAgentLogs: proxy loop ended", "agent", agentID, "server", serverID)
 }
+
+// WSAgentRcon upgrades the client connection and proxies it to the agent's RCON WebSocket.
+func (h *Handler) WSAgentRcon(w http.ResponseWriter, r *http.Request) {
+	agentID := chi.URLParam(r, "id")
+	serverID := chi.URLParam(r, "server_id")
+
+	agent, ok := h.DB.GetAgent(agentID)
+	if !ok {
+		http.Error(w, "agent not found", http.StatusNotFound)
+		return
+	}
+
+	clientConn, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		slog.Error("ws upgrade failed", "error", err)
+		return
+	}
+	defer func() {
+		slog.Info("WSAgentRcon: closing client conn", "agent", agentID, "server", serverID)
+		_ = clientConn.Close()
+	}()
+
+	scheme := "ws"
+	agentHost := agent.Host
+	if strings.HasPrefix(agentHost, "https://") {
+		scheme = "wss"
+		agentHost = strings.TrimPrefix(agentHost, "https://")
+	} else {
+		agentHost = strings.TrimPrefix(agentHost, "http://")
+	}
+
+	targetURL := fmt.Sprintf("%s://%s/ws/v1/servers/%s/rcon", scheme, agentHost, serverID)
+
+	slog.Info("WSAgentRcon: dialing agent", "url", targetURL)
+	dialer := websocket.Dialer{}
+	agentConn, resp, err := dialer.Dial(targetURL, http.Header{
+		"Authorization": []string{"Bearer " + agent.APIKey},
+	})
+	if err != nil {
+		slog.Error("ws dial agent failed", "error", err, "url", targetURL)
+		_ = clientConn.WriteMessage(websocket.TextMessage, []byte("error: failed to connect to agent rcon"))
+		return
+	}
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+	defer func() {
+		slog.Info("WSAgentRcon: closing agent conn", "agent", agentID, "server", serverID)
+		_ = agentConn.Close()
+	}()
+
+	errChan := make(chan error, 2)
+
+	go func() {
+		for {
+			mt, msg, readErr := agentConn.ReadMessage()
+			if readErr != nil {
+				slog.Info("WSAgentRcon: agent read error", "error", readErr)
+				errChan <- readErr
+				return
+			}
+			if writeErr := clientConn.WriteMessage(mt, msg); writeErr != nil {
+				slog.Info("WSAgentRcon: client write error", "error", writeErr)
+				errChan <- writeErr
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			mt, msg, readErr := clientConn.ReadMessage()
+			if readErr != nil {
+				slog.Info("WSAgentRcon: client read error", "error", readErr)
+				errChan <- readErr
+				return
+			}
+			if writeErr := agentConn.WriteMessage(mt, msg); writeErr != nil {
+				slog.Info("WSAgentRcon: agent write error", "error", writeErr)
+				errChan <- writeErr
+				return
+			}
+		}
+	}()
+
+	<-errChan
+	slog.Info("WSAgentRcon: proxy loop ended", "agent", agentID, "server", serverID)
+}

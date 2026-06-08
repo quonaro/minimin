@@ -133,6 +133,9 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 		// WebSocket proxy for agent server logs.
 		r.Get("/ws/agent/{id}/servers/{server_id}/logs", h.WSAgentLogs)
 
+		// WebSocket proxy for agent server RCON console.
+		r.Get("/ws/agent/{id}/servers/{server_id}/rcon", h.WSAgentRcon)
+
 		// Generic reverse proxy: any request to /agent/{id}/<anything> is forwarded to the agent's /api/v1/<anything>.
 		r.HandleFunc("/agent/{id}/*", h.ProxyAgent)
 

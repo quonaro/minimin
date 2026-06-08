@@ -280,13 +280,22 @@ const agentServers = computed(() => {
   return [];
 });
 
-const currentServerStatus = computed(() => {
-  if (!serverId.value) return "";
-  const server = agentServers.value.find(
-    (s: Server) => s.serverId === serverId.value,
-  );
-  return server?.status ?? "";
-});
+const currentServerStatus = ref("");
+
+watch(
+  [agentServers, serverId],
+  () => {
+    if (!serverId.value) {
+      currentServerStatus.value = "";
+      return;
+    }
+    const server = agentServers.value.find(
+      (s: Server) => s.serverId === serverId.value,
+    );
+    currentServerStatus.value = server?.status ?? "";
+  },
+  { immediate: true },
+);
 
 const currentServerName = computed(() => {
   if (!serverId.value) return "";
@@ -301,6 +310,10 @@ const { lastEvent } = useEventSource();
 watch(lastEvent, (evt) => {
   if (!evt || evt.type !== "server.status") return;
   if (evt.agentId !== agentId.value) return;
+
+  if (evt.serverId === serverId.value && evt.newStatus) {
+    currentServerStatus.value = evt.newStatus;
+  }
 
   const val = serversData.value;
   let servers: Server[] | null = null;
