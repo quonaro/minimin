@@ -31,7 +31,7 @@
               </h2>
               <button
                 @click="close"
-                class="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-gray-500 dark:text-gray-400"
+                class="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-gray-500 dark:text-neutral-400"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -54,7 +54,7 @@
               <div>
                 <label
                   for="agent-name"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
                 >
                   Name
                 </label>
@@ -71,7 +71,7 @@
               <div>
                 <label
                   for="agent-host"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
                 >
                   Host
                 </label>
@@ -88,7 +88,7 @@
               <div>
                 <label
                   for="agent-api-key"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
                 >
                   API Key
                 </label>
@@ -126,7 +126,7 @@
                   <button
                     type="button"
                     @click="close"
-                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium"
+                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium"
                   >
                     Cancel
                   </button>
@@ -134,7 +134,7 @@
                     type="button"
                     :disabled="checking"
                     @click="checkConnection"
-                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {{ checking ? "Checking..." : "Check" }}
                   </button>
@@ -161,7 +161,7 @@
                   <button
                     type="button"
                     @click="confirmShown = false"
-                    class="px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium"
+                    class="px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium"
                   >
                     Cancel
                   </button>

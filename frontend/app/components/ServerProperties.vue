@@ -336,7 +336,7 @@ await loadConfig();
 
 <template>
   <div>
-    <div v-if="configLoading" class="text-gray-500 dark:text-gray-400">
+    <div v-if="configLoading" class="text-gray-500 dark:text-neutral-400">
       Loading config...
     </div>
     <div v-else-if="configError" class="text-red-500 dark:text-red-400">
@@ -346,20 +346,20 @@ await loadConfig();
       <template v-for="group in groupOrder" :key="group">
         <div v-if="groupedItems.groups[group]?.length" class="space-y-4">
           <button
-            class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
             @click="toggleGroup(group)"
           >
             <component
               :is="groupIcons[group]"
-              class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400"
+              class="w-4 h-4 shrink-0 text-gray-500 dark:text-neutral-400"
             />
             <span
-              class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider"
+              class="text-sm font-semibold text-gray-700 dark:text-neutral-300 uppercase tracking-wider"
             >
               {{ group }}
             </span>
             <ChevronRight
-              class="w-4 h-4 transition-transform shrink-0 ml-auto text-gray-500 dark:text-gray-400"
+              class="w-4 h-4 transition-transform shrink-0 ml-auto text-gray-500 dark:text-neutral-400"
               :class="collapsedGroups.has(group) ? '' : 'rotate-90'"
             />
           </button>
@@ -372,7 +372,7 @@ await loadConfig();
               <div class="md:col-span-1 pt-2">
                 <div class="flex items-center gap-2">
                   <label
-                    class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
                   >
                     {{ item.label }}
                   </label>
@@ -396,7 +396,7 @@ await loadConfig();
                   v-if="item.type === 'select' || item.type === 'boolean'"
                   v-model="editedProperties[item.key]"
                   :disabled="item.dangerous && !unlockedDangerous.has(item.key)"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option
                     v-for="opt in selectOptions[item.key]"
@@ -412,14 +412,14 @@ await loadConfig();
                   type="number"
                   min="0"
                   :disabled="item.dangerous && !unlockedDangerous.has(item.key)"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <input
                   v-else
                   v-model="editedProperties[item.key]"
                   type="text"
                   :disabled="item.dangerous && !unlockedDangerous.has(item.key)"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -429,19 +429,19 @@ await loadConfig();
 
       <div v-if="groupedItems.unknown.length > 0">
         <button
-          class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors mb-3"
+          class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors mb-3"
           @click="toggleGroup('unknown')"
         >
           <MoreHorizontal
-            class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400"
+            class="w-4 h-4 shrink-0 text-gray-500 dark:text-neutral-400"
           />
           <span
-            class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider"
+            class="text-sm font-semibold text-gray-700 dark:text-neutral-300 uppercase tracking-wider"
           >
             Other Properties
           </span>
           <ChevronRight
-            class="w-4 h-4 transition-transform shrink-0 ml-auto text-gray-500 dark:text-gray-400"
+            class="w-4 h-4 transition-transform shrink-0 ml-auto text-gray-500 dark:text-neutral-400"
             :class="collapsedGroups.has('unknown') ? '' : 'rotate-90'"
           />
         </button>
@@ -453,7 +453,7 @@ await loadConfig();
           >
             <div class="md:col-span-1 pt-2">
               <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
               >
                 {{ item.label }}
               </label>
@@ -462,7 +462,7 @@ await loadConfig();
               <input
                 v-model="editedProperties[item.key]"
                 type="text"
-                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
               />
             </div>
           </div>
@@ -495,7 +495,7 @@ await loadConfig();
           >
             <div class="md:col-span-1 pt-2">
               <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
               >
                 {{ item.label }}
               </label>
@@ -504,7 +504,7 @@ await loadConfig();
               <select
                 v-if="item.type === 'select' || item.type === 'boolean'"
                 v-model="editedProperties[item.key]"
-                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
               >
                 <option
                   v-for="opt in selectOptions[item.key]"
@@ -519,13 +519,13 @@ await loadConfig();
                 v-model="editedProperties[item.key]"
                 type="number"
                 min="0"
-                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
               />
               <input
                 v-else
                 v-model="editedProperties[item.key]"
                 type="text"
-                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
               />
             </div>
           </div>

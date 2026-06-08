@@ -8,7 +8,7 @@
         <div class="flex items-center gap-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4 text-gray-500 dark:text-gray-400"
+            class="w-4 h-4 text-gray-500 dark:text-neutral-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -18,7 +18,7 @@
           >
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          <span class="text-xs text-gray-500 dark:text-gray-400"
+          <span class="text-xs text-gray-500 dark:text-neutral-400"
             >{{ lines.length }} lines</span
           >
         </div>
@@ -31,7 +31,7 @@
               'text-green-500': wsStatus === 'Connected',
               'text-red-500':
                 wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-gray-400': !wsStatus,
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
             }"
             fill="none"
             viewBox="0 0 24 24"
@@ -50,13 +50,13 @@
               'text-green-500': wsStatus === 'Connected',
               'text-red-500':
                 wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-gray-400': !wsStatus,
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
             }"
           >
             {{ wsStatus || "Connecting..." }}
           </span>
           <button
-            class="text-xs leading-none rounded-full bg-blue-600 text-white hover:bg-blue-700 focus:outline-none px-2 py-0.5"
+            class="text-xs leading-none rounded-full bg-primary text-white hover:bg-primary/90 focus:outline-none px-2 py-0.5"
             @click="reconnect"
           >
             Reconnect
@@ -66,7 +66,7 @@
         <div class="flex items-center gap-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4 text-gray-500 dark:text-gray-400"
+            class="w-4 h-4 text-gray-500 dark:text-neutral-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -81,7 +81,7 @@
           <select
             id="tail"
             v-model="tail"
-            class="text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="text-sm bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option :value="100">100</option>
             <option :value="500">500</option>
@@ -93,7 +93,7 @@
         <div class="flex items-center gap-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4 text-gray-500 dark:text-gray-400"
+            class="w-4 h-4 text-gray-500 dark:text-neutral-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -108,7 +108,7 @@
           <select
             id="font-size"
             v-model="fontSize"
-            class="text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="text-sm bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="text-xs">Small</option>
             <option value="text-sm">Medium</option>
@@ -122,7 +122,7 @@
     <div
       ref="logContainer"
       :class="[
-        'flex-1 min-h-0 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
+        'flex-1 min-h-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
         fontSize,
       ]"
       @scroll="onScroll"
@@ -134,15 +134,15 @@
         <div
           v-for="(line, i) in lines"
           :key="i"
-          class="flex gap-3 py-0.5 border-b border-gray-200 dark:border-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+          class="flex gap-3 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors"
         >
           <span
-            class="text-gray-400 dark:text-gray-600 select-none text-right tabular-nums min-w-[3ch] shrink-0"
+            class="text-gray-400 dark:text-neutral-600 select-none text-right tabular-nums min-w-[3ch] shrink-0"
           >
             {{ i + 1 }}
           </span>
           <span
-            class="whitespace-pre-wrap break-words text-gray-700 dark:text-gray-300"
+            class="whitespace-pre-wrap break-words text-gray-700 dark:text-neutral-300"
             >{{ line }}</span
           >
         </div>

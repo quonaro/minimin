@@ -2,26 +2,6 @@
   <div class="p-6 h-[calc(100vh-4rem)] flex flex-col">
     <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
       <div class="flex items-center gap-4">
-        <NuxtLink
-          :to="`/agent/${agentId}/servers/${serverId}`"
-          class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          <span>Back to server</span>
-        </NuxtLink>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
           Console
         </h1>
@@ -36,7 +16,7 @@
               'text-green-500': wsStatus === 'Connected',
               'text-red-500':
                 wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-gray-400': !wsStatus,
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
             }"
             fill="none"
             viewBox="0 0 24 24"
@@ -55,13 +35,13 @@
               'text-green-500': wsStatus === 'Connected',
               'text-red-500':
                 wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-gray-400': !wsStatus,
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
             }"
           >
             {{ wsStatus || "Connecting..." }}
           </span>
           <button
-            class="text-xs leading-none rounded-full bg-blue-600 text-white hover:bg-blue-700 focus:outline-none px-2 py-0.5"
+            class="text-xs leading-none rounded-full bg-primary text-white hover:bg-primary/90 focus:outline-none px-2 py-0.5"
             @click="reconnect"
           >
             Reconnect
@@ -69,7 +49,7 @@
         </div>
 
         <button
-          class="text-xs leading-none rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none px-2 py-0.5"
+          class="text-xs leading-none rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 focus:outline-none px-2 py-0.5"
           @click="clearMessages"
         >
           Clear
@@ -80,7 +60,7 @@
     <div
       ref="msgContainer"
       :class="[
-        'flex-1 min-h-0 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
+        'flex-1 min-h-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
         fontSize,
       ]"
       @scroll="onScroll"
@@ -95,16 +75,16 @@
         <div
           v-for="(msg, i) in messages"
           :key="i"
-          class="flex gap-2 py-0.5 border-b border-gray-200 dark:border-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+          class="flex gap-2 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors"
         >
           <span
-            class="text-gray-400 dark:text-gray-600 select-none tabular-nums shrink-0"
+            class="text-gray-400 dark:text-neutral-600 select-none tabular-nums shrink-0"
           >
             {{ formatTime(msg.timestamp) }}
           </span>
           <span
             v-if="msg.type === 'command'"
-            class="whitespace-pre-wrap break-words text-blue-600 dark:text-blue-400"
+            class="whitespace-pre-wrap break-words text-primary dark:text-primary-400"
           >
             > {{ msg.text }}
           </span>
@@ -116,7 +96,7 @@
           </span>
           <span
             v-else
-            class="whitespace-pre-wrap break-words text-gray-700 dark:text-gray-300"
+            class="whitespace-pre-wrap break-words text-gray-700 dark:text-neutral-300"
           >
             {{ msg.text }}
           </span>
@@ -131,7 +111,7 @@
           v-model="command"
           type="text"
           placeholder="Type a command and press Enter..."
-          class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary"
           :disabled="wsStatus !== 'Connected'"
           @input="onInput"
           @keydown.enter.prevent="onEnter"
@@ -142,16 +122,16 @@
         />
         <div
           v-if="showSuggestions && filteredCommands.length"
-          class="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg z-50"
+          class="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg z-50"
         >
           <div
             v-for="(cmd, i) in filteredCommands"
             :key="cmd.name"
             class="px-3 py-2 cursor-pointer text-sm font-mono flex items-center justify-between"
             :class="{
-              'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300':
+              'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300':
                 selectedIndex === i,
-              'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50':
+              'text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700/50':
                 selectedIndex !== i,
             }"
             @click="acceptSuggestion(i)"
@@ -159,14 +139,14 @@
           >
             <span>{{ cmd.name }}</span>
             <span
-              class="text-xs text-gray-400 dark:text-gray-500 truncate ml-2 max-w-[60%]"
+              class="text-xs text-gray-400 dark:text-neutral-500 truncate ml-2 max-w-[60%]"
               >{{ cmd.desc }}</span
             >
           </div>
         </div>
       </div>
       <button
-        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg px-4 py-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+        class="bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg px-4 py-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="!command.trim() || wsStatus !== 'Connected'"
         @click="sendCommand"
       >

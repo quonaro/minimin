@@ -1,26 +1,16 @@
 <template>
-  <div class="p-6 max-w-6xl mx-auto">
-    <div class="mb-6">
-      <NuxtLink
-        :to="`/agent/${agentId}/servers`"
-        class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-      >
-        <ChevronLeft class="w-4 h-4" />
-        <span>Back to servers</span>
-      </NuxtLink>
-    </div>
-
+  <div class="p-6">
     <div v-if="server" class="space-y-6">
       <!-- Main server card -->
       <div
-        class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-sm"
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-6 md:p-8 shadow-sm"
       >
         <div class="flex flex-col md:flex-row gap-8">
           <!-- Avatar column -->
           <div class="flex flex-col items-center gap-4 shrink-0">
             <div class="relative">
               <div
-                class="w-24 h-24 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center ring-4 ring-white dark:ring-gray-800"
+                class="w-24 h-24 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-gray-200 to-gray-300 dark:from-neutral-700 dark:to-neutral-600 flex items-center justify-center ring-4 ring-white dark:ring-neutral-800"
               >
                 <img
                   v-if="iconUrl && !iconError"
@@ -31,12 +21,12 @@
                 />
                 <ServerIcon
                   v-else
-                  class="w-10 h-10 text-gray-400 dark:text-gray-500"
+                  class="w-10 h-10 text-gray-400 dark:text-neutral-500"
                 />
               </div>
               <span
                 :class="[
-                  'absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800',
+                  'absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-neutral-800',
                   server.status === 'running'
                     ? 'bg-green-500 animate-pulse'
                     : server.status === 'exited'
@@ -46,7 +36,7 @@
               />
             </div>
             <button
-              class="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-primary transition-colors"
+              class="text-xs font-medium text-gray-500 dark:text-neutral-400 hover:text-primary transition-colors"
               @click="fileInput?.click()"
             >
               Change Icon
@@ -82,14 +72,14 @@
                 </span>
                 <span
                   v-if="uptime"
-                  class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5"
+                  class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
                 >
                   <Clock class="w-3.5 h-3.5" />
                   Uptime: {{ uptime }}
                 </span>
                 <span
                   v-if="isPending"
-                  class="text-xs text-gray-500 dark:text-gray-400 italic"
+                  class="text-xs text-gray-500 dark:text-neutral-400 italic"
                 >
                   ({{ server.desiredStatus }}…)
                 </span>
@@ -102,16 +92,16 @@
             >
               <!-- Agent ID -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700"
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
                 >
                   <Hash class="w-4 h-4" />
                 </div>
                 <div class="min-w-0">
                   <p
-                    class="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold"
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                   >
                     Agent ID
                   </p>
@@ -125,39 +115,76 @@
 
               <!-- Game Port -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700"
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
                 >
                   <Globe class="w-4 h-4" />
                 </div>
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p
-                    class="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold"
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                   >
                     Game Port
                   </p>
-                  <p
-                    class="text-sm font-semibold text-gray-900 dark:text-white"
-                  >
-                    {{ server.gamePort }}
-                  </p>
+                  <div v-if="!editingPort" class="flex items-center gap-2">
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    >
+                      {{ server.gamePort }}
+                    </p>
+                    <button
+                      v-if="server.status !== 'running'"
+                      class="text-gray-400 hover:text-primary transition-colors"
+                      :disabled="portLoading"
+                      @click="
+                        tempPort = server.gamePort;
+                        editingPort = true;
+                      "
+                    >
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div v-else class="flex items-center gap-2">
+                    <input
+                      v-model.number="tempPort"
+                      type="number"
+                      min="1024"
+                      max="65535"
+                      class="w-24 text-sm font-semibold bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded px-2 py-0.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      @keyup.enter="savePort"
+                    />
+                    <button
+                      class="text-green-500 hover:text-green-600 transition-colors"
+                      :disabled="portLoading"
+                      @click="savePort"
+                    >
+                      <Check class="w-4 h-4" />
+                    </button>
+                    <button
+                      class="text-red-500 hover:text-red-600 transition-colors"
+                      :disabled="portLoading"
+                      @click="editingPort = false"
+                    >
+                      <XIcon class="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <!-- Engine -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700"
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
                 >
                   <Box class="w-4 h-4" />
                 </div>
                 <div class="min-w-0">
                   <p
-                    class="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold"
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                   >
                     Engine
                   </p>
@@ -171,16 +198,16 @@
 
               <!-- Version -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700"
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 rounded-lg bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
                 >
                   <Tag class="w-4 h-4" />
                 </div>
                 <div class="min-w-0">
                   <p
-                    class="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold"
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                   >
                     Version
                   </p>
@@ -230,14 +257,14 @@
 
       <!-- Server Properties -->
       <div
-        class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-sm"
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-6 md:p-8 shadow-sm"
       >
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">
             Server Properties
           </h2>
           <span
-            class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-lg"
+            class="text-xs font-medium text-gray-500 dark:text-neutral-400 bg-gray-100 dark:bg-neutral-700 px-2.5 py-1 rounded-lg"
           >
             server.properties
           </span>
@@ -246,7 +273,7 @@
       </div>
     </div>
 
-    <div v-else class="text-gray-500 dark:text-gray-400">Loading...</div>
+    <div v-else class="text-gray-500 dark:text-neutral-400">Loading...</div>
   </div>
 </template>
 
@@ -255,15 +282,17 @@ import { formatDuration } from "~/composables/useDuration";
 import {
   Activity,
   Box,
-  ChevronLeft,
+  Check,
   Clock,
   Globe,
   Hash,
+  Pencil,
   Play,
   RotateCcw,
   Server as ServerIcon,
   Square,
   Tag,
+  X as XIcon,
 } from "lucide-vue-next";
 
 definePageMeta({
@@ -291,6 +320,9 @@ const actionLoading = ref(false);
 const iconTimestamp = ref(Date.now());
 const iconError = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+const editingPort = ref(false);
+const tempPort = ref<number | null>(null);
+const portLoading = ref(false);
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
@@ -374,7 +406,48 @@ function getStatusColor(status: string) {
     case "exited":
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+      return "bg-gray-100 text-gray-800 dark:bg-neutral-700 dark:text-neutral-300";
+  }
+}
+
+async function savePort() {
+  if (
+    !server.value ||
+    tempPort.value == null ||
+    tempPort.value === server.value.gamePort
+  ) {
+    editingPort.value = false;
+    return;
+  }
+  if (tempPort.value < 1024 || tempPort.value > 65535) {
+    showToast("error", "Invalid port", {
+      description: "Port must be between 1024 and 65535.",
+    });
+    return;
+  }
+  portLoading.value = true;
+  try {
+    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+      baseURL: useApiBase(),
+      method: "PATCH",
+      credentials: "include",
+      body: { gamePort: tempPort.value },
+    });
+    showToast("success", "Port updated", {
+      description: `Game port changed to ${tempPort.value}.`,
+    });
+    editingPort.value = false;
+    await refresh();
+  } catch (err: any) {
+    const status = err?.status || err?.statusCode;
+    const msg = err?.data?.detail || err?.message || "Failed to update port";
+    if (status === 409) {
+      showToast("error", "Port unavailable", { description: msg });
+    } else {
+      showToast("error", "Update failed", { description: msg });
+    }
+  } finally {
+    portLoading.value = false;
   }
 }
 

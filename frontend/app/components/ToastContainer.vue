@@ -50,7 +50,7 @@ function toastClass(type: string) {
       return "bg-yellow-50/90 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-300";
     case "info":
     default:
-      return "bg-gray-50/90 border-gray-200 text-gray-800 dark:bg-gray-800/90 dark:border-gray-700 dark:text-gray-300";
+      return "bg-gray-50/90 border-gray-200 text-gray-800 dark:bg-neutral-800/90 dark:border-neutral-700 dark:text-neutral-300";
   }
 }
 

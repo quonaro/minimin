@@ -2,7 +2,7 @@
   <div class="min-h-screen flex bg-gray-50 dark:bg-background-dark">
     <!-- Left Side -->
     <div
-      class="hidden md:flex md:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-100 via-gray-200 to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-primary-900"
+      class="hidden md:flex md:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-100 via-gray-200 to-primary-100 dark:from-neutral-900 dark:via-neutral-800 dark:to-primary-900"
     >
       <!-- Abstract background shapes -->
       <div class="absolute inset-0 opacity-20">
@@ -65,7 +65,7 @@
             <span class="text-primary">ease</span>
           </h2>
           <p
-            class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-8"
+            class="text-lg text-gray-600 dark:text-neutral-300 leading-relaxed mb-8"
           >
             A lightweight, web-based control panel for your Minecraft server
             agents. Deploy, monitor, and manage multiple servers from a single
@@ -99,7 +99,7 @@
           </a>
         </div>
 
-        <div class="text-sm text-gray-500 dark:text-gray-400">
+        <div class="text-sm text-gray-500 dark:text-neutral-400">
           &copy; {{ new Date().getFullYear() }} MiniMin. Open source.
         </div>
       </div>
@@ -111,7 +111,7 @@
     >
       <button
         @click="toggleColorMode"
-        class="absolute top-4 right-4 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        class="absolute top-4 right-4 p-2 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
         aria-label="Toggle theme"
       >
         <svg
@@ -163,13 +163,13 @@
         </div>
 
         <div
-          class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8"
+          class="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-gray-200 dark:border-neutral-700 p-8"
         >
           <div class="mb-8">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Welcome back
             </h1>
-            <p class="text-gray-600 dark:text-gray-400 text-sm">
+            <p class="text-gray-600 dark:text-neutral-400 text-sm">
               Sign in to your dashboard
             </p>
           </div>
@@ -178,7 +178,7 @@
             <div>
               <label
                 for="apiKey"
-                class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+                class="block text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-2"
               >
                 Password
               </label>
@@ -206,7 +206,7 @@
                   type="password"
                   placeholder="Enter your password"
                   autocomplete="new-password"
-                  class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                  class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                   required
                 />
               </div>

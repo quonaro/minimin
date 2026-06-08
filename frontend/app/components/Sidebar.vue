@@ -22,10 +22,10 @@
         <div class="flex items-stretch gap-1">
           <NuxtLink
             to="/agents"
-            class="group flex-1 flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+            class="group flex-1 flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
             :class="
               isAgentsActive()
-                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
+                ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
                 : ''
             "
           >
@@ -47,7 +47,7 @@
           </NuxtLink>
           <button
             @click="showForm = true"
-            class="group relative px-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-500 dark:text-gray-400 shrink-0 flex items-center justify-center w-10"
+            class="group relative px-2 rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors text-gray-500 dark:text-neutral-400 shrink-0 flex items-center justify-center w-10"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -75,11 +75,11 @@
           <template v-for="agent in agents" :key="agent.id">
             <NuxtLink
               :to="`/agent/${agent.id}/servers`"
-              class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
               :class="
                 route.params.id === agent.id
-                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                  : 'text-gray-600 dark:text-gray-400'
+                  ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
+                  : 'text-gray-600 dark:text-neutral-400'
               "
             >
               <span
@@ -96,11 +96,11 @@
                 v-for="server in agentServers"
                 :key="server.serverId"
                 :to="`/agent/${agent.id}/servers/${server.serverId}`"
-                class="flex items-center gap-2 px-3 py-1 rounded-lg text-xs transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                class="flex items-center gap-2 px-3 py-1 rounded-lg text-xs transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
                 :class="
                   route.params.serverId === server.serverId
-                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                    : 'text-gray-500 dark:text-gray-500'
+                    ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-neutral-500'
                 "
               >
                 <span
@@ -116,7 +116,7 @@
 
       <div v-if="serverId && agentId" class="space-y-1 mt-4">
         <div
-          class="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+          class="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider"
         >
           Server ({{ currentServerName }})
         </div>
@@ -124,11 +124,11 @@
           <NuxtLink
             v-if="!item.requiresRunning || currentServerStatus === 'running'"
             :to="item.to"
-            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
             :class="
               route.path === item.to
-                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-                : 'text-gray-600 dark:text-gray-400'
+                ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
+                : 'text-gray-600 dark:text-neutral-400'
             "
           >
             <svg
@@ -154,7 +154,7 @@
           </NuxtLink>
           <div
             v-else
-            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60 select-none"
+            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-400 dark:text-neutral-600 cursor-not-allowed opacity-60 select-none"
             :title="`${item.label} is available only when the server is running`"
           >
             <svg
@@ -178,7 +178,7 @@
 
       <div
         v-if="nextCheckAt"
-        class="mt-auto pt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5"
+        class="mt-auto pt-2 text-xs text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -203,7 +203,7 @@
     >
       <button
         @click="toggleColorMode"
-        class="group flex items-center gap-2 px-2 py-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-800"
+        class="group flex items-center gap-2 px-2 py-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-neutral-800"
       >
         <svg
           v-if="colorMode.value === 'dark'"
@@ -359,7 +359,7 @@ function getServerStatusColor(status: string) {
     case "exited":
       return "bg-red-500";
     default:
-      return "bg-gray-400 dark:bg-gray-500";
+      return "bg-gray-400 dark:bg-neutral-500";
   }
 }
 
@@ -502,6 +502,6 @@ function getAgentStatusColor(agentId: string) {
   const isOnline = agentStatuses.value[agentId];
   if (isOnline === true) return "bg-green-500";
   if (isOnline === false) return "bg-red-500";
-  return "bg-gray-400 dark:bg-gray-600";
+  return "bg-gray-400 dark:bg-neutral-600";
 }
 </script>

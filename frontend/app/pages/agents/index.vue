@@ -5,7 +5,7 @@
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Agents
         </h1>
-        <p class="text-gray-600 dark:text-gray-400">
+        <p class="text-gray-600 dark:text-neutral-400">
           Manage your agent connections
         </p>
       </div>
@@ -18,7 +18,7 @@
     </div>
 
     <div v-if="agents.length === 0" class="text-center py-12">
-      <p class="text-gray-500 dark:text-gray-400">No agents found</p>
+      <p class="text-gray-500 dark:text-neutral-400">No agents found</p>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -26,20 +26,20 @@
         v-for="agent in agents"
         :key="agent.id"
         :to="`/agent/${agent.id}/`"
-        class="block bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
+        class="block bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
       >
         <div class="mb-4">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
             {{ agent.name }}
           </h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm text-gray-500 dark:text-neutral-400">
             {{ agent.host }}
           </p>
         </div>
 
         <div class="space-y-2 mb-4">
           <div
-            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+            class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

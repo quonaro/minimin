@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow h-full flex flex-col"
+    class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-5 hover:shadow-md transition-shadow h-full flex flex-col"
   >
     <div class="flex items-start justify-between mb-4">
       <div class="min-w-0">
@@ -21,32 +21,32 @@
 
     <div class="space-y-2.5 mb-5">
       <div
-        class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 min-h-[1.25rem]"
+        class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400 min-h-[1.25rem]"
       >
         <template v-if="uptime">
-          <Clock class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
+          <Clock class="w-4 h-4 shrink-0 text-gray-400 dark:text-neutral-500" />
           <span>Running for {{ uptime }}</span>
         </template>
       </div>
 
       <div
-        class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+        class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400"
       >
-        <Network class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
+        <Network class="w-4 h-4 shrink-0 text-gray-400 dark:text-neutral-500" />
         <span>Port {{ server.gamePort || "-" }}</span>
       </div>
 
       <div
-        class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+        class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400"
       >
-        <Cpu class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
+        <Cpu class="w-4 h-4 shrink-0 text-gray-400 dark:text-neutral-500" />
         <span>{{ server.engineType }}</span>
       </div>
 
       <div
-        class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+        class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400"
       >
-        <Tag class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
+        <Tag class="w-4 h-4 shrink-0 text-gray-400 dark:text-neutral-500" />
         <span>{{ server.gameVersion }}</span>
       </div>
     </div>
@@ -94,7 +94,7 @@ const statusClasses = computed(() => {
     case "exited":
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+      return "bg-gray-100 text-gray-800 dark:bg-neutral-700 dark:text-neutral-300";
   }
 });
 

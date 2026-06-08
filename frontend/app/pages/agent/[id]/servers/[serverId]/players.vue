@@ -1,38 +1,653 @@
 <template>
   <div class="p-6">
-    <div class="mb-6">
-      <NuxtLink
-        :to="`/agent/${agentId}/servers/${serverId}`"
-        class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-4"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
+    <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          Players
+        </h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            :class="{
+              'text-green-500': wsStatus === 'Connected',
+              'text-red-500':
+                wsStatus === 'Error' || wsStatus === 'Disconnected',
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
+            }"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            stroke-width="2"
-            d="M10 19l-7-7m0 0l7-7m-7 7h18"
-          />
-        </svg>
-        <span>Back to server</span>
-      </NuxtLink>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Players</h1>
+          >
+            <path
+              d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
+            />
+          </svg>
+          <span
+            class="text-xs"
+            :class="{
+              'text-green-500': wsStatus === 'Connected',
+              'text-red-500':
+                wsStatus === 'Error' || wsStatus === 'Disconnected',
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
+            }"
+          >
+            {{ wsStatus || "Connecting..." }}
+          </span>
+          <button
+            class="text-xs leading-none rounded-full bg-primary text-white hover:bg-primary/90 focus:outline-none px-2 py-0.5"
+            @click="reconnectWS"
+          >
+            Reconnect
+          </button>
+        </div>
+        <button
+          class="text-xs rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 px-3 py-1.5"
+          :disabled="refreshing"
+          @click="refreshAll"
+        >
+          {{ refreshing ? "Refreshing..." : "Refresh" }}
+        </button>
+      </div>
     </div>
-    <div class="text-gray-500 dark:text-gray-400">Player list coming soon.</div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Online Players -->
+      <div
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+            Online Players
+          </h2>
+          <span
+            class="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+          >
+            {{ onlinePlayers.length }} / {{ maxPlayers }}
+          </span>
+        </div>
+        <div
+          v-if="onlineLoading"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
+          Loading...
+        </div>
+        <div
+          v-else-if="onlineError"
+          class="text-red-500 dark:text-red-400 text-sm"
+        >
+          {{ onlineError }}
+        </div>
+        <div
+          v-else-if="onlinePlayers.length === 0"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
+          No players online.
+        </div>
+        <div v-else class="space-y-2">
+          <div
+            v-for="name in onlinePlayers"
+            :key="name"
+            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          >
+            <img
+              :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(name)}/32.png`"
+              alt=""
+              class="w-8 h-8 rounded"
+            />
+            <span
+              class="flex-1 text-sm font-medium text-gray-900 dark:text-white"
+            >
+              {{ name }}
+            </span>
+            <div class="flex items-center gap-1">
+              <button
+                class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50"
+                @click="openReasonModal('kick', name)"
+              >
+                Kick
+              </button>
+              <button
+                class="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+                @click="openReasonModal('ban', name)"
+              >
+                Ban
+              </button>
+              <button
+                class="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50"
+                @click="sendRcon(`op ${name}`)"
+              >
+                Op
+              </button>
+              <button
+                class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
+                @click="sendRcon(`whitelist add ${name}`)"
+              >
+                WL
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Operators -->
+      <div
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+            Operators
+          </h2>
+        </div>
+        <div v-if="opsLoading" class="text-gray-500 dark:text-neutral-400 text-sm">
+          Loading...
+        </div>
+        <div
+          v-else-if="opsError"
+          class="text-red-500 dark:text-red-400 text-sm"
+        >
+          {{ opsError }}
+        </div>
+        <div
+          v-else-if="opsList.length === 0"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
+          No operators.
+        </div>
+        <div v-else class="space-y-2">
+          <div
+            v-for="op in opsList"
+            :key="op.uuid || op.name"
+            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          >
+            <img
+              v-if="op.name"
+              :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(op.name)}/32.png`"
+              alt=""
+              class="w-8 h-8 rounded"
+            />
+            <span
+              class="flex-1 text-sm font-medium text-gray-900 dark:text-white"
+            >
+              {{ op.name }}
+            </span>
+            <button
+              class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
+              @click="sendRcon(`deop ${op.name}`)"
+            >
+              Deop
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Whitelist -->
+      <div
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+            Whitelist
+          </h2>
+        </div>
+        <div v-if="wlLoading" class="text-gray-500 dark:text-neutral-400 text-sm">
+          Loading...
+        </div>
+        <div v-else-if="wlError" class="text-red-500 dark:text-red-400 text-sm">
+          {{ wlError }}
+        </div>
+        <div
+          v-else-if="wlList.length === 0"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
+          Whitelist is empty.
+        </div>
+        <div v-else class="space-y-2">
+          <div
+            v-for="entry in wlList"
+            :key="entry.uuid || entry.name"
+            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          >
+            <img
+              v-if="entry.name"
+              :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(entry.name)}/32.png`"
+              alt=""
+              class="w-8 h-8 rounded"
+            />
+            <span
+              class="flex-1 text-sm font-medium text-gray-900 dark:text-white"
+            >
+              {{ entry.name }}
+            </span>
+            <button
+              class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
+              @click="sendRcon(`whitelist remove ${entry.name}`)"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Banned Players -->
+      <div
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+            Banned Players
+          </h2>
+        </div>
+        <div
+          v-if="bansLoading"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
+          Loading...
+        </div>
+        <div
+          v-else-if="bansError"
+          class="text-red-500 dark:text-red-400 text-sm"
+        >
+          {{ bansError }}
+        </div>
+        <div
+          v-else-if="bansList.length === 0"
+          class="text-gray-500 dark:text-neutral-400 text-sm"
+        >
+          No banned players.
+        </div>
+        <div v-else class="space-y-2">
+          <div
+            v-for="ban in bansList"
+            :key="ban.uuid || ban.name"
+            class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          >
+            <img
+              v-if="ban.name"
+              :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(ban.name)}/32.png`"
+              alt=""
+              class="w-8 h-8 rounded mt-0.5"
+            />
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ ban.name }}
+              </div>
+              <div
+                v-if="ban.reason"
+                class="text-xs text-gray-500 dark:text-neutral-400 truncate"
+              >
+                Reason: {{ ban.reason }}
+              </div>
+              <div
+                v-if="ban.created"
+                class="text-xs text-gray-500 dark:text-neutral-400"
+              >
+                {{ ban.created }}
+              </div>
+            </div>
+            <button
+              class="text-xs px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 shrink-0"
+              @click="sendRcon(`pardon ${ban.name}`)"
+            >
+              Unban
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reason Modal -->
+    <div
+      v-if="modalOpen"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click.self="closeModal"
+    >
+      <div
+        class="bg-white dark:bg-neutral-800 rounded-xl p-6 w-full max-w-sm shadow-xl"
+      >
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">
+          {{ modalTitle }}
+        </h3>
+        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">
+          Target:
+          <span class="font-medium text-gray-900 dark:text-white">{{
+            modalTarget
+          }}</span>
+        </p>
+        <input
+          v-model="modalReason"
+          type="text"
+          placeholder="Reason (optional)"
+          class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none mb-4"
+          @keydown.enter.prevent="confirmModal"
+        />
+        <div class="flex justify-end gap-2">
+          <button
+            class="px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="closeModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-2 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700"
+            @click="confirmModal"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from "vue";
+
 definePageMeta({
   middleware: "auth",
 });
 
 const route = useRoute();
 const { agentId } = useCurrentAgent();
+const { show: showToast } = useToast();
 const serverId = route.params.serverId as string;
+
+const apiBase = useApiBase();
+
+interface PlayerEntry {
+  name: string;
+  uuid?: string;
+  reason?: string;
+  created?: string;
+  level?: number;
+}
+
+const onlineLoading = ref(true);
+const onlineError = ref<string | null>(null);
+const onlinePlayers = ref<string[]>([]);
+const maxPlayers = ref(0);
+
+const opsLoading = ref(true);
+const opsError = ref<string | null>(null);
+const opsList = ref<PlayerEntry[]>([]);
+
+const wlLoading = ref(true);
+const wlError = ref<string | null>(null);
+const wlList = ref<PlayerEntry[]>([]);
+
+const bansLoading = ref(true);
+const bansError = ref<string | null>(null);
+const bansList = ref<PlayerEntry[]>([]);
+
+const refreshing = ref(false);
+const wsStatus = ref("Connecting...");
+
+let ws: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let unmounted = false;
+let reconnectAttempts = 0;
+let socketCounter = 0;
+
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 30000;
+
+function connectLogsWS() {
+  if (ws) {
+    const oldWs = ws;
+    ws = null;
+    oldWs.onopen = null;
+    oldWs.onmessage = null;
+    oldWs.onerror = null;
+    oldWs.onclose = null;
+    oldWs.close();
+  }
+  if (!agentId.value) return;
+
+  const config = useRuntimeConfig();
+  const base = (config.public.apiBase as string) || "http://localhost:8081";
+  const wsBase = base.replace(/^http/, "ws");
+  const url = `${wsBase}/ws/agent/${agentId.value}/servers/${serverId}/logs?tail=50`;
+
+  ++socketCounter;
+  const socket = new WebSocket(url);
+  ws = socket;
+
+  socket.onopen = () => {
+    if (ws !== socket) return;
+    reconnectAttempts = 0;
+    wsStatus.value = "Connected";
+  };
+
+  socket.onmessage = (e) => {
+    if (ws !== socket) return;
+    const text = String(e.data);
+    const lines = text.split("\n");
+    for (const line of lines) {
+      const idxJoin = line.indexOf(" joined the game");
+      if (idxJoin !== -1) {
+        const prefix = line.slice(0, idxJoin);
+        const nameMatch = prefix.match(/]:\s*(\S+)$/);
+        if (nameMatch && nameMatch[1]) {
+          const name = nameMatch[1];
+          if (!onlinePlayers.value.includes(name)) {
+            onlinePlayers.value.push(name);
+          }
+        }
+        continue;
+      }
+      const idxLeft = line.indexOf(" left the game");
+      if (idxLeft !== -1) {
+        const prefix = line.slice(0, idxLeft);
+        const nameMatch = prefix.match(/]:\s*(\S+)$/);
+        if (nameMatch && nameMatch[1]) {
+          const name = nameMatch[1];
+          onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
+        }
+        continue;
+      }
+      const idxLost = line.indexOf(" lost connection:");
+      if (idxLost !== -1) {
+        const prefix = line.slice(0, idxLost);
+        const nameMatch = prefix.match(/]:\s*(\S+)$/);
+        if (nameMatch && nameMatch[1]) {
+          const name = nameMatch[1];
+          onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
+        }
+      }
+    }
+  };
+
+  socket.onerror = () => {
+    if (ws !== socket) return;
+    wsStatus.value = "Error";
+  };
+
+  socket.onclose = () => {
+    if (ws !== socket) return;
+    ws = null;
+    if (!unmounted) {
+      wsStatus.value = "Disconnected";
+      const delay = Math.min(
+        RECONNECT_BASE_MS * 2 ** reconnectAttempts,
+        RECONNECT_MAX_MS,
+      );
+      reconnectAttempts++;
+      reconnectTimer = setTimeout(connectLogsWS, delay);
+    }
+  };
+}
+
+function reconnectWS() {
+  reconnectAttempts = 0;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  connectLogsWS();
+}
+
+const modalOpen = ref(false);
+const modalAction = ref<"kick" | "ban" | null>(null);
+const modalTarget = ref("");
+const modalReason = ref("");
+
+const modalTitle = computed(() =>
+  modalAction.value === "kick" ? "Kick Player" : "Ban Player",
+);
+
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+async function fetchOnline() {
+  onlineLoading.value = true;
+  onlineError.value = null;
+  try {
+    const res = await $fetch<{
+      online?: number;
+      max?: number;
+      players?: string[];
+    }>(`/agent/${agentId.value}/servers/${serverId}/players`, {
+      baseURL: apiBase,
+      credentials: "include",
+    });
+    onlinePlayers.value = res.players || [];
+    maxPlayers.value = res.max || 0;
+  } catch (err: any) {
+    onlineError.value = err?.message || "Failed to load players";
+  } finally {
+    onlineLoading.value = false;
+  }
+}
+
+async function fetchOps() {
+  opsLoading.value = true;
+  opsError.value = null;
+  try {
+    const res = await $fetch<{ ops?: PlayerEntry[] }>(
+      `/agent/${agentId.value}/servers/${serverId}/ops`,
+      { baseURL: apiBase, credentials: "include" },
+    );
+    opsList.value = res.ops || [];
+  } catch (err: any) {
+    opsError.value = err?.message || "Failed to load operators";
+  } finally {
+    opsLoading.value = false;
+  }
+}
+
+async function fetchWhitelist() {
+  wlLoading.value = true;
+  wlError.value = null;
+  try {
+    const res = await $fetch<{ whitelist?: PlayerEntry[] }>(
+      `/agent/${agentId.value}/servers/${serverId}/whitelist`,
+      { baseURL: apiBase, credentials: "include" },
+    );
+    wlList.value = res.whitelist || [];
+  } catch (err: any) {
+    wlError.value = err?.message || "Failed to load whitelist";
+  } finally {
+    wlLoading.value = false;
+  }
+}
+
+async function fetchBans() {
+  bansLoading.value = true;
+  bansError.value = null;
+  try {
+    const res = await $fetch<{ bans?: PlayerEntry[] }>(
+      `/agent/${agentId.value}/servers/${serverId}/bans`,
+      { baseURL: apiBase, credentials: "include" },
+    );
+    bansList.value = res.bans || [];
+  } catch (err: any) {
+    bansError.value = err?.message || "Failed to load bans";
+  } finally {
+    bansLoading.value = false;
+  }
+}
+
+async function refreshAll() {
+  refreshing.value = true;
+  await Promise.all([fetchOnline(), fetchOps(), fetchWhitelist(), fetchBans()]);
+  refreshing.value = false;
+}
+
+async function sendRcon(command: string) {
+  try {
+    await $fetch(`/agent/${agentId.value}/servers/${serverId}/rcon`, {
+      baseURL: apiBase,
+      method: "POST",
+      credentials: "include",
+      body: { command },
+    });
+    showToast("success", "Command sent", { description: command });
+    setTimeout(() => refreshAll(), 500);
+  } catch (err: any) {
+    const msg = err?.data?.detail || err?.message || "Command failed";
+    showToast("error", "RCON failed", { description: msg });
+  }
+}
+
+function openReasonModal(action: "kick" | "ban", target: string) {
+  modalAction.value = action;
+  modalTarget.value = target;
+  modalReason.value = "";
+  modalOpen.value = true;
+}
+
+function closeModal() {
+  modalOpen.value = false;
+  modalAction.value = null;
+  modalTarget.value = "";
+  modalReason.value = "";
+}
+
+function confirmModal() {
+  const action = modalAction.value;
+  const target = modalTarget.value;
+  const reason = modalReason.value.trim();
+  if (!action || !target) {
+    closeModal();
+    return;
+  }
+  const cmd =
+    action === "kick"
+      ? reason
+        ? `kick ${target} ${reason}`
+        : `kick ${target}`
+      : reason
+        ? `ban ${target} ${reason}`
+        : `ban ${target}`;
+  closeModal();
+  sendRcon(cmd);
+}
+
+onMounted(() => {
+  refreshAll();
+  connectLogsWS();
+  pollTimer = setInterval(refreshAll, 15000);
+});
+
+onUnmounted(() => {
+  unmounted = true;
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  if (ws) {
+    const oldWs = ws;
+    ws = null;
+    oldWs.onclose = null;
+    oldWs.close();
+  }
+});
 </script>

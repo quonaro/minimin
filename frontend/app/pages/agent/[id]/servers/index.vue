@@ -5,7 +5,7 @@
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Servers
         </h1>
-        <p class="text-gray-600 dark:text-gray-400">
+        <p class="text-gray-600 dark:text-neutral-400">
           Servers for agent <span class="font-semibold">{{ agentName }}</span>
         </p>
       </div>
@@ -18,11 +18,11 @@
     </div>
 
     <div v-if="pending" class="text-center py-12">
-      <p class="text-gray-500 dark:text-gray-400">Loading...</p>
+      <p class="text-gray-500 dark:text-neutral-400">Loading...</p>
     </div>
 
     <div v-else-if="servers.length === 0" class="text-center py-12">
-      <p class="text-gray-500 dark:text-gray-400">
+      <p class="text-gray-500 dark:text-neutral-400">
         No servers found for this agent
       </p>
     </div>
