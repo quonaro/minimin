@@ -1,4 +1,4 @@
-import { onScopeDispose, ref, type Ref } from 'vue'
+import { onScopeDispose, ref, watch, type Ref } from 'vue'
 
 export function formatDuration(ms: number): string {
   if (ms < 0) return '0s'
@@ -23,21 +23,25 @@ export function formatDuration(ms: number): string {
   return `${seconds}s`
 }
 
-export function useUptime(startedAt: string | undefined): Ref<string> {
+export function useUptime(startedAt: Ref<string | undefined>): Ref<string> {
   const uptime = ref('')
 
   function update() {
-    if (!startedAt) {
+    if (!startedAt.value) {
       uptime.value = ''
       return
     }
-    const start = new Date(startedAt).getTime()
+    const start = new Date(startedAt.value).getTime()
     const now = Date.now()
     uptime.value = formatDuration(now - start)
   }
 
   update()
   const interval = setInterval(update, 1000)
+
+  watch(startedAt, () => {
+    update()
+  })
 
   onScopeDispose(() => clearInterval(interval))
 

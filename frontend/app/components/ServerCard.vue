@@ -11,10 +11,18 @@
         </h3>
       </div>
       <span
-        :class="statusClasses"
+        :class="[
+          statusClasses,
+          server.status === 'running' &&
+            'animate-heartbeat dark:animate-heartbeat-dark',
+        ]"
         class="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 shrink-0"
       >
-        <component :is="statusIcon" class="w-3.5 h-3.5" />
+        <component
+          :is="statusIcon"
+          :class="server.status === 'running' && 'animate-pulse-icon'"
+          class="w-3.5 h-3.5"
+        />
         {{ server.status }}
       </span>
     </div>
@@ -63,7 +71,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { formatDuration } from "~/composables/useDuration";
+import { useUptime } from "~/composables/useDuration";
 import {
   Activity,
   Clock,
@@ -92,7 +100,7 @@ const props = defineProps<{
 const statusClasses = computed(() => {
   switch (props.server.status) {
     case "running":
-      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      return "text-green-800 dark:text-green-400";
     case "exited":
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
@@ -104,11 +112,9 @@ const statusIcon = computed(() => {
   return props.server.status === "running" ? Activity : null;
 });
 
-const uptime = computed(() => {
-  if (props.server.status !== "running" || !props.server.startedAt) {
-    return "";
-  }
-  const start = new Date(props.server.startedAt).getTime();
-  return formatDuration(Date.now() - start);
-});
+const startedAt = computed(() =>
+  props.server.status === "running" ? props.server.startedAt : undefined,
+);
+
+const uptime = useUptime(startedAt);
 </script>

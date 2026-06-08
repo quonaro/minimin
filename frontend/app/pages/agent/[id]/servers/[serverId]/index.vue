@@ -21,7 +21,7 @@
                 />
                 <ServerIcon
                   v-else
-                  class="w-10 h-10 text-gray-400 dark:text-neutral-500"
+                  class="w-10 h-10 text-indigo-500 dark:text-indigo-400"
                 />
               </div>
               <span
@@ -67,20 +67,25 @@
                   :class="[
                     getStatusColor(server.status),
                     'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                    server.status === 'running' &&
+                      'animate-heartbeat dark:animate-heartbeat-dark',
                   ]"
                 >
                   <Activity
                     v-if="server.status === 'running'"
+                    :class="server.status === 'running' && 'animate-pulse-icon'"
                     class="w-3.5 h-3.5"
                   />
                   {{ server.status }}
                 </span>
                 <span
-                  v-if="uptime"
+                  v-if="reactiveUptime"
                   class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
                 >
-                  <Clock class="w-3.5 h-3.5" />
-                  Uptime: {{ uptime }}
+                  <Clock
+                    class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400"
+                  />
+                  Uptime: {{ reactiveUptime }}
                 </span>
                 <span
                   v-if="isPending"
@@ -100,7 +105,7 @@
                 class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"
                 >
                   <Hash class="w-4 h-4" />
                 </div>
@@ -123,7 +128,7 @@
                 class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400"
                 >
                   <Globe class="w-4 h-4" />
                 </div>
@@ -183,7 +188,7 @@
                 class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400"
                 >
                   <Terminal class="w-4 h-4" />
                 </div>
@@ -206,7 +211,7 @@
                 class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400"
                 >
                   <Box class="w-4 h-4" />
                 </div>
@@ -229,7 +234,7 @@
                 class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
+                  class="w-9 h-9 shrink-0 rounded-lg bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400"
                 >
                   <Tag class="w-4 h-4" />
                 </div>
@@ -362,13 +367,18 @@ const iconUrl = computed(() => {
   return `${useApiBase()}/agent/${agentId.value}/servers/${serverId}/icon?t=${iconTimestamp.value}`;
 });
 
-const uptime = computed(() => {
-  if (server.value?.status !== "running" || !server.value?.startedAt) {
-    return "";
+const startedAt = computed(() => {
+  if (
+    !server.value ||
+    server.value.status !== "running" ||
+    !server.value.startedAt
+  ) {
+    return undefined;
   }
-  const start = new Date(server.value.startedAt).getTime();
-  return formatDuration(Date.now() - start);
+  return server.value.startedAt;
 });
+
+const reactiveUptime = useUptime(startedAt);
 
 function onIconFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;

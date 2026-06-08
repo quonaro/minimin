@@ -29,6 +29,7 @@ const { show: showToast } = useToast();
 interface ConfigResponse {
   content: string;
   initialized?: boolean;
+  pendingProperties?: Record<string, string>;
 }
 
 type PropType = "text" | "number" | "boolean" | "select";
@@ -48,11 +49,11 @@ const configUninitialized = ref(false);
 const originalProperties = ref<Record<string, string>>({});
 const editedProperties = ref<Record<string, string>>({});
 const saveLoading = ref(false);
-const showRestartBanner = ref(false);
-const unlockedDangerous = ref<Set<string>>(new Set());
+const unlockedDangerous = reactive<Set<string>>(new Set());
+const pendingProperties = ref<Record<string, string>>({});
 
 function unlockDangerous(key: string) {
-  unlockedDangerous.value.add(key);
+  unlockedDangerous.add(key);
 }
 
 const knownProperties: KnownProperty[] = [
@@ -275,13 +276,17 @@ const changedProperties = computed(() => {
   return changed;
 });
 
-watch(
-  () => changedProperties.value,
-  () => {
-    showRestartBanner.value = false;
-  },
-  { deep: true },
-);
+function getPropertyBadgeStatus(
+  key: string,
+): "modified" | "restart-required" | null {
+  if (pendingProperties.value[key] !== undefined) {
+    return "restart-required";
+  }
+  if (changedProperties.value[key] !== undefined) {
+    return "modified";
+  }
+  return null;
+}
 
 async function loadConfig() {
   configLoading.value = true;
@@ -294,25 +299,30 @@ async function loadConfig() {
     );
     let content = "";
     let initialized = true;
+    let pending: Record<string, string> = {};
     if (res && typeof res === "object") {
       if ("body" in res) {
         const body = (res as any).body;
         content = body.content || "";
         initialized = body.initialized !== false;
+        pending = body.pendingProperties || {};
       } else if ("content" in res) {
         const raw = res as any;
         content = raw.content || "";
         initialized = raw.initialized !== false;
+        pending = raw.pendingProperties || {};
       }
     }
     if (!initialized) {
       configUninitialized.value = true;
       originalProperties.value = {};
       editedProperties.value = {};
+      pendingProperties.value = pending;
     } else {
       const parsed = parseProperties(content);
       originalProperties.value = parsed;
       editedProperties.value = { ...parsed };
+      pendingProperties.value = pending;
     }
   } catch (err: any) {
     configError.value = err?.message || "Unknown error";
@@ -331,11 +341,14 @@ async function saveProperties() {
       credentials: "include",
       body: { properties: changedProperties.value },
     });
+    const changedKeys = Object.keys(changedProperties.value);
     originalProperties.value = { ...editedProperties.value };
+    for (const key of changedKeys) {
+      pendingProperties.value[key] = editedProperties.value[key]!;
+    }
     showToast("success", "Properties saved", {
       description: "Configuration updated successfully.",
     });
-    showRestartBanner.value = true;
   } catch (err: any) {
     const status = err?.response?.status || err?.statusCode;
     let msg = err?.data?.detail || err?.message || "Failed to save properties";
@@ -397,12 +410,26 @@ await loadConfig();
               class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"
             >
               <div class="md:col-span-1 pt-2">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <label
                     class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
                   >
                     {{ item.label }}
                   </label>
+                  <span
+                    v-if="getPropertyBadgeStatus(item.key) === 'modified'"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                  >
+                    Modified
+                  </span>
+                  <span
+                    v-if="
+                      getPropertyBadgeStatus(item.key) === 'restart-required'
+                    "
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                  >
+                    Restart Required
+                  </span>
                   <button
                     v-if="item.dangerous && !unlockedDangerous.has(item.key)"
                     class="text-xs text-primary hover:underline font-medium"
@@ -478,11 +505,25 @@ await loadConfig();
             class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"
           >
             <div class="md:col-span-1 pt-2">
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
-              >
-                {{ item.label }}
-              </label>
+              <div class="flex items-center gap-2 flex-wrap">
+                <label
+                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
+                >
+                  {{ item.label }}
+                </label>
+                <span
+                  v-if="getPropertyBadgeStatus(item.key) === 'modified'"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                >
+                  Modified
+                </span>
+                <span
+                  v-if="getPropertyBadgeStatus(item.key) === 'restart-required'"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                >
+                  Restart Required
+                </span>
+              </div>
             </div>
             <div class="md:col-span-2">
               <input
@@ -520,11 +561,25 @@ await loadConfig();
             class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"
           >
             <div class="md:col-span-1 pt-2">
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
-              >
-                {{ item.label }}
-              </label>
+              <div class="flex items-center gap-2 flex-wrap">
+                <label
+                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
+                >
+                  {{ item.label }}
+                </label>
+                <span
+                  v-if="getPropertyBadgeStatus(item.key) === 'modified'"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                >
+                  Modified
+                </span>
+                <span
+                  v-if="getPropertyBadgeStatus(item.key) === 'restart-required'"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                >
+                  Restart Required
+                </span>
+              </div>
             </div>
             <div class="md:col-span-2">
               <select
@@ -558,7 +613,7 @@ await loadConfig();
       </div>
 
       <div
-        v-if="showRestartBanner"
+        v-if="Object.keys(pendingProperties).length > 0"
         class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
       >
         <p class="text-sm text-amber-800 dark:text-amber-300">
