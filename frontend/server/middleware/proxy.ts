@@ -5,9 +5,9 @@ export default defineEventHandler(async (event) => {
 
   // Proxy /api/* requests to the backend (excluding Nitro's own /api routes)
   if (path.startsWith('/api/') && !path.startsWith('/api/_nitro')) {
-    // Auth endpoints keep /api/ prefix on backend, others strip it
+    // Auth and events endpoints keep /api/ prefix on backend, others strip it
     let targetPath = path
-    if (!path.startsWith('/api/auth/')) {
+    if (!path.startsWith('/api/auth/') && !path.startsWith('/api/events')) {
       targetPath = path.replace('/api/', '/')
     }
     const target = `http://localhost:8081${targetPath}`

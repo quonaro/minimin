@@ -25,8 +25,10 @@ function connect() {
     eventSource.close();
   }
 
-  const base = useApiBase();
-  const url = `${base}/events`;
+  // Connect directly to backend; Nuxt proxy buffers the SSE stream.
+  const config = useRuntimeConfig();
+  const base = (config.public.apiBase as string) || "http://localhost:8081";
+  const url = `${base}/api/events`;
   eventSource = new EventSource(url, { withCredentials: true });
 
   eventSource.onopen = () => {
