@@ -28,6 +28,7 @@ const { show: showToast } = useToast();
 
 interface ConfigResponse {
   content: string;
+  initialized?: boolean;
 }
 
 type PropType = "text" | "number" | "boolean" | "select";
@@ -43,6 +44,7 @@ interface KnownProperty {
 
 const configLoading = ref(true);
 const configError = ref<string | null>(null);
+const configUninitialized = ref(false);
 const originalProperties = ref<Record<string, string>>({});
 const editedProperties = ref<Record<string, string>>({});
 const saveLoading = ref(false);
@@ -284,22 +286,34 @@ watch(
 async function loadConfig() {
   configLoading.value = true;
   configError.value = null;
+  configUninitialized.value = false;
   try {
     const res = await $fetch<ConfigResponse | { body: ConfigResponse }>(
       `/agent/${props.agentId}/servers/${props.serverId}/config`,
       { baseURL: useApiBase(), credentials: "include" },
     );
     let content = "";
+    let initialized = true;
     if (res && typeof res === "object") {
       if ("body" in res) {
-        content = (res as any).body.content || "";
+        const body = (res as any).body;
+        content = body.content || "";
+        initialized = body.initialized !== false;
       } else if ("content" in res) {
-        content = (res as any).content || "";
+        const raw = res as any;
+        content = raw.content || "";
+        initialized = raw.initialized !== false;
       }
     }
-    const parsed = parseProperties(content);
-    originalProperties.value = parsed;
-    editedProperties.value = { ...parsed };
+    if (!initialized) {
+      configUninitialized.value = true;
+      originalProperties.value = {};
+      editedProperties.value = {};
+    } else {
+      const parsed = parseProperties(content);
+      originalProperties.value = parsed;
+      editedProperties.value = { ...parsed };
+    }
   } catch (err: any) {
     configError.value = err?.message || "Unknown error";
   } finally {
@@ -323,8 +337,11 @@ async function saveProperties() {
     });
     showRestartBanner.value = true;
   } catch (err: any) {
-    const msg =
-      err?.data?.detail || err?.message || "Failed to save properties";
+    const status = err?.response?.status || err?.statusCode;
+    let msg = err?.data?.detail || err?.message || "Failed to save properties";
+    if (status === 409) {
+      msg = "Server volume not initialized. Start the server first.";
+    }
     showToast("error", "Save failed", { description: msg });
   } finally {
     saveLoading.value = false;
@@ -341,6 +358,16 @@ await loadConfig();
     </div>
     <div v-else-if="configError" class="text-red-500 dark:text-red-400">
       Failed to load config: {{ configError }}
+    </div>
+    <div
+      v-else-if="configUninitialized"
+      class="text-amber-600 dark:text-amber-400"
+    >
+      <p class="font-medium">Server not initialized</p>
+      <p class="text-sm mt-1">
+        Start the server at least once so that the configuration files are
+        generated.
+      </p>
     </div>
     <div v-else class="space-y-8">
       <template v-for="group in groupOrder" :key="group">
