@@ -118,7 +118,7 @@
         <div
           class="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
         >
-          Server
+          Server ({{ currentServerName }})
         </div>
         <NuxtLink
           v-for="item in serverNav"
@@ -146,6 +146,11 @@
             />
           </svg>
           <span>{{ item.label }}</span>
+          <span
+            v-if="item.label === 'Overview'"
+            class="w-2 h-2 rounded-full flex-shrink-0 ml-auto"
+            :class="getServerStatusColor(currentServerStatus)"
+          ></span>
         </NuxtLink>
       </div>
 
@@ -256,6 +261,7 @@ const agentId = computed(() => route.params.id as string | undefined);
 interface Server {
   serverId: string;
   status: string;
+  name?: string;
 }
 
 const serversUrl = computed(() =>
@@ -272,6 +278,43 @@ const agentServers = computed(() => {
     return (val as any).body || [];
   }
   return [];
+});
+
+const currentServerStatus = computed(() => {
+  if (!serverId.value) return "";
+  const server = agentServers.value.find(
+    (s: Server) => s.serverId === serverId.value,
+  );
+  return server?.status ?? "";
+});
+
+const currentServerName = computed(() => {
+  if (!serverId.value) return "";
+  const server = agentServers.value.find(
+    (s: Server) => s.serverId === serverId.value,
+  );
+  return server?.name || server?.serverId || "";
+});
+
+const { lastEvent } = useEventSource();
+
+watch(lastEvent, (evt) => {
+  if (!evt || evt.type !== "server.status") return;
+  if (evt.agentId !== agentId.value) return;
+
+  const val = serversData.value;
+  let servers: Server[] | null = null;
+  if (Array.isArray(val)) {
+    servers = val as Server[];
+  } else if (val && typeof val === "object" && "body" in val) {
+    servers = (val as any).body || [];
+  }
+  if (!servers) return;
+
+  const server = servers.find((s: Server) => s.serverId === evt.serverId);
+  if (server) {
+    server.status = evt.newStatus || server.status;
+  }
 });
 
 function getServerStatusColor(status: string) {

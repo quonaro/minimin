@@ -188,6 +188,7 @@ function getStatusColor(status: string) {
 }
 
 async function doAction(action: "start" | "stop" | "restart") {
+  if (actionLoading.value) return;
   actionLoading.value = true;
   try {
     await $fetch(`/agent/${agentId.value}/servers/${serverId}/${action}`, {
