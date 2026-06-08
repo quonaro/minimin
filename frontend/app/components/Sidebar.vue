@@ -286,21 +286,7 @@ interface Server {
   name?: string;
 }
 
-const serversUrl = computed(() =>
-  agentId.value ? `/agent/${agentId.value}/servers` : null,
-);
-const { data: serversData } = await useApiFetch(serversUrl as any, {
-  key: computed(() => `agent-servers-${agentId.value ?? "none"}`),
-});
-
-const agentServers = computed(() => {
-  const val = serversData.value;
-  if (Array.isArray(val)) return val as Server[];
-  if (val && typeof val === "object" && "body" in val) {
-    return (val as any).body || [];
-  }
-  return [];
-});
+const { servers: agentServers, refresh: refreshServers } = useServers(agentId);
 
 const currentServerStatus = ref("");
 
@@ -337,16 +323,7 @@ watch(lastEvent, (evt) => {
     currentServerStatus.value = evt.newStatus;
   }
 
-  const val = serversData.value;
-  let servers: Server[] | null = null;
-  if (Array.isArray(val)) {
-    servers = val as Server[];
-  } else if (val && typeof val === "object" && "body" in val) {
-    servers = (val as any).body || [];
-  }
-  if (!servers) return;
-
-  const server = servers.find((s: Server) => s.serverId === evt.serverId);
+  const server = agentServers.value.find((s) => s.serverId === evt.serverId);
   if (server) {
     server.status = evt.newStatus || server.status;
   }

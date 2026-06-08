@@ -50,35 +50,12 @@ definePageMeta({
   middleware: "auth",
 });
 
-interface Server {
-  serverId: string;
-  status: string;
-  gamePort: number;
-  engineType: string;
-  gameVersion: string;
-  startedAt?: string;
-}
-
 const { agentId, agent, pending } = useCurrentAgent();
 
 const agentName = computed(() => agent.value?.name ?? "");
-
-const servers = ref<Server[]>([]);
 const showModal = ref(false);
 
-const { data } = await useApiFetch<Server[] | { body: Server[] }>(
-  `/agent/${agentId.value}/servers`,
-);
-
-if (Array.isArray(data.value)) {
-  servers.value = data.value;
-} else if (
-  data.value &&
-  typeof data.value === "object" &&
-  "body" in data.value
-) {
-  servers.value = (data.value as any).body as Server[];
-}
+const { servers } = useServers(agentId);
 
 function onCreated(serverId: string) {
   showModal.value = false;

@@ -152,12 +152,12 @@
                     </button>
                   </div>
                   <div v-else class="flex items-center gap-2">
-                    <input
-                      v-model.number="tempPort"
-                      type="number"
-                      min="1024"
-                      max="65535"
-                      class="w-24 text-sm font-semibold bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded px-2 py-0.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    <number-input
+                      v-model="tempPort"
+                      :min="1024"
+                      :max="65535"
+                      size="sm"
+                      class="w-24"
                       @keyup.enter="savePort"
                     />
                     <button
@@ -175,6 +175,29 @@
                       <XIcon class="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <!-- Public RCON -->
+              <div
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+              >
+                <div
+                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-200 dark:bg-neutral-600 flex items-center justify-center text-gray-500 dark:text-neutral-400"
+                >
+                  <Terminal class="w-4 h-4" />
+                </div>
+                <div class="min-w-0">
+                  <p
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  >
+                    Public RCON
+                  </p>
+                  <p
+                    class="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
+                    {{ server.publicRcon ? `Yes (${server.rconPort})` : "No" }}
+                  </p>
                 </div>
               </div>
 
@@ -297,6 +320,7 @@ import {
   Server as ServerIcon,
   Square,
   Tag,
+  Terminal,
   X as XIcon,
 } from "lucide-vue-next";
 
@@ -309,6 +333,8 @@ interface Server {
   status: string;
   desiredStatus?: string;
   gamePort: number;
+  publicRcon: boolean;
+  rconPort?: number;
   engineType: string;
   gameVersion: string;
   startedAt?: string;

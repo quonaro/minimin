@@ -77,6 +77,8 @@ interface Server {
   serverId: string;
   status: string;
   gamePort: number;
+  publicRcon?: boolean;
+  rconPort?: number;
   engineType: string;
   gameVersion: string;
   startedAt?: string;

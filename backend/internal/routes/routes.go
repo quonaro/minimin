@@ -30,6 +30,8 @@ func removeErrorsTransformer(ctx huma.Context, status string, v any) (any, error
 func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, store *status.Store, broadcaster *events.Broadcaster) http.Handler {
 	chiRouter := chi.NewRouter()
 
+	chiRouter.Use(middleware.RequestLogger)
+
 	// CORS middleware
 	chiRouter.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +140,42 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 
 		// Generic reverse proxy: any request to /agent/{id}/<anything> is forwarded to the agent's /api/v1/<anything>.
 		r.HandleFunc("/agent/{id}/*", h.ProxyAgent)
+
+		// Version proxy endpoints
+		huma.Register(hapi, huma.Operation{
+			OperationID: "get-all-versions",
+			Method:      http.MethodGet,
+			Path:        "/versions/all",
+			Summary:     "Get all Minecraft versions (vanilla, paper, fabric, forge)",
+		}, h.GetAllVersions)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "get-vanilla-versions",
+			Method:      http.MethodGet,
+			Path:        "/versions/vanilla",
+			Summary:     "Get vanilla Minecraft versions",
+		}, h.GetVanillaVersions)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "get-paper-versions",
+			Method:      http.MethodGet,
+			Path:        "/versions/paper",
+			Summary:     "Get Paper versions",
+		}, h.GetPaperVersions)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "get-fabric-versions",
+			Method:      http.MethodGet,
+			Path:        "/versions/fabric",
+			Summary:     "Get Fabric versions",
+		}, h.GetFabricVersions)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "get-forge-versions",
+			Method:      http.MethodGet,
+			Path:        "/versions/forge",
+			Summary:     "Get Forge versions",
+		}, h.GetForgeVersions)
 
 		// Orchestrator key for frontend (legacy, kept for compatibility)
 		huma.Register(hapi, huma.Operation{
