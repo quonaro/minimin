@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
+    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow h-full flex flex-col"
   >
     <div class="flex items-start justify-between mb-4">
       <div class="min-w-0">
@@ -21,11 +21,12 @@
 
     <div class="space-y-2.5 mb-5">
       <div
-        v-if="uptime"
-        class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+        class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 min-h-[1.25rem]"
       >
-        <Clock class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
-        <span>Running for {{ uptime }}</span>
+        <template v-if="uptime">
+          <Clock class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" />
+          <span>Running for {{ uptime }}</span>
+        </template>
       </div>
 
       <div
@@ -52,7 +53,7 @@
 
     <NuxtLink
       :to="`/agent/${agentId}/servers/${server.serverId}`"
-      class="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-medium text-sm"
+      class="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-medium text-sm mt-auto"
     >
       View Details
       <ChevronRight class="w-4 h-4" />

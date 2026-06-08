@@ -1,5 +1,6 @@
 ---
 description: Rules for writing Vue code in the webui frontend
+trigger: always_on
 ---
 
 # Vue Coding Rules — WebUI Frontend

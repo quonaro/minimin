@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody, send, setHeader, setResponseStatus } from 'h3'
+import { defineEventHandler, getCookie, getRequestHeaders, send, setHeader, setResponseStatus } from 'h3'
 
 export default defineEventHandler(async (event) => {
   const path = event.path
@@ -12,31 +12,41 @@ export default defineEventHandler(async (event) => {
     }
     const target = `http://localhost:8081${targetPath}`
 
-    // Forward auth_token cookie to backend
+    // Forward relevant request headers
+    const headers: Record<string, string> = {}
+    const reqHeaders = getRequestHeaders(event)
+    for (const [key, value] of Object.entries(reqHeaders)) {
+      if (key === 'host' || key === 'connection') continue
+      if (value === undefined) continue
+      headers[key] = Array.isArray(value) ? value.join(', ') : String(value)
+    }
+
     const authToken = getCookie(event, 'auth_token')
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    }
     if (authToken) {
-      headers['Cookie'] = `auth_token=${authToken}`
+      headers['cookie'] = `auth_token=${authToken}`
     }
 
-    // Handle different methods
-    const method = event.method
-    let body: any = undefined
-    if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-      body = await readBody(event)
-    }
-
-    const response = await fetch(target, {
-      method,
+    const fetchOpts: RequestInit = {
+      method: event.method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+    }
+
+    if (event.method !== 'GET' && event.method !== 'HEAD') {
+      // @ts-ignore Node.js readable stream as body with duplex: 'half'
+      fetchOpts.body = event.node.req
+      // @ts-ignore
+      fetchOpts.duplex = 'half'
+    }
+
+    const response = await fetch(target, fetchOpts)
+
+    setResponseStatus(event, response.status)
+    response.headers.forEach((value, key) => {
+      if (key === 'content-encoding' || key === 'transfer-encoding') return
+      setHeader(event, key, value)
     })
 
-    const data = await response.text()
-    setResponseStatus(event, response.status)
-    setHeader(event, 'Content-Type', 'application/json')
-    return send(event, data)
+    const data = await response.arrayBuffer()
+    return send(event, Buffer.from(data))
   }
 })

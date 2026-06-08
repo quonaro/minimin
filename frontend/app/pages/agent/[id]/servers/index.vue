@@ -1,12 +1,20 @@
 <template>
   <div class="p-8">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-        Servers
-      </h1>
-      <p class="text-gray-600 dark:text-gray-400">
-        Servers for agent <span class="font-semibold">{{ agentName }}</span>
-      </p>
+    <div class="mb-8 flex items-start justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Servers
+        </h1>
+        <p class="text-gray-600 dark:text-gray-400">
+          Servers for agent <span class="font-semibold">{{ agentName }}</span>
+        </p>
+      </div>
+      <button
+        class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+        @click="showModal = true"
+      >
+        Create Server
+      </button>
     </div>
 
     <div v-if="pending" class="text-center py-12">
@@ -27,6 +35,13 @@
         :agent-id="agentId"
       />
     </div>
+
+    <CreateServerModal
+      v-if="showModal"
+      :agent-id="agentId"
+      @close="showModal = false"
+      @created="onCreated"
+    />
   </div>
 </template>
 
@@ -49,6 +64,7 @@ const { agentId, agent, pending } = useCurrentAgent();
 const agentName = computed(() => agent.value?.name ?? "");
 
 const servers = ref<Server[]>([]);
+const showModal = ref(false);
 
 const { data } = await useApiFetch<Server[] | { body: Server[] }>(
   `/agent/${agentId.value}/servers`,
@@ -62,5 +78,12 @@ if (Array.isArray(data.value)) {
   "body" in data.value
 ) {
   servers.value = (data.value as any).body as Server[];
+}
+
+function onCreated(serverId: string) {
+  showModal.value = false;
+  if (serverId) {
+    navigateTo(`/agent/${agentId.value}/servers/${serverId}`);
+  }
 }
 </script>

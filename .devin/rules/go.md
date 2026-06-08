@@ -1,5 +1,6 @@
 ---
 description: Rules for writing Go code in the webui backend
+trigger: always_on
 ---
 
 # Go Coding Rules — WebUI Backend
