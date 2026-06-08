@@ -143,11 +143,17 @@ const agentName = computed(() => agent.value?.name ?? "");
 
 const servers = ref<Server[]>([]);
 
-const { data } = await useApiFetch<{ body: Server[] }>(
+const { data } = await useApiFetch<Server[] | { body: Server[] }>(
   `/agent/${agentId.value}/servers`,
 );
 
-if (data.value && typeof data.value === "object" && "body" in data.value) {
+if (Array.isArray(data.value)) {
+  servers.value = data.value;
+} else if (
+  data.value &&
+  typeof data.value === "object" &&
+  "body" in data.value
+) {
   servers.value = (data.value as any).body as Server[];
 }
 

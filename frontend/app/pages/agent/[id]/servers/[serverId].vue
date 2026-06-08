@@ -118,12 +118,16 @@ const { agentId } = useCurrentAgent();
 const serverId = route.params.serverId as string;
 const server = ref<Server | null>(null);
 
-const { data } = await useApiFetch<{ body: Server }>(
+const { data } = await useApiFetch<Server | { body: Server }>(
   `/agent/${agentId.value}/servers/${serverId}`,
 );
 
-if (data.value && typeof data.value === "object" && "body" in data.value) {
-  server.value = (data.value as any).body as Server;
+if (data.value && typeof data.value === "object") {
+  if ("body" in data.value) {
+    server.value = (data.value as any).body as Server;
+  } else if ("server_id" in data.value) {
+    server.value = data.value as Server;
+  }
 }
 
 function getStatusColor(status: string) {
