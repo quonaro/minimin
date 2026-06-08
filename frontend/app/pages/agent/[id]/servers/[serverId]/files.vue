@@ -1,51 +1,98 @@
+<script setup lang="ts">
+definePageMeta({ middleware: "auth" });
+
+const {
+  warningModalOpen,
+  uploadInput,
+  currentPath,
+  search,
+  listLoading,
+  listError,
+  filteredEntries,
+  breadcrumbs,
+  openedFilePath,
+  openedFileState,
+  editorContent,
+  editorLoading,
+  editorError,
+  saveLoading,
+  confirmModalOpen,
+  confirmLoading,
+  confirmTitle,
+  confirmMessage,
+  confirmInputLabel,
+  confirmInputValue,
+  confirmButtonText,
+  confirmDanger,
+  contextMenuOpen,
+  contextMenuX,
+  contextMenuY,
+  contextTargetType,
+  dragOverDirPath,
+  dragOverBreadcrumbPath,
+  formatSize,
+  formatDate,
+  navigateToPath,
+  openEntry,
+  openSaveModal,
+  closeContextMenu,
+  openEmptyAreaContextMenu,
+  openEntryContextMenu,
+  onEntryDragStart,
+  onEntryDragEnd,
+  onEntryDragOver,
+  onEntryDragLeave,
+  onEntryDrop,
+  onBreadcrumbDragOver,
+  onBreadcrumbDragLeave,
+  onBreadcrumbDrop,
+  onUploadSelected,
+  contextOpenTarget,
+  contextDownloadTarget,
+  contextRenameTarget,
+  contextDeleteTarget,
+  contextCreateFile,
+  contextCreateFolder,
+  contextUpload,
+  contextRefresh,
+  closeConfirmModal,
+  confirmAction,
+} = useFilesExplorer();
+</script>
+
 <template>
   <div class="p-6 h-[calc(100vh-4rem)] flex flex-col gap-4">
     <div class="flex items-center justify-between flex-wrap gap-3">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Files</h1>
-      <div class="flex items-center gap-2 flex-wrap">
-        <button
-          class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-neutral-700 text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
-          :disabled="!canGoUp"
-          @click="goUp"
-        >
-          Up
-        </button>
-        <button
-          class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-neutral-700 text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
-          @click="refreshList"
-        >
-          Refresh
-        </button>
-        <button
-          class="px-3 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
-          @click="openCreateDirModal"
-        >
-          New Folder
-        </button>
-        <button
-          class="px-3 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
-          @click="openCreateFileModal"
-        >
-          New File
-        </button>
-        <button
-          class="px-3 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
-          @click="triggerUpload"
-        >
-          Upload
-        </button>
+      <div class="text-sm text-gray-500 dark:text-neutral-400">
+        Right click for actions · Drag to move
       </div>
     </div>
 
     <div class="flex items-center gap-2 flex-wrap text-sm">
-      <button class="text-primary hover:underline" @click="navigateToPath('')">
+      <button
+        class="text-primary hover:underline"
+        :class="dragOverBreadcrumbPath === '' ? 'font-semibold underline' : ''"
+        @click="navigateToPath('')"
+        @dragover="onBreadcrumbDragOver('', $event)"
+        @dragleave="onBreadcrumbDragLeave('')"
+        @drop="onBreadcrumbDrop('', $event)"
+      >
         /
       </button>
       <template v-for="(crumb, idx) in breadcrumbs" :key="crumb.path || 'root'">
         <span class="text-gray-400 dark:text-neutral-600">/</span>
         <button
           class="text-primary hover:underline"
+          :class="
+            dragOverBreadcrumbPath === crumb.path
+              ? 'font-semibold underline'
+              : ''
+          "
           @click="navigateToPath(crumb.path)"
+          @dragover="onBreadcrumbDragOver(crumb.path, $event)"
+          @dragleave="onBreadcrumbDragLeave(crumb.path)"
+          @drop="onBreadcrumbDrop(crumb.path, $event)"
         >
           {{ crumb.label }}
         </button>
@@ -74,7 +121,10 @@
         >
           {{ currentPath || "/" }} · {{ filteredEntries.length }} items
         </div>
-        <div class="flex-1 min-h-0 overflow-auto">
+        <div
+          class="flex-1 min-h-0 overflow-auto"
+          @contextmenu="openEmptyAreaContextMenu"
+        >
           <div
             v-if="listLoading"
             class="p-4 text-sm text-gray-500 dark:text-neutral-400"
@@ -96,14 +146,26 @@
                 <th class="px-3 py-2">Name</th>
                 <th class="px-3 py-2">Size</th>
                 <th class="px-3 py-2">Modified</th>
-                <th class="px-3 py-2 w-[260px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="entry in filteredEntries"
                 :key="entry.path"
+                data-entry-row="true"
                 class="border-t border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900"
+                :class="
+                  dragOverDirPath === entry.path && entry.isDir
+                    ? 'bg-primary/10 dark:bg-primary/20'
+                    : ''
+                "
+                draggable="true"
+                @dragstart="onEntryDragStart(entry, $event)"
+                @dragend="onEntryDragEnd"
+                @contextmenu="openEntryContextMenu(entry, $event)"
+                @dragover="onEntryDragOver(entry, $event)"
+                @dragleave="onEntryDragLeave(entry)"
+                @drop="onEntryDrop(entry, $event)"
               >
                 <td class="px-3 py-2">
                   <button
@@ -123,36 +185,6 @@
                 </td>
                 <td class="px-3 py-2 text-gray-500 dark:text-neutral-400">
                   {{ formatDate(entry.modifiedAt) }}
-                </td>
-                <td class="px-3 py-2">
-                  <div class="flex items-center gap-1 flex-wrap">
-                    <button
-                      v-if="!entry.isDir"
-                      class="px-2 py-1 rounded border border-gray-300 dark:border-neutral-700 text-xs text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
-                      @click="openFile(entry.path)"
-                    >
-                      Open
-                    </button>
-                    <button
-                      v-if="!entry.isDir"
-                      class="px-2 py-1 rounded border border-gray-300 dark:border-neutral-700 text-xs text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
-                      @click="downloadFile(entry.path)"
-                    >
-                      Download
-                    </button>
-                    <button
-                      class="px-2 py-1 rounded border border-gray-300 dark:border-neutral-700 text-xs text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
-                      @click="openRenameModal(entry.path)"
-                    >
-                      Rename/Move
-                    </button>
-                    <button
-                      class="px-2 py-1 rounded border border-red-300 text-red-600 text-xs hover:bg-red-50 dark:hover:bg-red-900/20"
-                      @click="openDeleteModal(entry.path)"
-                    >
-                      Delete
-                    </button>
-                  </div>
                 </td>
               </tr>
             </tbody>
@@ -229,6 +261,95 @@
     />
 
     <div
+      v-if="contextMenuOpen"
+      class="fixed inset-0 z-40"
+      @click="closeContextMenu"
+      @contextmenu.prevent
+    >
+      <div
+        data-files-context-menu="true"
+        class="fixed z-50 min-w-[210px] bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl py-1"
+        :style="{ left: `${contextMenuX}px`, top: `${contextMenuY}px` }"
+        @click.stop
+      >
+        <template v-if="contextTargetType === 'file'">
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextOpenTarget"
+          >
+            Open
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextDownloadTarget"
+          >
+            Download
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextRenameTarget"
+          >
+            Rename
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            @click="contextDeleteTarget"
+          >
+            Delete
+          </button>
+        </template>
+
+        <template v-else-if="contextTargetType === 'dir'">
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextOpenTarget"
+          >
+            Open
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextRenameTarget"
+          >
+            Rename
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            @click="contextDeleteTarget"
+          >
+            Delete
+          </button>
+        </template>
+
+        <template v-else>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextCreateFile"
+          >
+            New file
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextCreateFolder"
+          >
+            New folder
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextUpload"
+          >
+            Upload
+          </button>
+          <button
+            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"
+            @click="contextRefresh"
+          >
+            Refresh
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <div
       v-if="warningModalOpen"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
     >
@@ -239,15 +360,15 @@
           Warning
         </h2>
         <p class="text-sm text-gray-700 dark:text-neutral-300 leading-relaxed">
-          Любое случайное изменение файлов может повредить сохранение, мир или
-          конфигурацию сервера. Продолжайте только если понимаете риск.
+          Any accidental file change may damage saves, world data, or server
+          configuration. Continue only if you understand the risk.
         </p>
         <div class="mt-5 flex justify-end">
           <button
             class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
             @click="warningModalOpen = false"
           >
-            Я понимаю риск
+            I understand the risk
           </button>
         </div>
       </div>
@@ -301,378 +422,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-definePageMeta({ middleware: "auth" });
-
-interface FileEntry {
-  name: string;
-  path: string;
-  isDir: boolean;
-  size: number;
-  modifiedAt: string;
-}
-
-interface ReadFileResponse {
-  path: string;
-  size: number;
-  content: string;
-  isBinary: boolean;
-  tooLarge: boolean;
-  maxEditableBytes: number;
-}
-
-const route = useRoute();
-const { agentId } = useCurrentAgent();
-const { show: showToast } = useToast();
-const serverId = route.params.serverId as string;
-
-const warningModalOpen = ref(true);
-const uploadInput = ref<HTMLInputElement | null>(null);
-
-const currentPath = ref("");
-const search = ref("");
-const listLoading = ref(false);
-const listError = ref("");
-const entries = ref<FileEntry[]>([]);
-
-const openedFilePath = ref("");
-const openedFileState = ref<ReadFileResponse | null>(null);
-const editorContent = ref("");
-const editorLoading = ref(false);
-const editorError = ref("");
-const saveLoading = ref(false);
-
-const confirmModalOpen = ref(false);
-const confirmLoading = ref(false);
-const confirmTitle = ref("");
-const confirmMessage = ref("");
-const confirmInputLabel = ref("");
-const confirmInputValue = ref("");
-const confirmButtonText = ref("Confirm");
-const confirmDanger = ref(false);
-let onConfirm: (() => Promise<void>) | null = null;
-
-const canGoUp = computed(() => !!currentPath.value);
-
-const breadcrumbs = computed(() => {
-  if (!currentPath.value) return [];
-  const parts = currentPath.value.split("/").filter(Boolean);
-  return parts.map((label, idx) => ({
-    label,
-    path: parts.slice(0, idx + 1).join("/"),
-  }));
-});
-
-const filteredEntries = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return entries.value;
-  return entries.value.filter((entry) => entry.name.toLowerCase().includes(q));
-});
-
-function normalizePath(path: string): string {
-  return path.split("/").filter(Boolean).join("/");
-}
-
-function buildChildPath(basePath: string, childName: string): string {
-  return normalizePath([basePath, childName].filter(Boolean).join("/"));
-}
-
-function parentPath(path: string): string {
-  const parts = normalizePath(path).split("/").filter(Boolean);
-  parts.pop();
-  return parts.join("/");
-}
-
-function formatSize(size: number): string {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  if (size < 1024 * 1024 * 1024)
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
-}
-
-async function refreshList() {
-  listLoading.value = true;
-  listError.value = "";
-  try {
-    const res = await $fetch<{ path: string; entries: FileEntry[] }>(
-      `/agent/${agentId.value}/servers/${serverId}/files`,
-      {
-        baseURL: useApiBase(),
-        credentials: "include",
-        query: { path: currentPath.value || undefined },
-      },
-    );
-    entries.value = res.entries || [];
-  } catch (err: any) {
-    listError.value =
-      err?.data?.detail || err?.message || "Failed to load files";
-  } finally {
-    listLoading.value = false;
-  }
-}
-
-async function navigateToPath(path: string) {
-  currentPath.value = normalizePath(path);
-  await refreshList();
-}
-
-async function goUp() {
-  await navigateToPath(parentPath(currentPath.value));
-}
-
-async function openEntry(entry: FileEntry) {
-  if (entry.isDir) {
-    await navigateToPath(entry.path);
-    return;
-  }
-  await openFile(entry.path);
-}
-
-async function openFile(path: string) {
-  openedFilePath.value = path;
-  editorLoading.value = true;
-  editorError.value = "";
-  openedFileState.value = null;
-  editorContent.value = "";
-  try {
-    const res = await $fetch<ReadFileResponse>(
-      `/agent/${agentId.value}/servers/${serverId}/file`,
-      {
-        baseURL: useApiBase(),
-        credentials: "include",
-        query: { path },
-      },
-    );
-    openedFileState.value = res;
-    editorContent.value = res.content || "";
-  } catch (err: any) {
-    editorError.value =
-      err?.data?.detail || err?.message || "Failed to open file";
-  } finally {
-    editorLoading.value = false;
-  }
-}
-
-function downloadFile(path: string) {
-  const qs = new URLSearchParams({ path }).toString();
-  window.open(
-    `${useApiBase()}/agent/${agentId.value}/servers/${serverId}/files/download?${qs}`,
-    "_blank",
-  );
-}
-
-function triggerUpload() {
-  uploadInput.value?.click();
-}
-
-async function onUploadSelected(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0] ?? null;
-  input.value = "";
-  if (!file) return;
-  openConfirmModal({
-    title: "Confirm upload",
-    message: `Upload file ${file.name} to ${currentPath.value || "/"}?`,
-    buttonText: "Upload",
-    danger: false,
-    action: async () => {
-      const formData = new FormData();
-      formData.append("file", file);
-      await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/upload`, {
-        baseURL: useApiBase(),
-        credentials: "include",
-        method: "POST",
-        query: { path: currentPath.value || undefined },
-        body: formData,
-      });
-      showToast("success", "Upload completed", { description: file.name });
-      await refreshList();
-    },
-  });
-}
-
-function openCreateDirModal() {
-  openConfirmModal({
-    title: "Create folder",
-    message: `Create folder in ${currentPath.value || "/"}`,
-    inputLabel: "Folder name",
-    buttonText: "Create",
-    danger: false,
-    action: async (value) => {
-      const name = value.trim();
-      if (!name) throw new Error("Folder name is required");
-      const path = buildChildPath(currentPath.value, name);
-      await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/mkdir`, {
-        baseURL: useApiBase(),
-        credentials: "include",
-        method: "POST",
-        body: { path },
-      });
-      showToast("success", "Folder created", { description: path });
-      await refreshList();
-    },
-  });
-}
-
-function openCreateFileModal() {
-  openConfirmModal({
-    title: "Create file",
-    message: `Create file in ${currentPath.value || "/"}`,
-    inputLabel: "File name",
-    buttonText: "Create",
-    danger: false,
-    action: async (value) => {
-      const name = value.trim();
-      if (!name) throw new Error("File name is required");
-      const path = buildChildPath(currentPath.value, name);
-      await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/create`, {
-        baseURL: useApiBase(),
-        credentials: "include",
-        method: "POST",
-        body: { path, content: "" },
-      });
-      showToast("success", "File created", { description: path });
-      await refreshList();
-    },
-  });
-}
-
-function openRenameModal(path: string) {
-  openConfirmModal({
-    title: "Rename or move",
-    message: `Current path: ${path}`,
-    inputLabel: "New relative path",
-    initialValue: path,
-    buttonText: "Apply",
-    danger: false,
-    action: async (value) => {
-      const target = normalizePath(value);
-      if (!target) throw new Error("Target path is required");
-      await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/move`, {
-        baseURL: useApiBase(),
-        credentials: "include",
-        method: "POST",
-        body: { fromPath: path, toPath: target },
-      });
-      if (openedFilePath.value === path) {
-        openedFilePath.value = target;
-      }
-      showToast("success", "Path updated", {
-        description: `${path} → ${target}`,
-      });
-      await refreshList();
-    },
-  });
-}
-
-function openDeleteModal(path: string) {
-  openConfirmModal({
-    title: "Delete",
-    message: `Delete ${path}? This action cannot be undone.`,
-    buttonText: "Delete",
-    danger: true,
-    action: async () => {
-      await $fetch(`/agent/${agentId.value}/servers/${serverId}/files`, {
-        baseURL: useApiBase(),
-        credentials: "include",
-        method: "DELETE",
-        query: { path },
-      });
-      if (openedFilePath.value === path) {
-        openedFilePath.value = "";
-        openedFileState.value = null;
-        editorContent.value = "";
-      }
-      showToast("success", "Deleted", { description: path });
-      await refreshList();
-    },
-  });
-}
-
-function openSaveModal() {
-  if (!openedFilePath.value) return;
-  openConfirmModal({
-    title: "Save file",
-    message: `Save changes to ${openedFilePath.value}?`,
-    buttonText: "Save",
-    danger: true,
-    action: async () => {
-      saveLoading.value = true;
-      try {
-        await $fetch(`/agent/${agentId.value}/servers/${serverId}/file`, {
-          baseURL: useApiBase(),
-          credentials: "include",
-          method: "PUT",
-          body: {
-            path: openedFilePath.value,
-            content: editorContent.value,
-          },
-        });
-        showToast("success", "File saved", {
-          description: openedFilePath.value,
-        });
-        await refreshList();
-      } finally {
-        saveLoading.value = false;
-      }
-    },
-  });
-}
-
-function openConfirmModal(options: {
-  title: string;
-  message: string;
-  buttonText: string;
-  danger: boolean;
-  inputLabel?: string;
-  initialValue?: string;
-  action: (value: string) => Promise<void>;
-}) {
-  confirmTitle.value = options.title;
-  confirmMessage.value = options.message;
-  confirmButtonText.value = options.buttonText;
-  confirmDanger.value = options.danger;
-  confirmInputLabel.value = options.inputLabel || "";
-  confirmInputValue.value = options.initialValue || "";
-  onConfirm = () => options.action(confirmInputValue.value);
-  confirmModalOpen.value = true;
-}
-
-function closeConfirmModal() {
-  if (confirmLoading.value) return;
-  forceCloseConfirmModal();
-}
-
-function forceCloseConfirmModal() {
-  confirmModalOpen.value = false;
-  confirmInputLabel.value = "";
-  confirmInputValue.value = "";
-  onConfirm = null;
-}
-
-async function confirmAction() {
-  if (!onConfirm) return;
-  confirmLoading.value = true;
-  try {
-    await onConfirm();
-    forceCloseConfirmModal();
-  } catch (err: any) {
-    const msg = err?.data?.detail || err?.message || "Action failed";
-    showToast("error", "Operation failed", { description: msg });
-  } finally {
-    confirmLoading.value = false;
-  }
-}
-
-onMounted(async () => {
-  await refreshList();
-});
-</script>
