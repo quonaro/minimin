@@ -14,13 +14,15 @@
     </div>
 
     <div v-else-if="servers.length === 0" class="text-center py-12">
-      <p class="text-gray-500 dark:text-gray-400">No servers found for this agent</p>
+      <p class="text-gray-500 dark:text-gray-400">
+        No servers found for this agent
+      </p>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
         v-for="server in servers"
-        :key="server.id"
+        :key="server.server_id"
         class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
       >
         <div class="flex items-start justify-between mb-4">
@@ -28,9 +30,6 @@
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
               {{ server.server_id }}
             </h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ server.agent_id }}
-            </p>
           </div>
           <span
             :class="getStatusColor(server.status)"
@@ -41,7 +40,9 @@
         </div>
 
         <div class="space-y-2 mb-4">
-          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <div
+            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="w-4 h-4"
@@ -58,7 +59,9 @@
             </svg>
             <span>Port: {{ server.game_port }}</span>
           </div>
-          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <div
+            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="w-4 h-4"
@@ -73,9 +76,11 @@
                 d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"
               />
             </svg>
-            <span>{{ server.engine }}</span>
+            <span>{{ server.engine_type }}</span>
           </div>
-          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <div
+            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="w-4 h-4"
@@ -90,12 +95,12 @@
                 d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
               />
             </svg>
-            <span>{{ server.version }}</span>
+            <span>{{ server.game_version }}</span>
           </div>
         </div>
 
         <NuxtLink
-          :to="`/agent/${agentId}/servers/${server.id}`"
+          :to="`/agent/${agentId}/servers/${server.server_id}`"
           class="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium text-sm"
         >
           View Details
@@ -125,13 +130,11 @@ definePageMeta({
 });
 
 interface Server {
-  id: string;
   server_id: string;
-  agent_id: string;
   status: string;
   game_port: number;
-  engine: string;
-  version: string;
+  engine_type: string;
+  game_version: string;
 }
 
 const { agentId, agent, pending } = useCurrentAgent();
@@ -140,11 +143,12 @@ const agentName = computed(() => agent.value?.name ?? "");
 
 const servers = ref<Server[]>([]);
 
-const { data } = await useApiFetch<{ body: Server[] }>("/servers");
+const { data } = await useApiFetch<{ body: Server[] }>(
+  `/agent/${agentId.value}/servers`,
+);
 
 if (data.value && typeof data.value === "object" && "body" in data.value) {
-  const all = (data.value as any).body as Server[];
-  servers.value = all.filter((s) => s.agent_id === agentId.value);
+  servers.value = (data.value as any).body as Server[];
 }
 
 function getStatusColor(status: string) {

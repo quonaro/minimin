@@ -104,14 +104,6 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 			DefaultStatus: http.StatusNoContent,
 		}, h.DeleteAgent)
 
-		// Server endpoints (aggregated)
-		huma.Register(hapi, huma.Operation{
-			OperationID: "list-servers",
-			Method:      http.MethodGet,
-			Path:        "/servers",
-			Summary:     "List all servers from all agents (cached)",
-		}, h.ListServers)
-
 		// Proxy endpoints to agents
 		huma.Register(hapi, huma.Operation{
 			OperationID: "proxy-server-create",

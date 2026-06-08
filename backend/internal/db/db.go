@@ -46,19 +46,6 @@ func (db *DB) initSchema() error {
 		created_at TEXT NOT NULL
 	);
 
-	CREATE TABLE IF NOT EXISTS servers_cache (
-		id TEXT PRIMARY KEY,
-		agent_id TEXT NOT NULL,
-		server_id TEXT NOT NULL,
-		status TEXT NOT NULL,
-		game_port INTEGER NOT NULL,
-		engine TEXT NOT NULL,
-		version TEXT NOT NULL,
-		updated_at TEXT NOT NULL,
-		FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_servers_cache_agent_id ON servers_cache(agent_id);
 	`
 
 	if _, err := db.conn.Exec(schema); err != nil {
@@ -139,68 +126,5 @@ func (db *DB) DeleteAgent(id string) error {
 		return fmt.Errorf("agent not found")
 	}
 	slog.Info("agent deleted", "id", id)
-	return nil
-}
-
-// CachedServer represents a cached server state from an agent.
-type CachedServer struct {
-	ID        string    `json:"id"`
-	AgentID   string    `json:"agent_id"`
-	ServerID  string    `json:"server_id"`
-	Status    string    `json:"status"`
-	GamePort  int       `json:"game_port"`
-	Engine    string    `json:"engine"`
-	Version   string    `json:"version"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// UpsertServerCache inserts or updates a cached server.
-func (db *DB) UpsertServerCache(server CachedServer) error {
-	query := `
-	INSERT INTO servers_cache (id, agent_id, server_id, status, game_port, engine, version, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	ON CONFLICT(id) DO UPDATE SET
-		status = excluded.status,
-		game_port = excluded.game_port,
-		engine = excluded.engine,
-		version = excluded.version,
-		updated_at = excluded.updated_at
-	`
-	_, err := db.conn.Exec(query, server.ID, server.AgentID, server.ServerID, server.Status, server.GamePort, server.Engine, server.Version, server.UpdatedAt.UTC().Format(time.RFC3339))
-	if err != nil {
-		return fmt.Errorf("failed to upsert server cache: %w", err)
-	}
-	return nil
-}
-
-// ListCachedServers returns all cached servers.
-func (db *DB) ListCachedServers() ([]CachedServer, error) {
-	query := `SELECT id, agent_id, server_id, status, game_port, engine, version, updated_at FROM servers_cache ORDER BY updated_at DESC`
-	rows, err := db.conn.Query(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list cached servers: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var servers []CachedServer
-	for rows.Next() {
-		var server CachedServer
-		var updatedAtStr string
-		if err := rows.Scan(&server.ID, &server.AgentID, &server.ServerID, &server.Status, &server.GamePort, &server.Engine, &server.Version, &updatedAtStr); err != nil {
-			return nil, fmt.Errorf("failed to scan cached server: %w", err)
-		}
-		server.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-		servers = append(servers, server)
-	}
-	return servers, nil
-}
-
-// DeleteAgentCache removes all cached servers for an agent.
-func (db *DB) DeleteAgentCache(agentID string) error {
-	query := `DELETE FROM servers_cache WHERE agent_id = ?`
-	_, err := db.conn.Exec(query, agentID)
-	if err != nil {
-		return fmt.Errorf("failed to delete agent cache: %w", err)
-	}
 	return nil
 }

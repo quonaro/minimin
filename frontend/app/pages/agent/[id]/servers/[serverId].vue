@@ -43,9 +43,7 @@
           <span class="font-semibold text-gray-700 dark:text-gray-300"
             >Agent ID:</span
           >
-          <span class="ml-2 text-gray-900 dark:text-white">{{
-            server.agent_id
-          }}</span>
+          <span class="ml-2 text-gray-900 dark:text-white">{{ agentId }}</span>
         </div>
         <div>
           <span class="font-semibold text-gray-700 dark:text-gray-300"
@@ -71,7 +69,7 @@
             >Engine:</span
           >
           <span class="ml-2 text-gray-900 dark:text-white">{{
-            server.engine
+            server.engine_type
           }}</span>
         </div>
         <div>
@@ -79,7 +77,7 @@
             >Version:</span
           >
           <span class="ml-2 text-gray-900 dark:text-white">{{
-            server.version
+            server.game_version
           }}</span>
         </div>
       </div>
@@ -107,13 +105,11 @@
 
 <script setup lang="ts">
 interface Server {
-  id: string;
   server_id: string;
-  agent_id: string;
   status: string;
   game_port: number;
-  engine: string;
-  version: string;
+  engine_type: string;
+  game_version: string;
 }
 
 const route = useRoute();
@@ -122,13 +118,12 @@ const { agentId } = useCurrentAgent();
 const serverId = route.params.serverId as string;
 const server = ref<Server | null>(null);
 
-const { data } = await useApiFetch<{ body: Server[] }>("/servers");
+const { data } = await useApiFetch<{ body: Server }>(
+  `/agent/${agentId.value}/servers/${serverId}`,
+);
 
 if (data.value && typeof data.value === "object" && "body" in data.value) {
-  const servers = (data.value as any).body as Server[];
-  server.value =
-    servers.find((s) => s.id === serverId && s.agent_id === agentId.value) ||
-    null;
+  server.value = (data.value as any).body as Server;
 }
 
 function getStatusColor(status: string) {

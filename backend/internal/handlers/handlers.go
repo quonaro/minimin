@@ -122,9 +122,6 @@ func (h *Handler) DeleteAgent(ctx context.Context, input *DeleteAgentInput) (*De
 		}
 		return nil, huma.Error500InternalServerError("failed to delete agent", err)
 	}
-	if err := h.DB.DeleteAgentCache(input.ID); err != nil {
-		slog.Warn("failed to delete agent cache", "agent_id", input.ID, "error", err)
-	}
 	return &DeleteAgentOutput{}, nil
 }
 
@@ -192,23 +189,6 @@ func (h *Handler) GetOrchestratorKey(ctx context.Context, input *GetOrchestrator
 		return nil, huma.Error401Unauthorized("invalid API key", nil)
 	}
 	return &GetOrchestratorKeyOutput{Body: GetOrchestratorKeyOutputBody{Valid: true}}, nil
-}
-
-// ListServersInput is the input for GET /servers.
-type ListServersInput struct{}
-
-// ListServersOutput is the output for GET /servers.
-type ListServersOutput struct {
-	Body []db.CachedServer
-}
-
-// ListServers returns aggregated servers from all agents (cached).
-func (h *Handler) ListServers(ctx context.Context, input *ListServersInput) (*ListServersOutput, error) {
-	servers, err := h.DB.ListCachedServers()
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to list servers", err)
-	}
-	return &ListServersOutput{Body: servers}, nil
 }
 
 // ProxyServerInput is the input for proxying to agent servers.
