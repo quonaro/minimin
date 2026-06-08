@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -17,10 +18,12 @@ type AgentStatus struct {
 
 // Store holds in-memory agent health statuses and manages WebSocket clients.
 type Store struct {
-	mu       sync.RWMutex
-	statuses map[string]bool
-	clients  map[*websocket.Conn]bool
-	upgrader websocket.Upgrader
+	mu            sync.RWMutex
+	statuses      map[string]bool
+	clients       map[*websocket.Conn]bool
+	upgrader      websocket.Upgrader
+	lastCheckAt   time.Time
+	checkInterval time.Duration
 }
 
 // NewStore creates a new Store.
@@ -32,6 +35,27 @@ func NewStore() *Store {
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 	}
+}
+
+// SetCheckInterval sets the interval between health checks.
+func (s *Store) SetCheckInterval(d time.Duration) {
+	s.mu.Lock()
+	s.checkInterval = d
+	s.mu.Unlock()
+}
+
+// SetLastCheck records the time of the most recent health check.
+func (s *Store) SetLastCheck(t time.Time) {
+	s.mu.Lock()
+	s.lastCheckAt = t
+	s.mu.Unlock()
+}
+
+// NextCheckAt returns the estimated time of the next health check.
+func (s *Store) NextCheckAt() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.lastCheckAt.Add(s.checkInterval)
 }
 
 // Set updates the online status for a given agent.
@@ -61,7 +85,14 @@ func (s *Store) All() []AgentStatus {
 
 // Broadcast marshals the current statuses and sends them to all connected clients.
 func (s *Store) Broadcast() {
-	msg, err := json.Marshal(s.All())
+	payload := struct {
+		Statuses    []AgentStatus `json:"statuses"`
+		NextCheckAt time.Time     `json:"next_check_at"`
+	}{
+		Statuses:    s.All(),
+		NextCheckAt: s.NextCheckAt(),
+	}
+	msg, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("failed to marshal agent statuses", "error", err)
 		return
@@ -83,7 +114,14 @@ func (s *Store) AddClient(conn *websocket.Conn) {
 	s.clients[conn] = true
 	s.mu.Unlock()
 
-	msg, err := json.Marshal(s.All())
+	payload := struct {
+		Statuses    []AgentStatus `json:"statuses"`
+		NextCheckAt time.Time     `json:"next_check_at"`
+	}{
+		Statuses:    s.All(),
+		NextCheckAt: s.NextCheckAt(),
+	}
+	msg, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("failed to marshal initial statuses", "error", err)
 		return

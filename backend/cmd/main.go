@@ -52,6 +52,7 @@ func main() {
 	defer func() { _ = database.Close() }()
 
 	statusStore := status.NewStore()
+	statusStore.SetCheckInterval(30 * time.Second)
 
 	jwtService := jwt.NewService(jwtSecret)
 	h := handlers.NewHandler(database, apiKey, jwtService, statusStore)
@@ -70,8 +71,10 @@ func main() {
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
+		statusStore.SetLastCheck(time.Now())
 		h.CheckAllAgents()
 		for range ticker.C {
+			statusStore.SetLastCheck(time.Now())
 			h.CheckAllAgents()
 		}
 	}()

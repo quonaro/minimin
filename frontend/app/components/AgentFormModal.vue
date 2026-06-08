@@ -50,7 +50,7 @@
               </button>
             </div>
 
-            <form @submit.prevent="submit" class="space-y-4">
+            <form @submit.prevent="handleSubmit" class="space-y-4">
               <div>
                 <label
                   for="agent-name"
@@ -122,28 +122,58 @@
               </div>
 
               <div class="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  @click="close"
-                  class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  :disabled="checking"
-                  @click="checkConnection"
-                  class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {{ checking ? "Checking..." : "Check" }}
-                </button>
-                <button
-                  type="submit"
-                  :disabled="loading"
-                  class="flex-1 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {{ loading ? "Registering..." : "Register" }}
-                </button>
+                <template v-if="!confirmShown">
+                  <button
+                    type="button"
+                    @click="close"
+                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="checking"
+                    @click="checkConnection"
+                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {{ checking ? "Checking..." : "Check" }}
+                  </button>
+                  <button
+                    v-if="checkStatus !== 'idle'"
+                    type="submit"
+                    :disabled="loading"
+                    :class="[
+                      'flex-1 px-4 py-2 rounded-lg text-white transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed',
+                      checkStatus === 'error'
+                        ? 'bg-orange-500 hover:bg-orange-600'
+                        : 'bg-primary hover:bg-primary/90',
+                    ]"
+                  >
+                    {{ loading ? "Registering..." : "Register" }}
+                  </button>
+                </template>
+                <template v-else>
+                  <div
+                    class="flex-1 text-sm text-orange-500 dark:text-orange-400 self-center"
+                  >
+                    Agent is not responding. Register anyway?
+                  </div>
+                  <button
+                    type="button"
+                    @click="confirmShown = false"
+                    class="px-4 py-2 rounded-lg border border-gray-300 dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="loading"
+                    @click="submit"
+                    class="px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {{ loading ? "Registering..." : "Register Anyway" }}
+                  </button>
+                </template>
               </div>
             </form>
           </div>
@@ -376,6 +406,7 @@ const error = ref("");
 const checking = ref(false);
 const checkStatus = ref<"idle" | "success" | "error">("idle");
 const checkError = ref("");
+const confirmShown = ref(false);
 
 function close() {
   emit("update:modelValue", false);
@@ -391,6 +422,7 @@ function resetForm() {
   checking.value = false;
   checkStatus.value = "idle";
   checkError.value = "";
+  confirmShown.value = false;
 }
 
 async function checkConnection() {
@@ -399,6 +431,7 @@ async function checkConnection() {
     checkError.value = "Host and API key are required";
     return;
   }
+  confirmShown.value = false;
   checking.value = true;
   checkStatus.value = "idle";
   checkError.value = "";
@@ -429,6 +462,17 @@ async function checkConnection() {
       err?.data?.detail || err?.message || "Could not reach agent";
   } finally {
     checking.value = false;
+  }
+}
+
+function handleSubmit() {
+  if (checkStatus.value === "success" || confirmShown.value) {
+    submit();
+  } else if (checkStatus.value === "error") {
+    confirmShown.value = true;
+  } else {
+    checkStatus.value = "error";
+    checkError.value = "Please check the connection first";
   }
 }
 

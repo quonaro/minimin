@@ -17,8 +17,8 @@
       </div>
     </div>
 
-    <nav class="flex-1 p-4 space-y-2">
-      <div class="space-y-1">
+    <nav class="flex-1 p-4 space-y-2 flex flex-col">
+      <div class="space-y-1 flex-1">
         <div class="flex items-stretch gap-1">
           <NuxtLink
             to="/agents"
@@ -90,6 +90,27 @@
             <span class="truncate">{{ agent.name }}</span>
           </NuxtLink>
         </div>
+      </div>
+
+      <div
+        v-if="nextCheckAt"
+        class="mt-auto pt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-3.5 h-3.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <span>Next check in {{ countdown }}</span>
       </div>
     </nav>
 
@@ -197,6 +218,24 @@ function isAgentsActive() {
 
 // WebSocket connection for agent statuses
 const agentStatuses = ref<Record<string, boolean>>({});
+const nextCheckAt = ref<Date | null>(null);
+const countdown = ref<string>("");
+
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+function updateCountdown() {
+  if (!nextCheckAt.value) {
+    countdown.value = "";
+    return;
+  }
+  const diff = Math.max(
+    0,
+    Math.ceil((nextCheckAt.value.getTime() - Date.now()) / 1000),
+  );
+  const m = Math.floor(diff / 60);
+  const s = diff % 60;
+  countdown.value = m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${s}s`;
+}
 
 onMounted(() => {
   const wsUrl = "ws://localhost:8081/ws/agents";
@@ -204,15 +243,26 @@ onMounted(() => {
 
   ws.onmessage = (event) => {
     try {
-      const statuses = JSON.parse(event.data) as Array<{
-        id: string;
-        online: boolean;
-      }>;
+      const data = JSON.parse(event.data);
+      if (Array.isArray(data)) {
+        // Legacy format fallback
+        const newStatuses: Record<string, boolean> = {};
+        for (const status of data) {
+          newStatuses[status.id] = status.online;
+        }
+        agentStatuses.value = newStatuses;
+        return;
+      }
+      const statuses = data.statuses as Array<{ id: string; online: boolean }>;
       const newStatuses: Record<string, boolean> = {};
       for (const status of statuses) {
         newStatuses[status.id] = status.online;
       }
       agentStatuses.value = newStatuses;
+      if (data.next_check_at) {
+        nextCheckAt.value = new Date(data.next_check_at as string);
+        updateCountdown();
+      }
     } catch (e) {
       console.error("Failed to parse agent statuses:", e);
     }
@@ -229,8 +279,13 @@ onMounted(() => {
     }, 5000);
   };
 
+  countdownTimer = setInterval(updateCountdown, 1000);
+
   onUnmounted(() => {
     ws.close();
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+    }
   });
 });
 

@@ -134,6 +134,9 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 			Summary:     "Proxy server actions (start/stop/restart/logs/players/rcon) to agent",
 		}, h.ProxyServer)
 
+		// Generic reverse proxy: any request to /agent/{id}/<anything> is forwarded to the agent's /api/v1/<anything>.
+		r.HandleFunc("/agent/{id}/*", h.ProxyAgent)
+
 		// Orchestrator key for frontend (legacy, kept for compatibility)
 		huma.Register(hapi, huma.Operation{
 			OperationID: "get-orchestrator-key",

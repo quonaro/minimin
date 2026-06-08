@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -77,6 +78,9 @@ func (h *Handler) ListAgents(ctx context.Context, input *ListAgentsInput) (*List
 	if err != nil {
 		return nil, huma.Error500InternalServerError("failed to list agents", err)
 	}
+	for i := range agents {
+		agents[i].APIKey = ""
+	}
 	return &ListAgentsOutput{Body: agents}, nil
 }
 
@@ -98,6 +102,7 @@ func (h *Handler) GetAgent(ctx context.Context, input *GetAgentInput) (*GetAgent
 		slog.Warn("agent not found in DB", "id", input.ID)
 		return nil, huma.Error404NotFound("agent not found", nil)
 	}
+	agent.APIKey = ""
 	return &GetAgentOutput{Body: agent}, nil
 }
 
@@ -233,6 +238,66 @@ func (h *Handler) ProxyServer(ctx context.Context, input *ProxyServerInput) (*Pr
 	return &ProxyServerOutput{Body: map[string]string{
 		"message": fmt.Sprintf("Proxy to %s for server %s action %s not yet implemented", agent.Host, input.ServerID, input.Action),
 	}}, nil
+}
+
+// ProxyAgent is a raw HTTP reverse proxy to an agent. Any path under /agent/{id}/* is forwarded to the agent's /api/v1/*.
+func (h *Handler) ProxyAgent(w http.ResponseWriter, r *http.Request) {
+	parts := strings.SplitN(r.URL.Path, "/", 4)
+	if len(parts) < 4 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid proxy path"})
+		return
+	}
+
+	agentID := parts[2]
+	suffix := parts[3]
+
+	agent, ok := h.DB.GetAgent(agentID)
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "agent not found"})
+		return
+	}
+
+	targetURL := strings.TrimSuffix(agent.Host, "/") + "/api/v1/" + suffix
+	if r.URL.RawQuery != "" {
+		targetURL += "?" + r.URL.RawQuery
+	}
+
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, r.Body)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed to create proxy request"})
+		return
+	}
+
+	for k, vv := range r.Header {
+		for _, v := range vv {
+			req.Header.Add(k, v)
+		}
+	}
+	req.Header.Set("Authorization", "Bearer "+agent.APIKey)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "agent unreachable"})
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	for k, vv := range resp.Header {
+		for _, v := range vv {
+			w.Header().Add(k, v)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, resp.Body)
 }
 
 // LoginInput is the input for POST /auth/login.
