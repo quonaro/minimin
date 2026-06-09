@@ -1,157 +1,160 @@
 <template>
-  <div class="p-6 h-[calc(100vh-4rem)] flex flex-col">
-    <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
-      <div class="flex items-center gap-4">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          Console
-        </h1>
-      </div>
+  <div class="flex flex-col h-[calc(100vh-4rem)]">
+    <server-nav class="shrink-0 px-6 pt-6" />
+    <div class="flex-1 min-h-0 px-6 pb-6 flex flex-col">
+      <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-4">
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+            Console
+          </h1>
+        </div>
 
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            :class="{
-              'text-green-500': wsStatus === 'Connected',
-              'text-red-500':
-                wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-neutral-400': !wsStatus,
-            }"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
-            />
-          </svg>
-          <span
-            class="text-xs leading-none"
-            :class="{
-              'text-green-500': wsStatus === 'Connected',
-              'text-red-500':
-                wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-neutral-400': !wsStatus,
-            }"
-          >
-            {{ wsStatus || "Connecting..." }}
-          </span>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              :class="{
+                'text-green-500': wsStatus === 'Connected',
+                'text-red-500':
+                  wsStatus === 'Error' || wsStatus === 'Disconnected',
+                'text-gray-500 dark:text-neutral-400': !wsStatus,
+              }"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
+              />
+            </svg>
+            <span
+              class="text-xs leading-none"
+              :class="{
+                'text-green-500': wsStatus === 'Connected',
+                'text-red-500':
+                  wsStatus === 'Error' || wsStatus === 'Disconnected',
+                'text-gray-500 dark:text-neutral-400': !wsStatus,
+              }"
+            >
+              {{ wsStatus || "Connecting..." }}
+            </span>
+            <button
+              class="text-xs leading-none rounded-full bg-primary text-white hover:bg-primary/90 focus:outline-none px-2 py-0.5"
+              @click="reconnect"
+            >
+              Reconnect
+            </button>
+          </div>
+
           <button
-            class="text-xs leading-none rounded-full bg-primary text-white hover:bg-primary/90 focus:outline-none px-2 py-0.5"
-            @click="reconnect"
+            class="text-xs leading-none rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 focus:outline-none px-2 py-0.5"
+            @click="clearMessages"
           >
-            Reconnect
+            Clear
           </button>
         </div>
-
-        <button
-          class="text-xs leading-none rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 focus:outline-none px-2 py-0.5"
-          @click="clearMessages"
-        >
-          Clear
-        </button>
       </div>
-    </div>
 
-    <div
-      ref="msgContainer"
-      :class="[
-        'flex-1 min-h-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
-        fontSize,
-      ]"
-      @scroll="onScroll"
-    >
       <div
-        v-if="messages.length === 0 && !wsStatus"
-        class="text-gray-500 italic"
+        ref="msgContainer"
+        :class="[
+          'flex-1 min-h-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
+          fontSize,
+        ]"
+        @scroll="onScroll"
       >
-        Waiting for connection...
-      </div>
-      <template v-else>
         <div
-          v-for="(msg, i) in messages"
-          :key="i"
-          class="flex gap-2 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors"
+          v-if="messages.length === 0 && !wsStatus"
+          class="text-gray-500 italic"
         >
-          <span
-            class="text-gray-400 dark:text-neutral-600 select-none tabular-nums shrink-0"
-          >
-            {{ formatTime(msg.timestamp) }}
-          </span>
-          <span
-            v-if="msg.type === 'command'"
-            class="whitespace-pre-wrap break-words text-primary dark:text-primary-400"
-          >
-            > {{ msg.text }}
-          </span>
-          <span
-            v-else-if="msg.type === 'error'"
-            class="whitespace-pre-wrap break-words text-red-600 dark:text-red-400"
-          >
-            {{ msg.text }}
-          </span>
-          <span
-            v-else
-            class="whitespace-pre-wrap break-words text-gray-700 dark:text-neutral-300"
-          >
-            {{ msg.text }}
-          </span>
+          Waiting for connection...
         </div>
-      </template>
-    </div>
-
-    <div class="mt-4 flex items-center gap-2">
-      <div class="flex-1 relative">
-        <input
-          ref="inputRef"
-          v-model="command"
-          type="text"
-          placeholder="Type a command and press Enter..."
-          class="w-full bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-          :disabled="wsStatus !== 'Connected'"
-          @input="onInput"
-          @keydown.enter.prevent="onEnter"
-          @keydown.up.prevent="onUp"
-          @keydown.down.prevent="onDown"
-          @keydown.tab="onTab"
-          @keydown.esc.prevent="closeSuggestions"
-        />
-        <div
-          v-if="showSuggestions && filteredCommands.length"
-          class="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg z-50"
-        >
+        <template v-else>
           <div
-            v-for="(cmd, i) in filteredCommands"
-            :key="cmd.name"
-            class="px-3 py-2 cursor-pointer text-sm font-mono flex items-center justify-between"
-            :class="{
-              'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300':
-                selectedIndex === i,
-              'text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700/50':
-                selectedIndex !== i,
-            }"
-            @click="acceptSuggestion(i)"
-            @mouseenter="selectedIndex = i"
+            v-for="(msg, i) in messages"
+            :key="i"
+            class="flex gap-2 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors"
           >
-            <span>{{ cmd.name }}</span>
             <span
-              class="text-xs text-gray-400 dark:text-neutral-500 truncate ml-2 max-w-[60%]"
-              >{{ cmd.desc }}</span
+              class="text-gray-400 dark:text-neutral-600 select-none tabular-nums shrink-0"
             >
+              {{ formatTime(msg.timestamp) }}
+            </span>
+            <span
+              v-if="msg.type === 'command'"
+              class="whitespace-pre-wrap break-words text-primary dark:text-primary-400"
+            >
+              > {{ msg.text }}
+            </span>
+            <span
+              v-else-if="msg.type === 'error'"
+              class="whitespace-pre-wrap break-words text-red-600 dark:text-red-400"
+            >
+              {{ msg.text }}
+            </span>
+            <span
+              v-else
+              class="whitespace-pre-wrap break-words text-gray-700 dark:text-neutral-300"
+            >
+              {{ msg.text }}
+            </span>
+          </div>
+        </template>
+      </div>
+
+      <div class="mt-4 flex items-center gap-2">
+        <div class="flex-1 relative">
+          <input
+            ref="inputRef"
+            v-model="command"
+            type="text"
+            placeholder="Type a command and press Enter..."
+            class="w-full bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+            :disabled="wsStatus !== 'Connected'"
+            @input="onInput"
+            @keydown.enter.prevent="onEnter"
+            @keydown.up.prevent="onUp"
+            @keydown.down.prevent="onDown"
+            @keydown.tab="onTab"
+            @keydown.esc.prevent="closeSuggestions"
+          />
+          <div
+            v-if="showSuggestions && filteredCommands.length"
+            class="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg z-50"
+          >
+            <div
+              v-for="(cmd, i) in filteredCommands"
+              :key="cmd.name"
+              class="px-3 py-2 cursor-pointer text-sm font-mono flex items-center justify-between"
+              :class="{
+                'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300':
+                  selectedIndex === i,
+                'text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700/50':
+                  selectedIndex !== i,
+              }"
+              @click="acceptSuggestion(i)"
+              @mouseenter="selectedIndex = i"
+            >
+              <span>{{ cmd.name }}</span>
+              <span
+                class="text-xs text-gray-400 dark:text-neutral-500 truncate ml-2 max-w-[60%]"
+                >{{ cmd.desc }}</span
+              >
+            </div>
           </div>
         </div>
+        <button
+          class="bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg px-4 py-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="!command.trim() || wsStatus !== 'Connected'"
+          @click="sendCommand"
+        >
+          Send
+        </button>
       </div>
-      <button
-        class="bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg px-4 py-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-        :disabled="!command.trim() || wsStatus !== 'Connected'"
-        @click="sendCommand"
-      >
-        Send
-      </button>
     </div>
   </div>
 </template>

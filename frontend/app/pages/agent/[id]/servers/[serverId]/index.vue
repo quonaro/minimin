@@ -103,6 +103,7 @@
                 <span
                   v-if="containerUptime"
                   class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
+                  :title="`Started at: ${formatTimestamp(containerStartedAt)}`"
                 >
                   <Clock
                     class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400"
@@ -112,6 +113,7 @@
                 <span
                   v-if="serverUptime"
                   class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
+                  :title="`Started at: ${formatTimestamp(serverStartedAt)}`"
                 >
                   <Clock
                     class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400"
@@ -126,6 +128,9 @@
                 </span>
               </div>
             </div>
+
+            <!-- Sub-page navigation -->
+            <server-nav class="mb-6" />
 
             <!-- Info tiles -->
             <div
@@ -403,43 +408,67 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex flex-wrap gap-3">
-              <button
-                :disabled="
-                  actionLoading ||
-                  server?.containerStatus === 'running' ||
-                  isPending
-                "
-                class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                @click="doAction('start')"
-              >
-                <Play class="w-4 h-4" />
-                Start
-              </button>
-              <button
-                :disabled="
-                  actionLoading ||
-                  server?.containerStatus !== 'running' ||
-                  isPending
-                "
-                class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                @click="doAction('stop')"
-              >
-                <Square class="w-4 h-4" />
-                Stop
-              </button>
-              <button
-                :disabled="
-                  actionLoading ||
-                  server?.containerStatus !== 'running' ||
-                  isPending
-                "
-                class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                @click="doAction('restart')"
-              >
-                <RotateCcw class="w-4 h-4" />
-                Restart
-              </button>
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex flex-wrap gap-3">
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus === 'running' ||
+                    isPending
+                  "
+                  class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  @click="doAction('start')"
+                >
+                  <Play class="w-4 h-4" />
+                  Start
+                </button>
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus !== 'running' ||
+                    isPending
+                  "
+                  class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  @click="doAction('stop')"
+                >
+                  <Square class="w-4 h-4" />
+                  Stop
+                </button>
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus !== 'running' ||
+                    isPending
+                  "
+                  class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  @click="doAction('restart')"
+                >
+                  <RotateCcw class="w-4 h-4" />
+                  Restart
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-3 ml-auto">
+                <button
+                  v-if="
+                    server.containerStatus === 'running' ||
+                    server.containerStatus === 'exited'
+                  "
+                  :disabled="recreateLoading || isPending"
+                  class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  @click="promptRecreate"
+                >
+                  <RefreshCw class="w-4 h-4" />
+                  Recreate World
+                </button>
+                <button
+                  :disabled="deleteLoading || isPending"
+                  class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  @click="promptDelete"
+                >
+                  <Trash2 class="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -464,6 +493,26 @@
     </div>
 
     <div v-else class="text-gray-500 dark:text-neutral-400">Loading...</div>
+
+    <confirm-dialog
+      v-if="server"
+      v-model="showDeleteDialog"
+      title="Delete Server"
+      :description="`Delete server &quot;${serverId}&quot;? The container will be removed.`"
+      confirm-label="Delete"
+      danger
+      show-wipe
+      @confirm="onDeleteConfirmed"
+    />
+    <confirm-dialog
+      v-if="server"
+      v-model="showRecreateDialog"
+      title="Recreate World"
+      :description="`This will permanently delete the current world for &quot;${serverId}&quot; and restart the server with a fresh world. This cannot be undone.`"
+      confirm-label="Recreate"
+      danger
+      @confirm="onRecreateConfirmed"
+    />
   </div>
 </template>
 
@@ -483,28 +532,14 @@ import {
   Square,
   Tag,
   Terminal,
+  Trash2,
   X as XIcon,
 } from "lucide-vue-next";
+import type { Server } from "~/composables/useServers";
 
 definePageMeta({
   middleware: "auth",
 });
-
-interface Server {
-  serverId: string;
-  status?: string; // legacy
-  containerStatus: string;
-  containerStartedAt?: string;
-  serverStatus: string;
-  serverStartedAt?: string;
-  desiredStatus?: string;
-  gamePort: number;
-  publicRcon: boolean;
-  rconPort?: number;
-  restartPolicy?: string;
-  engineType: string;
-  gameVersion: string;
-}
 
 const route = useRoute();
 const { agentId } = useCurrentAgent();
@@ -513,6 +548,7 @@ const { lastEvent } = useEventSource();
 
 const serverId = route.params.serverId as string;
 const server = ref<Server | null>(null);
+const { refresh: refreshServers } = useServers(agentId);
 const actionLoading = ref(false);
 const iconTimestamp = ref(Date.now());
 const iconError = ref(false);
@@ -527,6 +563,10 @@ const editingPublicRcon = ref(false);
 const tempPublicRcon = ref(false);
 const tempRconPort = ref<number | null>(null);
 const rconLoading = ref(false);
+const deleteLoading = ref(false);
+const recreateLoading = ref(false);
+const showDeleteDialog = ref(false);
+const showRecreateDialog = ref(false);
 const showIconEditor = ref(false);
 const selectedIconFile = ref<File | null>(null);
 
@@ -556,6 +596,11 @@ const serverStartedAt = computed(() => {
   }
   return server.value.serverStartedAt;
 });
+
+function formatTimestamp(iso: string | undefined): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString();
+}
 
 const containerUptime = useUptime(containerStartedAt);
 const serverUptime = useUptime(serverStartedAt);
@@ -826,6 +871,56 @@ async function doAction(action: "start" | "stop" | "restart") {
     }
   } finally {
     actionLoading.value = false;
+  }
+}
+
+function promptDelete() {
+  showDeleteDialog.value = true;
+}
+
+async function onDeleteConfirmed(wipe: boolean) {
+  deleteLoading.value = true;
+  try {
+    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+      baseURL: useApiBase(),
+      method: "DELETE",
+      credentials: "include",
+      query: { wipe: wipe ? "true" : "false" },
+    });
+    showToast("success", "Server deleted", {
+      description: `${serverId} has been removed.`,
+    });
+    await refreshServers();
+    await navigateTo(`/agent/${agentId.value}/servers`);
+  } catch (err: any) {
+    const msg = err?.data?.detail || err?.message || "Failed to delete server";
+    showToast("error", "Delete failed", { description: msg });
+  } finally {
+    deleteLoading.value = false;
+  }
+}
+
+function promptRecreate() {
+  showRecreateDialog.value = true;
+}
+
+async function onRecreateConfirmed() {
+  recreateLoading.value = true;
+  try {
+    await $fetch(`/agent/${agentId.value}/servers/${serverId}/recreate-world`, {
+      baseURL: useApiBase(),
+      method: "POST",
+      credentials: "include",
+    });
+    showToast("info", "World recreate requested", {
+      description: `${serverId} — world will be reset.`,
+    });
+    await refresh();
+  } catch (err: any) {
+    const msg = err?.data?.detail || err?.message || "Failed to recreate world";
+    showToast("error", "Recreate failed", { description: msg });
+  } finally {
+    recreateLoading.value = false;
   }
 }
 </script>

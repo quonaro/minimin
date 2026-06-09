@@ -105,7 +105,7 @@
               >
                 <span
                   class="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  :class="getServerStatusColor(server.status)"
+                  :class="getServerStatusColor(server.serverStatus)"
                 ></span>
                 <span class="truncate">{{ server.serverId }}</span>
               </NuxtLink>
@@ -250,6 +250,8 @@
 </template>
 
 <script setup lang="ts">
+import type { Server } from "~/composables/useServers";
+
 const showForm = ref(false);
 
 const colorMode = useColorMode();
@@ -258,12 +260,6 @@ const { logout } = useAuth();
 
 const serverId = computed(() => route.params.serverId as string | undefined);
 const agentId = computed(() => route.params.id as string | undefined);
-
-interface Server {
-  serverId: string;
-  status: string;
-  name?: string;
-}
 
 interface ServerNavItem {
   label: string;
@@ -287,7 +283,7 @@ watch(
     const server = agentServers.value.find(
       (s: Server) => s.serverId === serverId.value,
     );
-    currentServerStatus.value = server?.status ?? "";
+    currentServerStatus.value = server?.serverStatus ?? "";
   },
   { immediate: true },
 );
@@ -316,13 +312,14 @@ watch(lastEvent, (evt) => {
   if (evt.type === "server.status") {
     if (evt.agentId !== agentId.value) return;
 
-    if (evt.serverId === serverId.value && evt.newStatus) {
-      currentServerStatus.value = evt.newStatus;
+    if (evt.serverId === serverId.value && evt.newServerStatus) {
+      currentServerStatus.value = evt.newServerStatus;
     }
 
     const server = agentServers.value.find((s) => s.serverId === evt.serverId);
     if (server) {
-      server.status = evt.newStatus || server.status;
+      server.containerStatus = evt.newContainerStatus || server.containerStatus;
+      server.serverStatus = evt.newServerStatus || server.serverStatus;
     }
   }
 });

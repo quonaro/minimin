@@ -99,21 +99,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useUptime } from "~/composables/useDuration";
+import type { Server } from "~/composables/useServers";
 import { Activity, Clock, Network, Tag, ChevronRight } from "lucide-vue-next";
-
-interface Server {
-  serverId: string;
-  status?: string; // legacy
-  containerStatus: string;
-  containerStartedAt?: string;
-  serverStatus: string;
-  serverStartedAt?: string;
-  gamePort: number;
-  publicRcon?: boolean;
-  rconPort?: number;
-  engineType: string;
-  gameVersion: string;
-}
 
 const props = defineProps<{
   server: Server;

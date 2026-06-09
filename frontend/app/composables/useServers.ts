@@ -1,13 +1,17 @@
-interface Server {
+export interface Server {
   serverId: string;
-  status: string;
+  containerStatus: string;
+  containerStartedAt?: string;
+  serverStatus: string;
+  serverStartedAt?: string;
+  desiredStatus?: string;
   name?: string;
   gamePort: number;
-  publicRcon?: boolean;
+  publicRcon: boolean;
   rconPort?: number;
+  restartPolicy?: string;
   engineType: string;
   gameVersion: string;
-  startedAt?: string;
 }
 
 export function useServers(agentId: Ref<string | undefined>) {

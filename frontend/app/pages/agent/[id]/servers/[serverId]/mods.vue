@@ -1,33 +1,36 @@
 <template>
-  <div class="p-6 h-[calc(100vh-4rem)]">
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Mods</h1>
-      <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
-        Manage installed mods and browse Modrinth library.
-      </p>
-    </div>
+  <div class="flex flex-col h-[calc(100vh-4rem)]">
+    <server-nav class="shrink-0 px-6 pt-6" />
+    <div class="flex-1 min-h-0 px-6 pb-6 flex flex-col">
+      <div class="mb-4">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Mods</h1>
+        <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
+          Manage installed mods and browse Modrinth library.
+        </p>
+      </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100%-4rem)]">
-      <installed-mods
-        :mods="mods"
-        :loading="loading"
-        :upload-loading="uploadLoading"
-        @delete="deleteMod"
-        @upload="handleUpload"
-      />
-      <mod-library
-        :search-query="modrinth.searchQuery.value"
-        :search-results="modrinth.searchResults.value"
-        :search-loading="modrinth.searchLoading.value"
-        :loader="serverEngine"
-        :game-version="serverGameVersion"
-        :install-loading="modrinth.installLoading.value"
-        :versions="versionsMap"
-        @update:search-query="(v) => (modrinth.searchQuery.value = v)"
-        @search="modrinth.search(serverEngine, serverGameVersion)"
-        @install="handleInstall"
-        @load-versions="handleLoadVersions"
-      />
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+        <installed-mods
+          :mods="mods"
+          :loading="loading"
+          :upload-loading="uploadLoading"
+          @delete="deleteMod"
+          @upload="handleUpload"
+        />
+        <mod-library
+          :search-query="modrinth.searchQuery.value"
+          :search-results="modrinth.searchResults.value"
+          :search-loading="modrinth.searchLoading.value"
+          :loader="serverEngine"
+          :game-version="serverGameVersion"
+          :install-loading="modrinth.installLoading.value"
+          :versions="versionsMap"
+          @update:search-query="(v) => (modrinth.searchQuery.value = v)"
+          @search="modrinth.search(serverEngine, serverGameVersion)"
+          @install="handleInstall"
+          @load-versions="handleLoadVersions"
+        />
+      </div>
     </div>
   </div>
 </template>
