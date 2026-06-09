@@ -22,6 +22,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// RequestTypeHeader is the HTTP header used to identify the origin of orchestrator-to-agent requests.
+const RequestTypeHeader = "X-Request-Type"
+
+// setAgentHeaders sets the Authorization and X-Request-Type headers on an outgoing agent request.
+func setAgentHeaders(req *http.Request, apiKey, reqType string) {
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set(RequestTypeHeader, reqType)
+}
+
 // Handler holds dependencies for the orchestrator API.
 type Handler struct {
 	DB     *db.DB
@@ -156,7 +165,7 @@ func (h *Handler) CheckAgent(ctx context.Context, input *CheckAgentInput) (*Chec
 	if err != nil {
 		return nil, huma.Error500InternalServerError("failed to create request", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+input.Body.APIKey)
+	setAgentHeaders(req, input.Body.APIKey, "check")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -263,7 +272,7 @@ func (h *Handler) ProxyAgent(w http.ResponseWriter, r *http.Request) {
 			req.Header.Add(k, v)
 		}
 	}
-	req.Header.Set("Authorization", "Bearer "+agent.APIKey)
+	setAgentHeaders(req, agent.APIKey, "proxy")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -416,7 +425,7 @@ func (h *Handler) pingAgent(host, apiKey string) bool {
 	if err != nil {
 		return false
 	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	setAgentHeaders(req, apiKey, "health-check")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -461,7 +470,7 @@ func (h *Handler) PollServerStatuses(lastKnown *sync.Map) bool {
 			if err != nil {
 				return
 			}
-			req.Header.Set("Authorization", "Bearer "+a.APIKey)
+			setAgentHeaders(req, a.APIKey, "poll")
 			client := &http.Client{Timeout: 10 * time.Second}
 			resp, err := client.Do(req)
 			if err != nil {
@@ -473,23 +482,10 @@ func (h *Handler) PollServerStatuses(lastKnown *sync.Map) bool {
 			}
 
 			var body struct {
-				Body []agentServer `json:"body"`
+				Body []agentServer `json:"Body"`
 			}
 			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-				// Try raw array fallback
-				resp.Body.Close()
-				req2, _ := http.NewRequest(http.MethodGet, url, nil)
-				req2.Header.Set("Authorization", "Bearer "+a.APIKey)
-				resp2, err2 := client.Do(req2)
-				if err2 != nil {
-					return
-				}
-				defer func() { _ = resp2.Body.Close() }()
-				var list []agentServer
-				if err2 = json.NewDecoder(resp2.Body).Decode(&list); err2 != nil {
-					return
-				}
-				body.Body = list
+				return
 			}
 
 			for _, srv := range body.Body {

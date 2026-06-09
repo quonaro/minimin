@@ -24,7 +24,7 @@ export function useServers(agentId: Ref<string | undefined>) {
   const { data: serversData, pending, error, refresh } = useApiFetch<
     Server[] | { body: Server[] }
   >(serversUrl as any, {
-    key: computed(() => `agent-servers-${id.value ?? 'none'}`),
+    key: `agent-servers-${agentId.value ?? 'none'}`,
   });
 
   const servers = computed<Server[]>(() => {

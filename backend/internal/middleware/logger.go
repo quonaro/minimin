@@ -49,17 +49,28 @@ func (rr *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 }
 
 // RequestLogger logs each HTTP request with method, path, status and duration.
+// Statuses >= 400 are logged as errors so they stand out in the logs.
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &responseRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		slog.Info("request",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", rec.status,
-			"bytes", rec.bytes,
-			"duration", time.Since(start),
-		)
+		if rec.status >= 400 {
+			slog.Error("request",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", rec.status,
+				"bytes", rec.bytes,
+				"duration", time.Since(start),
+			)
+		} else {
+			slog.Info("request",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", rec.status,
+				"bytes", rec.bytes,
+				"duration", time.Since(start),
+			)
+		}
 	})
 }

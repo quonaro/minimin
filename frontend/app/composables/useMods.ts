@@ -7,6 +7,7 @@ export interface ModInfo {
   size: number;
   description?: string;
   icon?: string;
+  enabled?: boolean;
 }
 
 export function useMods(agentId: Ref<string | undefined>, serverId: string) {
@@ -114,6 +115,29 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
     }
   }
 
+  async function toggleMod(filename: string) {
+    if (!agentId.value) return;
+    try {
+      const res = await $fetch<{ body?: { filename: string; enabled: boolean } }>(
+        `/agent/${agentId.value}/servers/${serverId}/mods/${encodeURIComponent(filename)}/toggle`,
+        {
+          baseURL: useApiBase(),
+          method: "POST",
+          credentials: "include",
+        },
+      );
+      const data = (res as any).body ?? res;
+      show("success", data.enabled ? "Mod enabled" : "Mod disabled", {
+        description: data.filename,
+      });
+      await refresh();
+    } catch (err: any) {
+      show("error", "Failed to toggle mod", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    }
+  }
+
   return {
     mods,
     loading,
@@ -123,5 +147,6 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
     deleteMod,
     uploadFile,
     downloadFromURL,
+    toggleMod,
   };
 }

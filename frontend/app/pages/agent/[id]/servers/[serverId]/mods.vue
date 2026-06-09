@@ -26,38 +26,66 @@
       <button
         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors disabled:opacity-50"
         :disabled="downloadLoading"
-        @click="showUrlInput = !showUrlInput"
+        @click="showDownloadModal = true"
       >
         <Link class="w-4 h-4" />
         {{ downloadLoading ? "Downloading..." : "Download from URL" }}
       </button>
     </div>
 
-    <div v-if="showUrlInput" class="mb-4 flex items-center gap-2">
-      <input
-        v-model="modUrl"
-        type="url"
-        placeholder="https://example.com/mod.jar"
-        class="flex-1 min-w-0 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-neutral-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-        @keyup.enter="handleDownloadFromURL"
-      />
-      <button
-        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-        :disabled="downloadLoading || !modUrl"
-        @click="handleDownloadFromURL"
+    <div
+      v-if="showDownloadModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="showDownloadModal = false"
+    >
+      <div
+        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-md"
       >
-        <Download class="w-4 h-4" />
-        Download
-      </button>
-      <button
-        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
-        @click="
-          showUrlInput = false;
-          modUrl = '';
-        "
-      >
-        Cancel
-      </button>
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Download from URL
+          </h2>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+            >
+              Mod URL
+            </label>
+            <input
+              v-model="modUrl"
+              type="url"
+              placeholder="https://example.com/mod.jar"
+              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow text-sm"
+              @keyup.enter="handleDownloadFromURL"
+            />
+          </div>
+        </div>
+
+        <div
+          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
+        >
+          <button
+            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
+            @click="
+              showDownloadModal = false;
+              modUrl = '';
+            "
+          >
+            Cancel
+          </button>
+          <button
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="downloadLoading || !modUrl"
+            @click="handleDownloadFromURL"
+          >
+            <Download class="w-4 h-4" />
+            {{ downloadLoading ? "Downloading..." : "Download" }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
@@ -72,6 +100,7 @@
             :server-id="serverId"
             @delete="deleteMod"
             @upload="handleUpload"
+            @toggle="handleToggle"
           />
         </div>
       </div>
@@ -122,10 +151,11 @@ const {
   deleteMod,
   uploadFile,
   downloadFromURL,
+  toggleMod,
 } = useMods(agentId, serverId);
 
 const fileInput = ref<HTMLInputElement | null>(null);
-const showUrlInput = ref(false);
+const showDownloadModal = ref(false);
 const modUrl = ref("");
 
 function onFileSelect(e: Event) {
@@ -140,7 +170,7 @@ async function handleDownloadFromURL() {
   if (!modUrl.value) return;
   await downloadFromURL(modUrl.value);
   modUrl.value = "";
-  showUrlInput.value = false;
+  showDownloadModal.value = false;
 }
 
 const modrinth = useModrinth();
@@ -198,6 +228,10 @@ async function fetchServerInfo() {
 
 async function handleUpload(file: File) {
   await uploadFile(file);
+}
+
+async function handleToggle(filename: string) {
+  await toggleMod(filename);
 }
 
 async function handleInstall(projectId: string, versionId: string) {

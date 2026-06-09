@@ -28,7 +28,12 @@
       <div
         v-for="mod in mods"
         :key="mod.filename"
-        class="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600 transition-colors"
+        class="flex items-start gap-3 p-3 rounded-xl border transition-colors"
+        :class="
+          mod.enabled !== false
+            ? 'bg-gray-50 dark:bg-neutral-700/50 border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
+            : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
+        "
       >
         <div
           class="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-neutral-600"
@@ -67,20 +72,30 @@
             {{ mod.description }}
           </p>
         </div>
-        <button
-          class="text-gray-400 hover:text-red-500 transition-colors shrink-0 p-1"
-          :disabled="loading"
-          @click="emit('delete', mod.filename)"
-        >
-          <Trash2 class="w-4 h-4" />
-        </button>
+        <div class="flex items-center gap-1 shrink-0">
+          <button
+            class="text-gray-400 hover:text-primary transition-colors p-1"
+            :title="mod.enabled !== false ? 'Disable mod' : 'Enable mod'"
+            @click="emit('toggle', mod.filename)"
+          >
+            <Eye v-if="mod.enabled !== false" class="w-4 h-4" />
+            <EyeOff v-else class="w-4 h-4" />
+          </button>
+          <button
+            class="text-gray-400 hover:text-red-500 transition-colors p-1"
+            :disabled="loading"
+            @click="emit('delete', mod.filename)"
+          >
+            <Trash2 class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Box, Trash2 } from "lucide-vue-next";
+import { Box, Trash2, Eye, EyeOff } from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
 
 interface Props {
@@ -94,6 +109,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   delete: [filename: string];
   upload: [file: File];
+  toggle: [filename: string];
 }>();
 
 const iconLoaded = ref<Record<string, boolean>>({});
