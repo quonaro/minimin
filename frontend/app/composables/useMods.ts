@@ -13,6 +13,7 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
   const mods = ref<ModInfo[]>([]);
   const loading = ref(false);
   const uploadLoading = ref(false);
+  const downloadLoading = ref(false);
 
   const url = computed(() => {
     if (!agentId.value) return "";
@@ -81,12 +82,44 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
     }
   }
 
+  async function downloadFromURL(url: string, filename?: string) {
+    if (!agentId.value) return;
+    downloadLoading.value = true;
+    try {
+      const result = await $fetch<{ body?: { success: boolean; filename?: string } }>(
+        "/mods/download",
+        {
+          baseURL: useApiBase(),
+          method: "POST",
+          credentials: "include",
+          body: {
+            agentId: agentId.value,
+            serverId,
+            url,
+            filename,
+          },
+        },
+      );
+      const fn = (result as any).body?.filename || filename || "file";
+      show("success", "Download complete", { description: fn });
+      await refresh();
+    } catch (err: any) {
+      show("error", "Download failed", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    } finally {
+      downloadLoading.value = false;
+    }
+  }
+
   return {
     mods,
     loading,
     uploadLoading,
+    downloadLoading,
     refresh,
     deleteMod,
     uploadFile,
+    downloadFromURL,
   };
 }

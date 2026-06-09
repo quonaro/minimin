@@ -7,6 +7,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -132,6 +134,85 @@ func (h *Handler) ModInstall(ctx context.Context, input *ModInstallInput) (*ModI
 		Success  bool   `json:"success"`
 		Filename string `json:"filename,omitempty"`
 	}{Success: true, Filename: filename}}, nil
+}
+
+// ModDownloadInput is the input for POST /api/mods/download.
+type ModDownloadInput struct {
+	Body struct {
+		AgentID  string `json:"agentId" doc:"Agent ID"`
+		ServerID string `json:"serverId" doc:"Server ID"`
+		URL      string `json:"url" doc:"Direct download URL"`
+		Filename string `json:"filename,omitempty" doc:"Optional target filename"`
+	}
+}
+
+// ModDownloadOutput is the output for POST /api/mods/download.
+type ModDownloadOutput struct {
+	Body struct {
+		Success  bool   `json:"success"`
+		Filename string `json:"filename,omitempty"`
+	}
+}
+
+// ModDownload fetches a file from a URL and uploads it to the agent.
+func (h *Handler) ModDownload(ctx context.Context, input *ModDownloadInput) (*ModDownloadOutput, error) {
+	agent, ok := h.DB.GetAgent(input.Body.AgentID)
+	if !ok {
+		return nil, huma.Error404NotFound("agent not found", nil)
+	}
+
+	parsedURL, err := url.Parse(input.Body.URL)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		return nil, huma.Error400BadRequest("invalid URL", err)
+	}
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, input.Body.URL, nil)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("failed to create request", err)
+	}
+	req.Header.Set("User-Agent", "Minecraft-Server-Manager/1.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("download failed", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 300 {
+		return nil, huma.Error500InternalServerError("download returned non-2xx", fmt.Errorf("status %d", resp.StatusCode))
+	}
+
+	filename := input.Body.Filename
+	if filename == "" {
+		filename = filenameFromResponse(resp, parsedURL)
+	}
+	if filename == "" {
+		filename = "mod.jar"
+	}
+
+	if err := h.uploadModToAgent(agent.Host, agent.APIKey, input.Body.ServerID, filename, resp.Body); err != nil {
+		return nil, huma.Error500InternalServerError("failed to upload mod to agent", err)
+	}
+
+	return &ModDownloadOutput{Body: struct {
+		Success  bool   `json:"success"`
+		Filename string `json:"filename,omitempty"`
+	}{Success: true, Filename: filename}}, nil
+}
+
+func filenameFromResponse(resp *http.Response, parsedURL *url.URL) string {
+	cd := resp.Header.Get("Content-Disposition")
+	if cd != "" {
+		if idx := strings.Index(cd, "filename="); idx != -1 {
+			fn := cd[idx+len("filename="):]
+			fn = strings.Trim(fn, `"`)
+			if fn != "" {
+				return path.Base(fn)
+			}
+		}
+	}
+	return path.Base(parsedURL.Path)
 }
 
 func (h *Handler) uploadModToAgent(agentHost, apiKey, serverID, filename string, reader io.Reader) error {

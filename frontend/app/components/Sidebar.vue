@@ -95,7 +95,7 @@
               <NuxtLink
                 v-for="server in agentServers"
                 :key="server.serverId"
-                :to="`/agent/${agent.id}/servers/${server.serverId}`"
+                :to="getServerLink(server.serverId)"
                 class="flex items-center gap-2 px-3 py-1 rounded-lg text-xs transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
                 :class="
                   route.params.serverId === server.serverId
@@ -371,6 +371,16 @@ function getServerStatusColor(status: string) {
     default:
       return "bg-gray-400 dark:bg-neutral-500";
   }
+}
+
+function getServerLink(targetServerId: string) {
+  if (!agentId.value || !serverId.value) {
+    return `/agent/${agentId.value}/servers/${targetServerId}`;
+  }
+  return route.path.replace(
+    `/agent/${agentId.value}/servers/${serverId.value}`,
+    `/agent/${agentId.value}/servers/${targetServerId}`,
+  );
 }
 
 const serverNav = computed(() => {

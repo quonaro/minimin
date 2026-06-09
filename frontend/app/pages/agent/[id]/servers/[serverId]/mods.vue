@@ -7,7 +7,7 @@
       </p>
     </div>
 
-    <div class="mb-4">
+    <div class="mb-4 flex items-center gap-2 flex-wrap">
       <input
         ref="fileInput"
         type="file"
@@ -22,6 +22,41 @@
       >
         <Upload class="w-4 h-4" />
         {{ uploadLoading ? "Uploading..." : "Upload .jar or .zip" }}
+      </button>
+      <button
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors disabled:opacity-50"
+        :disabled="downloadLoading"
+        @click="showUrlInput = !showUrlInput"
+      >
+        <Link class="w-4 h-4" />
+        {{ downloadLoading ? "Downloading..." : "Download from URL" }}
+      </button>
+    </div>
+
+    <div v-if="showUrlInput" class="mb-4 flex items-center gap-2">
+      <input
+        v-model="modUrl"
+        type="url"
+        placeholder="https://example.com/mod.jar"
+        class="flex-1 min-w-0 px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-neutral-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+        @keyup.enter="handleDownloadFromURL"
+      />
+      <button
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
+        :disabled="downloadLoading || !modUrl"
+        @click="handleDownloadFromURL"
+      >
+        <Download class="w-4 h-4" />
+        Download
+      </button>
+      <button
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+        @click="
+          showUrlInput = false;
+          modUrl = '';
+        "
+      >
+        Cancel
       </button>
     </div>
 
@@ -64,7 +99,7 @@
 
 <script setup lang="ts">
 import { debounce } from "~/utils/debounce";
-import { Upload } from "lucide-vue-next";
+import { Upload, Link, Download } from "lucide-vue-next";
 
 definePageMeta({
   middleware: "auth",
@@ -74,10 +109,20 @@ const route = useRoute();
 const { agentId } = useCurrentAgent();
 const serverId = route.params.serverId as string;
 
-const { mods, loading, uploadLoading, refresh, deleteMod, uploadFile } =
-  useMods(agentId, serverId);
+const {
+  mods,
+  loading,
+  uploadLoading,
+  downloadLoading,
+  refresh,
+  deleteMod,
+  uploadFile,
+  downloadFromURL,
+} = useMods(agentId, serverId);
 
 const fileInput = ref<HTMLInputElement | null>(null);
+const showUrlInput = ref(false);
+const modUrl = ref("");
 
 function onFileSelect(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -85,6 +130,13 @@ function onFileSelect(e: Event) {
   if (!file) return;
   uploadFile(file);
   input.value = "";
+}
+
+async function handleDownloadFromURL() {
+  if (!modUrl.value) return;
+  await downloadFromURL(modUrl.value);
+  modUrl.value = "";
+  showUrlInput.value = false;
 }
 
 const modrinth = useModrinth();
@@ -119,8 +171,22 @@ async function fetchServerInfo() {
       credentials: "include",
     });
     const data = (res as any).body ?? res;
-    serverEngine.value = data.engineType ?? "";
+    const engine = (data.engineType ?? "").toUpperCase();
+    serverEngine.value = engine;
     serverGameVersion.value = data.gameVersion ?? "";
+
+    if (engine === "PAPERMC" || engine === "PAPER") {
+      await navigateTo(`/agent/${agentId.value}/servers/${serverId}/plugins`, {
+        replace: true,
+      });
+      return;
+    }
+    if (engine === "VANILLA") {
+      await navigateTo(`/agent/${agentId.value}/servers/${serverId}`, {
+        replace: true,
+      });
+      return;
+    }
   } catch {
     // ignore
   }

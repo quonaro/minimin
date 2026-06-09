@@ -201,6 +201,13 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 		}, h.ModInstall)
 
 		huma.Register(hapi, huma.Operation{
+			OperationID: "mod-download",
+			Method:      http.MethodPost,
+			Path:        "/mods/download",
+			Summary:     "Download a mod from a URL to the agent",
+		}, h.ModDownload)
+
+		huma.Register(hapi, huma.Operation{
 			OperationID: "mod-bulk-install",
 			Method:      http.MethodPost,
 			Path:        "/mods/bulk",

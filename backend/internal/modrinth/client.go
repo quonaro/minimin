@@ -49,15 +49,16 @@ func (c *Client) Search(query, loader, gameVersion string, offset, limit int) ([
 	q.Set("query", query)
 	q.Set("offset", fmt.Sprintf("%d", offset))
 	q.Set("limit", fmt.Sprintf("%d", limit))
-	var facets []string
+	var facets [][]string
 	if loader != "" {
-		facets = append(facets, fmt.Sprintf("[[\"categories:%s\"]]", loader))
+		facets = append(facets, []string{fmt.Sprintf("categories:%s", loader)})
 	}
 	if gameVersion != "" {
-		facets = append(facets, fmt.Sprintf("[[\"versions:%s\"]]", gameVersion))
+		facets = append(facets, []string{fmt.Sprintf("versions:%s", gameVersion)})
 	}
 	if len(facets) > 0 {
-		q.Set("facets", fmt.Sprintf("[%s]", facets[0]))
+		fb, _ := json.Marshal(facets)
+		q.Set("facets", string(fb))
 	}
 	u.RawQuery = q.Encode()
 
