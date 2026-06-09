@@ -5,6 +5,8 @@ export interface ModInfo {
   modid: string;
   authors: string;
   size: number;
+  description?: string;
+  icon?: string;
 }
 
 export function useMods(agentId: Ref<string | undefined>, serverId: string) {

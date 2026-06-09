@@ -36,6 +36,9 @@ export function useModrinth() {
   const searchQuery = ref("");
   const searchResults = ref<ModrinthProject[]>([]);
   const searchLoading = ref(false);
+  const searchOffset = ref(0);
+  const searchLimit = 20;
+  const hasMore = ref(true);
 
   const installLoading = ref<Record<string, boolean>>({});
   const bulkJobId = ref<string | null>(null);
@@ -43,11 +46,9 @@ export function useModrinth() {
   const bulkPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
 
   async function search(loader: string, gameVersion: string) {
-    if (!searchQuery.value.trim()) {
-      searchResults.value = [];
-      return;
-    }
     searchLoading.value = true;
+    searchOffset.value = 0;
+    hasMore.value = true;
     try {
       const res = await $fetch<{ body?: { results: ModrinthProject[] }; results?: ModrinthProject[] }>(
         "/mods/search",
@@ -58,13 +59,50 @@ export function useModrinth() {
             q: searchQuery.value,
             loader: loader.toLowerCase(),
             game_version: gameVersion,
-            limit: 20,
+            offset: 0,
+            limit: searchLimit,
           },
         },
       );
-      searchResults.value = (res as any).body?.results ?? (res as any).results ?? [];
+      const results = (res as any).body?.results ?? (res as any).results ?? [];
+      searchResults.value = results;
+      hasMore.value = results.length === searchLimit;
     } catch (err: any) {
       show("error", "Search failed", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+      searchResults.value = [];
+      hasMore.value = false;
+    } finally {
+      searchLoading.value = false;
+    }
+  }
+
+  async function searchMore(loader: string, gameVersion: string) {
+    if (searchLoading.value || !hasMore.value) return;
+    searchLoading.value = true;
+    const nextOffset = searchOffset.value + searchLimit;
+    try {
+      const res = await $fetch<{ body?: { results: ModrinthProject[] }; results?: ModrinthProject[] }>(
+        "/mods/search",
+        {
+          baseURL: useApiBase(),
+          credentials: "include",
+          query: {
+            q: searchQuery.value,
+            loader: loader.toLowerCase(),
+            game_version: gameVersion,
+            offset: nextOffset,
+            limit: searchLimit,
+          },
+        },
+      );
+      const results = (res as any).body?.results ?? (res as any).results ?? [];
+      searchResults.value.push(...results);
+      searchOffset.value = nextOffset;
+      hasMore.value = results.length === searchLimit;
+    } catch (err: any) {
+      show("error", "Failed to load more", {
         description: err?.data?.detail || err?.message || "Unknown error",
       });
     } finally {
@@ -194,10 +232,12 @@ export function useModrinth() {
     searchQuery,
     searchResults,
     searchLoading,
+    hasMore,
     installLoading,
     bulkJobId,
     bulkJob,
     search,
+    searchMore,
     getVersions,
     install,
     bulkInstall,

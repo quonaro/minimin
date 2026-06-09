@@ -27,9 +27,9 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+    <div class="flex-1 overflow-y-auto space-y-3 pr-1" ref="scrollContainer">
       <div
-        v-if="searchResults.length === 0 && !searchLoading && searchQuery"
+        v-if="searchResults.length === 0 && !searchLoading"
         class="text-center text-gray-500 dark:text-neutral-400 py-12 text-sm"
       >
         No results.
@@ -113,6 +113,17 @@
           </button>
         </div>
       </div>
+
+      <div
+        v-if="searchLoading && searchResults.length > 0"
+        class="py-4 flex justify-center"
+      >
+        <div
+          class="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"
+        />
+      </div>
+
+      <div ref="sentinel" class="h-1" />
     </div>
   </div>
 </template>
@@ -132,6 +143,7 @@ interface Props {
   gameVersion: string;
   installLoading: Record<string, boolean>;
   versions?: Record<string, ModrinthVersion[]>;
+  hasMore?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -142,9 +154,40 @@ const emit = defineEmits<{
   "update:searchQuery": [value: string];
   install: [projectId: string, versionId: string];
   "load-versions": [projectId: string];
+  "load-more": [];
 }>();
 
 const selectedVersion = ref<Record<string, string>>({});
+const scrollContainer = ref<HTMLDivElement | null>(null);
+const sentinel = ref<HTMLDivElement | null>(null);
+
+let observer: IntersectionObserver | null = null;
+
+onMounted(() => {
+  if (!sentinel.value) return;
+  observer = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0];
+      if (
+        entry &&
+        entry.isIntersecting &&
+        props.hasMore &&
+        !props.searchLoading
+      ) {
+        emit("load-more");
+      }
+    },
+    { root: scrollContainer.value, rootMargin: "200px" },
+  );
+  observer.observe(sentinel.value);
+});
+
+onUnmounted(() => {
+  if (observer && sentinel.value) {
+    observer.unobserve(sentinel.value);
+  }
+  observer = null;
+});
 
 function onSearch() {
   emit("search");

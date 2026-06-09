@@ -87,7 +87,6 @@ type VersionFile struct {
 	URL      string `json:"url"`
 	Filename string `json:"filename"`
 	Primary  bool   `json:"primary"`
-	SHA1     string `json:"hashes,omitempty"`
 }
 
 // Version is a specific version of a Modrinth project.

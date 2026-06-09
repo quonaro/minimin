@@ -68,6 +68,8 @@
           <installed-mods
             :mods="mods"
             :loading="loading"
+            :agent-id="agentId"
+            :server-id="serverId"
             @delete="deleteMod"
             @upload="handleUpload"
           />
@@ -86,8 +88,10 @@
             :game-version="serverGameVersion"
             :install-loading="modrinth.installLoading.value"
             :versions="versionsMap"
+            :has-more="modrinth.hasMore.value"
             @update:search-query="onSearchInput"
             @search="modrinth.search(serverEngine, serverGameVersion)"
+            @load-more="modrinth.searchMore(serverEngine, serverGameVersion)"
             @install="handleInstall"
             @load-versions="handleLoadVersions"
           />
@@ -215,6 +219,8 @@ async function handleLoadVersions(projectId: string) {
 
 onMounted(async () => {
   await fetchServerInfo();
+  if (!serverEngine.value) return;
   await refresh();
+  await modrinth.search(serverEngine.value, serverGameVersion.value);
 });
 </script>
