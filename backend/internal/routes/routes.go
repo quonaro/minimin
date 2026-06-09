@@ -178,6 +178,42 @@ func SetupRoutes(h *handlers.Handler, apiKey string, jwtService *jwt.Service, st
 			Summary:     "Get Forge versions",
 		}, h.GetForgeVersions)
 
+		// Modrinth endpoints
+		huma.Register(hapi, huma.Operation{
+			OperationID: "mod-search",
+			Method:      http.MethodGet,
+			Path:        "/mods/search",
+			Summary:     "Search mods on Modrinth",
+		}, h.ModSearch)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "mod-versions",
+			Method:      http.MethodGet,
+			Path:        "/mods/versions/{project_id}",
+			Summary:     "Get versions for a Modrinth project",
+		}, h.ModVersions)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "mod-install",
+			Method:      http.MethodPost,
+			Path:        "/mods/install",
+			Summary:     "Install a mod from Modrinth",
+		}, h.ModInstall)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "mod-bulk-install",
+			Method:      http.MethodPost,
+			Path:        "/mods/bulk",
+			Summary:     "Bulk install mods from Modrinth",
+		}, h.ModBulkInstall)
+
+		huma.Register(hapi, huma.Operation{
+			OperationID: "mod-bulk-job",
+			Method:      http.MethodGet,
+			Path:        "/mods/jobs/{job_id}",
+			Summary:     "Get bulk install job status",
+		}, h.ModBulkJob)
+
 		// Orchestrator key for frontend (legacy, kept for compatibility)
 		huma.Register(hapi, huma.Operation{
 			OperationID: "get-orchestrator-key",

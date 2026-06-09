@@ -12,6 +12,7 @@ import (
 type responseRecorder struct {
 	http.ResponseWriter
 	status int
+	bytes  int
 	wrote  bool
 }
 
@@ -28,7 +29,9 @@ func (rr *responseRecorder) Write(b []byte) (int, error) {
 		rr.status = http.StatusOK
 		rr.wrote = true
 	}
-	return rr.ResponseWriter.Write(b)
+	n, err := rr.ResponseWriter.Write(b)
+	rr.bytes += n
+	return n, err
 }
 
 func (rr *responseRecorder) Flush() {
@@ -55,7 +58,8 @@ func RequestLogger(next http.Handler) http.Handler {
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
-			"duration", time.Since(start).String(),
+			"bytes", rec.bytes,
+			"duration", time.Since(start),
 		)
 	})
 }
