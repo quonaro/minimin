@@ -129,9 +129,6 @@
               </div>
             </div>
 
-            <!-- Sub-page navigation -->
-            <server-nav class="mb-6" />
-
             <!-- Info tiles -->
             <div
               class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6"
@@ -474,21 +471,62 @@
         </div>
       </div>
 
+      <!-- Logs -->
+      <div
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
+      >
+        <button
+          class="w-full flex items-center justify-between p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          @click="toggleLogs"
+        >
+          <div class="flex items-center gap-3">
+            <Terminal class="w-5 h-5 text-gray-500 dark:text-neutral-400" />
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+              Logs
+            </h2>
+          </div>
+          <ChevronDown
+            class="w-5 h-5 text-gray-500 dark:text-neutral-400 transition-transform"
+            :class="{ 'rotate-180': logsExpanded }"
+          />
+        </button>
+        <div
+          v-show="logsExpanded"
+          class="px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6 h-96"
+        >
+          <server-logs
+            ref="serverLogsRef"
+            :server-id="serverId"
+            class="h-full"
+          />
+        </div>
+      </div>
+
       <!-- Server Properties -->
       <div
-        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-6 md:p-8 shadow-sm"
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
       >
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-            Server Properties
-          </h2>
-          <span
-            class="text-xs font-medium text-gray-500 dark:text-neutral-400 bg-gray-100 dark:bg-neutral-700 px-2.5 py-1 rounded-lg"
-          >
-            server.properties
-          </span>
+        <button
+          class="w-full flex items-center justify-between p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          @click="propertiesExpanded = !propertiesExpanded"
+        >
+          <div class="flex items-center gap-3">
+            <Pencil class="w-5 h-5 text-gray-500 dark:text-neutral-400" />
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+              Server Properties
+            </h2>
+          </div>
+          <ChevronDown
+            class="w-5 h-5 text-gray-500 dark:text-neutral-400 transition-transform"
+            :class="{ 'rotate-180': propertiesExpanded }"
+          />
+        </button>
+        <div
+          v-show="propertiesExpanded"
+          class="px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6"
+        >
+          <server-properties :agent-id="agentId" :server-id="serverId" />
         </div>
-        <server-properties :agent-id="agentId" :server-id="serverId" />
       </div>
     </div>
 
@@ -531,10 +569,12 @@ import {
   Server as ServerIcon,
   Square,
   Tag,
+  ChevronDown,
   Terminal,
   Trash2,
   X as XIcon,
 } from "lucide-vue-next";
+import { nextTick } from "vue";
 import type { Server } from "~/composables/useServers";
 
 definePageMeta({
@@ -569,6 +609,9 @@ const showDeleteDialog = ref(false);
 const showRecreateDialog = ref(false);
 const showIconEditor = ref(false);
 const selectedIconFile = ref<File | null>(null);
+const logsExpanded = ref(false);
+const propertiesExpanded = ref(false);
+const serverLogsRef = ref<{ scrollToBottom: () => void } | null>(null);
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
@@ -596,6 +639,13 @@ const serverStartedAt = computed(() => {
   }
   return server.value.serverStartedAt;
 });
+
+function toggleLogs() {
+  logsExpanded.value = !logsExpanded.value;
+  if (logsExpanded.value && serverLogsRef.value) {
+    nextTick(() => serverLogsRef.value!.scrollToBottom());
+  }
+}
 
 function formatTimestamp(iso: string | undefined): string {
   if (!iso) return "";

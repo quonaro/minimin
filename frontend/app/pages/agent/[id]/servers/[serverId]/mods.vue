@@ -1,7 +1,6 @@
 <template>
   <div class="flex flex-col h-[calc(100vh-4rem)]">
-    <server-nav class="shrink-0 px-6 pt-6" />
-    <div class="flex-1 min-h-0 px-6 pb-6 flex flex-col">
+    <div class="flex-1 min-h-0 px-6 pt-6 pb-6 flex flex-col">
       <div class="mb-4">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Mods</h1>
         <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">

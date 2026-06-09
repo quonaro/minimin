@@ -1,6 +1,5 @@
 <template>
   <div class="p-6">
-    <server-nav class="mb-4" />
     <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -423,10 +422,16 @@
         :players="allPlayers"
         :filter="searchQuery"
         :online="onlinePlayers"
+        :ops="opsList.map((o) => o.name)"
+        :banned="bansList.map((b) => b.name)"
+        :whitelisted="wlList.map((w) => w.name)"
         @kick="openReasonModal('kick', $event)"
         @ban="openReasonModal('ban', $event)"
+        @unban="sendRcon(`pardon ${$event}`)"
         @op="sendRcon(`op ${$event}`)"
+        @deop="sendRcon(`deop ${$event}`)"
         @wladd="sendRcon(`whitelist add ${$event}`)"
+        @wlremove="sendRcon(`whitelist remove ${$event}`)"
       />
     </div>
 

@@ -266,11 +266,14 @@ interface ServerNavItem {
   to: string;
   icon: string;
   requiresRunning?: boolean;
+  requiresContainerRunning?: boolean;
+  requiresFilesInitialized?: boolean;
 }
 
 const { servers: agentServers, refresh: refreshServers } = useServers(agentId);
 
 const currentServerStatus = ref("");
+const currentContainerStatus = ref("");
 const serverFilesInitialized = ref(true);
 
 watch(
@@ -284,6 +287,7 @@ watch(
       (s: Server) => s.serverId === serverId.value,
     );
     currentServerStatus.value = server?.serverStatus ?? "";
+    currentContainerStatus.value = server?.containerStatus ?? "";
   },
   { immediate: true },
 );
@@ -312,8 +316,13 @@ watch(lastEvent, (evt) => {
   if (evt.type === "server.status") {
     if (evt.agentId !== agentId.value) return;
 
-    if (evt.serverId === serverId.value && evt.newServerStatus) {
-      currentServerStatus.value = evt.newServerStatus;
+    if (evt.serverId === serverId.value) {
+      if (evt.newServerStatus) {
+        currentServerStatus.value = evt.newServerStatus;
+      }
+      if (evt.newContainerStatus) {
+        currentContainerStatus.value = evt.newContainerStatus;
+      }
     }
 
     const server = agentServers.value.find((s) => s.serverId === evt.serverId);
@@ -380,6 +389,7 @@ const serverNav = computed(() => {
       label: "Mods",
       to: `${base}/mods`,
       icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10",
+      requiresFilesInitialized: true,
     });
   }
   if (engine === "PAPERMC" || engine === "PAPER") {
@@ -387,6 +397,7 @@ const serverNav = computed(() => {
       label: "Plugins",
       to: `${base}/plugins`,
       icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10",
+      requiresFilesInitialized: true,
     });
   }
   items.push(
@@ -394,12 +405,13 @@ const serverNav = computed(() => {
       label: "Files",
       to: `${base}/files`,
       icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+      requiresFilesInitialized: true,
     },
     {
       label: "Logs",
       to: `${base}/logs`,
       icon: "M4 6h16M4 12h16M4 18h16",
-      requiresRunning: true,
+      requiresContainerRunning: true,
     },
     {
       label: "Console",
@@ -418,7 +430,13 @@ const serverNav = computed(() => {
 });
 
 function isServerNavItemDisabled(item: ServerNavItem) {
-  if (item.label !== "Overview" && !serverFilesInitialized.value) {
+  if (item.requiresFilesInitialized && !serverFilesInitialized.value) {
+    return true;
+  }
+  if (
+    item.requiresContainerRunning &&
+    currentContainerStatus.value !== "running"
+  ) {
     return true;
   }
   if (item.requiresRunning && currentServerStatus.value !== "running") {
@@ -428,8 +446,14 @@ function isServerNavItemDisabled(item: ServerNavItem) {
 }
 
 function getDisabledReason(item: ServerNavItem) {
-  if (item.label !== "Overview" && !serverFilesInitialized.value) {
+  if (item.requiresFilesInitialized && !serverFilesInitialized.value) {
     return `${item.label} is available only after server files are initialized`;
+  }
+  if (
+    item.requiresContainerRunning &&
+    currentContainerStatus.value !== "running"
+  ) {
+    return `${item.label} is available only when the container is running`;
   }
   if (item.requiresRunning && currentServerStatus.value !== "running") {
     return `${item.label} is available only when the server is running`;

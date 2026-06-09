@@ -10,13 +10,19 @@ const props = defineProps<{
   players: AllTimePlayer[];
   filter?: string;
   online?: string[];
+  ops?: string[];
+  banned?: string[];
+  whitelisted?: string[];
 }>();
 
 const emit = defineEmits<{
   (e: "kick", name: string): void;
   (e: "ban", name: string): void;
+  (e: "unban", name: string): void;
   (e: "op", name: string): void;
+  (e: "deop", name: string): void;
   (e: "wladd", name: string): void;
+  (e: "wlremove", name: string): void;
 }>();
 
 const sorted = computed(() =>
@@ -71,18 +77,42 @@ function formatLastSeen(ts: number): string {
           Kick
         </button>
         <button
+          v-if="banned?.includes(p.name)"
+          class="text-xs px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
+          @click="emit('unban', p.name)"
+        >
+          Unban
+        </button>
+        <button
+          v-else
           class="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
           @click="emit('ban', p.name)"
         >
           Ban
         </button>
         <button
+          v-if="ops?.includes(p.name)"
+          class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
+          @click="emit('deop', p.name)"
+        >
+          Deop
+        </button>
+        <button
+          v-else
           class="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50"
           @click="emit('op', p.name)"
         >
           Op
         </button>
         <button
+          v-if="whitelisted?.includes(p.name)"
+          class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
+          @click="emit('wlremove', p.name)"
+        >
+          Remove
+        </button>
+        <button
+          v-else
           class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
           @click="emit('wladd', p.name)"
         >

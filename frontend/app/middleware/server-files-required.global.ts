@@ -11,7 +11,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   const overviewPath = `/agent/${agentId}/servers/${serverId}`
-  if (to.path === overviewPath || to.path === `${overviewPath}/`) {
+  const logsPath = `${overviewPath}/logs`
+  if (to.path === overviewPath || to.path === `${overviewPath}/` || to.path === logsPath || to.path === `${logsPath}/`) {
     return
   }
 

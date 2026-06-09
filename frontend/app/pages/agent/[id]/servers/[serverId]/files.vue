@@ -70,8 +70,7 @@ const {
 
 <template>
   <div class="flex flex-col h-[calc(100vh-4rem)]">
-    <server-nav class="shrink-0 px-6 pt-6" />
-    <div class="flex-1 min-h-0 px-6 pb-6 flex flex-col gap-4">
+    <div class="flex-1 min-h-0 px-6 pt-6 pb-6 flex flex-col gap-4">
       <div class="flex items-center justify-between flex-wrap gap-3">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Files</h1>
         <div class="text-sm text-gray-500 dark:text-neutral-400">
