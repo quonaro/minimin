@@ -357,9 +357,12 @@
                 class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
               >
                 <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400"
+                  :class="[
+                    'w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-xs font-bold',
+                    getEngineIconColor(server.engineType),
+                  ]"
                 >
-                  <Box class="w-4 h-4" />
+                  {{ getEngineAbbreviation(server.engineType) }}
                 </div>
                 <div class="min-w-0">
                   <p
@@ -468,7 +471,6 @@
 import { formatDuration } from "~/composables/useDuration";
 import {
   Activity,
-  Box,
   Check,
   Clock,
   Globe,
@@ -644,6 +646,36 @@ function getStatusColor(status: string) {
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
       return "bg-gray-100 text-gray-800 dark:bg-neutral-700 dark:text-neutral-300";
+  }
+}
+
+function getEngineAbbreviation(engineType: string) {
+  switch (engineType.toUpperCase()) {
+    case "FORGE":
+      return "FO";
+    case "FABRIC":
+      return "FA";
+    case "PAPERMC":
+      return "PA";
+    case "VANILLA":
+      return "MC";
+    default:
+      return engineType.substring(0, 2).toUpperCase();
+  }
+}
+
+function getEngineIconColor(engineType: string) {
+  switch (engineType.toUpperCase()) {
+    case "FORGE":
+      return "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400";
+    case "FABRIC":
+      return "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
+    case "PAPERMC":
+      return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
+    case "VANILLA":
+      return "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400";
+    default:
+      return "bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-400";
   }
 }
 

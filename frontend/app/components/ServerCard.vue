@@ -67,7 +67,14 @@
       <div
         class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400"
       >
-        <Cpu class="w-4 h-4 shrink-0 text-gray-400 dark:text-neutral-500" />
+        <div
+          :class="[
+            'w-6 h-6 shrink-0 rounded flex items-center justify-center text-[10px] font-bold',
+            getEngineIconColor(server.engineType),
+          ]"
+        >
+          {{ getEngineAbbreviation(server.engineType) }}
+        </div>
         <span>{{ server.engineType }}</span>
       </div>
 
@@ -92,14 +99,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useUptime } from "~/composables/useDuration";
-import {
-  Activity,
-  Clock,
-  Cpu,
-  Network,
-  Tag,
-  ChevronRight,
-} from "lucide-vue-next";
+import { Activity, Clock, Network, Tag, ChevronRight } from "lucide-vue-next";
 
 interface Server {
   serverId: string;
@@ -130,6 +130,36 @@ function getStatusColor(status: string) {
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
       return "bg-gray-100 text-gray-800 dark:bg-neutral-700 dark:text-neutral-300";
+  }
+}
+
+function getEngineAbbreviation(engineType: string) {
+  switch (engineType.toUpperCase()) {
+    case "FORGE":
+      return "FO";
+    case "FABRIC":
+      return "FA";
+    case "PAPERMC":
+      return "PA";
+    case "VANILLA":
+      return "MC";
+    default:
+      return engineType.substring(0, 2).toUpperCase();
+  }
+}
+
+function getEngineIconColor(engineType: string) {
+  switch (engineType.toUpperCase()) {
+    case "FORGE":
+      return "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400";
+    case "FABRIC":
+      return "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
+    case "PAPERMC":
+      return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
+    case "VANILLA":
+      return "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400";
+    default:
+      return "bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-400";
   }
 }
 
