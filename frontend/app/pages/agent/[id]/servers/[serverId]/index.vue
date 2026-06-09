@@ -206,6 +206,70 @@
                 </div>
               </div>
 
+              <!-- Restart Policy -->
+              <div
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+              >
+                <div
+                  class="w-9 h-9 shrink-0 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400"
+                >
+                  <RefreshCw class="w-4 h-4" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  >
+                    Restart Policy
+                  </p>
+                  <div
+                    v-if="!editingRestartPolicy"
+                    class="flex items-center gap-2"
+                  >
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    >
+                      {{ server.restartPolicy || "no" }}
+                    </p>
+                    <button
+                      v-if="server.status !== 'running'"
+                      class="text-gray-400 hover:text-primary transition-colors"
+                      :disabled="restartPolicyLoading"
+                      @click="
+                        tempRestartPolicy = server.restartPolicy || 'no';
+                        editingRestartPolicy = true;
+                      "
+                    >
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div v-else class="flex items-center gap-2">
+                    <select
+                      v-model="tempRestartPolicy"
+                      class="text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+                    >
+                      <option value="no">no</option>
+                      <option value="always">always</option>
+                      <option value="unless-stopped">unless-stopped</option>
+                      <option value="on-failure">on-failure</option>
+                    </select>
+                    <button
+                      class="text-green-500 hover:text-green-600 transition-colors"
+                      :disabled="restartPolicyLoading"
+                      @click="saveRestartPolicy"
+                    >
+                      <Check class="w-4 h-4" />
+                    </button>
+                    <button
+                      class="text-red-500 hover:text-red-600 transition-colors"
+                      :disabled="restartPolicyLoading"
+                      @click="editingRestartPolicy = false"
+                    >
+                      <XIcon class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <!-- Engine -->
               <div
                 class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
@@ -276,7 +340,9 @@
                 Stop
               </button>
               <button
-                :disabled="actionLoading || isPending"
+                :disabled="
+                  actionLoading || server?.status !== 'running' || isPending
+                "
                 class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
                 @click="doAction('restart')"
               >
@@ -321,6 +387,7 @@ import {
   Hash,
   Pencil,
   Play,
+  RefreshCw,
   RotateCcw,
   Server as ServerIcon,
   Square,
@@ -340,6 +407,7 @@ interface Server {
   gamePort: number;
   publicRcon: boolean;
   rconPort?: number;
+  restartPolicy?: string;
   engineType: string;
   gameVersion: string;
   startedAt?: string;
@@ -359,6 +427,9 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const editingPort = ref(false);
 const tempPort = ref<number | null>(null);
 const portLoading = ref(false);
+const editingRestartPolicy = ref(false);
+const tempRestartPolicy = ref<string>("");
+const restartPolicyLoading = ref(false);
 const showIconEditor = ref(false);
 const selectedIconFile = ref<File | null>(null);
 
@@ -494,6 +565,36 @@ async function savePort() {
     }
   } finally {
     portLoading.value = false;
+  }
+}
+
+async function saveRestartPolicy() {
+  if (
+    !server.value ||
+    tempRestartPolicy.value === (server.value.restartPolicy || "no")
+  ) {
+    editingRestartPolicy.value = false;
+    return;
+  }
+  restartPolicyLoading.value = true;
+  try {
+    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+      baseURL: useApiBase(),
+      method: "PATCH",
+      credentials: "include",
+      body: { restartPolicy: tempRestartPolicy.value },
+    });
+    showToast("success", "Restart policy updated", {
+      description: `Policy changed to ${tempRestartPolicy.value}.`,
+    });
+    editingRestartPolicy.value = false;
+    await refresh();
+  } catch (err: any) {
+    const msg =
+      err?.data?.detail || err?.message || "Failed to update restart policy";
+    showToast("error", "Update failed", { description: msg });
+  } finally {
+    restartPolicyLoading.value = false;
   }
 }
 

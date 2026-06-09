@@ -9,6 +9,10 @@ const {
   listLoading,
   listError,
   filteredEntries,
+  displayEntries,
+  selectedEntry,
+  selectEntry,
+  clearSelection,
   breadcrumbs,
   openedFilePath,
   openedFileState,
@@ -34,6 +38,10 @@ const {
   formatDate,
   navigateToPath,
   openEntry,
+  openFile,
+  downloadFile,
+  openRenameModal,
+  openDeleteModal,
   openSaveModal,
   closeContextMenu,
   openEmptyAreaContextMenu,
@@ -94,7 +102,7 @@ const {
           @dragleave="onBreadcrumbDragLeave(crumb.path)"
           @drop="onBreadcrumbDrop(crumb.path, $event)"
         >
-          {{ crumb.label }}
+          📁 {{ crumb.label }}
         </button>
         <span
           v-if="idx === breadcrumbs.length - 1"
@@ -105,12 +113,44 @@ const {
       </template>
     </div>
 
-    <input
-      v-model="search"
-      type="text"
-      placeholder="Search in current folder..."
-      class="w-full md:w-80 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500"
-    />
+    <div class="flex items-center gap-3 flex-wrap">
+      <input
+        v-model="search"
+        type="text"
+        placeholder="Search in current folder..."
+        class="w-full md:w-80 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+      />
+      <template v-if="selectedEntry">
+        <span class="text-sm text-gray-700 dark:text-neutral-300 font-medium">
+          {{ selectedEntry.name }}
+        </span>
+        <button
+          class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+          @click="openEntry(selectedEntry)"
+        >
+          Open
+        </button>
+        <button
+          v-if="!selectedEntry.isDir"
+          class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+          @click="downloadFile(selectedEntry.path)"
+        >
+          Download
+        </button>
+        <button
+          class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+          @click="openRenameModal(selectedEntry.path)"
+        >
+          Rename
+        </button>
+        <button
+          class="px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/30"
+          @click="openDeleteModal(selectedEntry.path)"
+        >
+          Delete
+        </button>
+      </template>
+    </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-[1fr_440px] gap-4 flex-1 min-h-0">
       <div
@@ -119,10 +159,11 @@ const {
         <div
           class="px-4 py-2 bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 text-xs text-gray-500 dark:text-neutral-400"
         >
-          {{ currentPath || "/" }} · {{ filteredEntries.length }} items
+          {{ currentPath || "/" }} · {{ displayEntries.length }} items
         </div>
         <div
           class="flex-1 min-h-0 overflow-auto"
+          @click="clearSelection"
           @contextmenu="openEmptyAreaContextMenu"
         >
           <div
@@ -135,7 +176,7 @@ const {
             {{ listError }}
           </div>
           <div
-            v-else-if="filteredEntries.length === 0"
+            v-else-if="displayEntries.length === 0"
             class="p-4 text-sm text-gray-500 dark:text-neutral-400"
           >
             Folder is empty.
@@ -150,35 +191,53 @@ const {
             </thead>
             <tbody>
               <tr
-                v-for="entry in filteredEntries"
+                v-for="entry in displayEntries"
                 :key="entry.path"
                 data-entry-row="true"
-                class="border-t border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900"
+                class="border-t border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 cursor-pointer"
                 :class="
-                  dragOverDirPath === entry.path && entry.isDir
+                  (dragOverDirPath === entry.path && entry.isDir
                     ? 'bg-primary/10 dark:bg-primary/20'
-                    : ''
+                    : '') ||
+                  (selectedEntry?.path === entry.path
+                    ? 'bg-blue-50 dark:bg-blue-900/20'
+                    : '')
                 "
-                draggable="true"
-                @dragstart="onEntryDragStart(entry, $event)"
+                :draggable="entry.name !== '..'"
+                @dragstart="
+                  entry.name !== '..'
+                    ? onEntryDragStart(entry, $event)
+                    : undefined
+                "
                 @dragend="onEntryDragEnd"
-                @contextmenu="openEntryContextMenu(entry, $event)"
-                @dragover="onEntryDragOver(entry, $event)"
+                @click.stop="selectEntry(entry)"
+                @dblclick.stop="openEntry(entry)"
+                @contextmenu="
+                  entry.name !== '..'
+                    ? openEntryContextMenu(entry, $event)
+                    : undefined
+                "
+                @dragover="
+                  entry.name !== '..'
+                    ? onEntryDragOver(entry, $event)
+                    : undefined
+                "
                 @dragleave="onEntryDragLeave(entry)"
-                @drop="onEntryDrop(entry, $event)"
+                @drop="
+                  entry.name !== '..' ? onEntryDrop(entry, $event) : undefined
+                "
               >
                 <td class="px-3 py-2">
-                  <button
-                    class="text-left hover:underline"
+                  <span
+                    class="text-left hover:underline block"
                     :class="
                       entry.isDir
-                        ? 'text-primary font-medium'
+                        ? 'text-gray-700 dark:text-neutral-300 font-medium'
                         : 'text-gray-900 dark:text-white'
                     "
-                    @click="openEntry(entry)"
                   >
                     {{ entry.isDir ? "📁" : "📄" }} {{ entry.name }}
-                  </button>
+                  </span>
                 </td>
                 <td class="px-3 py-2 text-gray-500 dark:text-neutral-400">
                   {{ entry.isDir ? "—" : formatSize(entry.size) }}
@@ -236,7 +295,7 @@ const {
             <template v-else>
               <textarea
                 v-model="editorContent"
-                class="flex-1 min-h-0 w-full rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 font-mono text-xs text-gray-900 dark:text-neutral-100"
+                class="flex-1 min-h-0 w-full rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 font-mono text-xs text-gray-900 dark:text-neutral-100 resize-none"
               />
               <div class="flex justify-end">
                 <button

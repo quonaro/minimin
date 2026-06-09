@@ -177,8 +177,8 @@ let reconnectAttempts = 0;
 let socketCounter = 0;
 
 const MAX_LINES = 5000;
-const RECONNECT_BASE_MS = 1000;
-const RECONNECT_MAX_MS = 30000;
+const RECONNECT_BASE_MS = 5000;
+const RECONNECT_MAX_MS = 60000;
 
 function connect() {
   console.log("[WS] connect() called, current ws =", ws?.readyState ?? null);

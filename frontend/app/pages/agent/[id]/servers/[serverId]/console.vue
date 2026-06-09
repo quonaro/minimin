@@ -194,8 +194,8 @@ let historyIndex = -1;
 let savedInput = "";
 
 const MAX_HISTORY = 100;
-const RECONNECT_BASE_MS = 1000;
-const RECONNECT_MAX_MS = 30000;
+const RECONNECT_BASE_MS = 5000;
+const RECONNECT_MAX_MS = 60000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
 interface MinecraftCommand {

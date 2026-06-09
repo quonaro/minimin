@@ -54,6 +54,7 @@ export function useFilesExplorer() {
   const listLoading = ref(false);
   const listError = ref("");
   const entries = ref<FileEntry[]>([]);
+  const selectedEntry = ref<FileEntry | null>(null);
 
   const openedFilePath = ref("");
   const openedFileState = ref<ReadFileResponse | null>(null);
@@ -96,6 +97,21 @@ export function useFilesExplorer() {
     const q = search.value.trim().toLowerCase();
     if (!q) return entries.value;
     return entries.value.filter((entry) => entry.name.toLowerCase().includes(q));
+  });
+
+  const displayEntries = computed(() => {
+    const hasParent = currentPath.value !== "";
+    const hasSearch = search.value.trim() !== "";
+    if (!hasParent || hasSearch) return filteredEntries.value;
+
+    const parentEntry: FileEntry = {
+      name: "..",
+      path: parentPath(currentPath.value),
+      isDir: true,
+      size: 0,
+      modifiedAt: "",
+    };
+    return [parentEntry, ...filteredEntries.value];
   });
 
   function normalizePath(path: string): string {
@@ -152,8 +168,20 @@ export function useFilesExplorer() {
 
   async function navigateToPath(path: string) {
     closeContextMenu();
+    clearSelection();
     currentPath.value = normalizePath(path);
     await refreshList();
+  }
+
+  function selectEntry(entry: FileEntry) {
+    selectedEntry.value = entry;
+    if (!entry.isDir) {
+      openFile(entry.path);
+    }
+  }
+
+  function clearSelection() {
+    selectedEntry.value = null;
   }
 
   async function openEntry(entry: FileEntry) {
@@ -651,6 +679,10 @@ export function useFilesExplorer() {
     listLoading,
     listError,
     filteredEntries,
+    displayEntries,
+    selectedEntry,
+    selectEntry,
+    clearSelection,
     breadcrumbs,
     openedFilePath,
     openedFileState,
@@ -677,6 +709,9 @@ export function useFilesExplorer() {
     navigateToPath,
     openEntry,
     openFile,
+    downloadFile,
+    openRenameModal,
+    openDeleteModal,
     openSaveModal,
     closeContextMenu,
     openEmptyAreaContextMenu,

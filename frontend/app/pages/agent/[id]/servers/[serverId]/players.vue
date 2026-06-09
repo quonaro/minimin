@@ -56,6 +56,38 @@
       </div>
     </div>
 
+    <!-- Disconnected Banner -->
+    <div
+      v-if="
+        (wsStatus === 'Error' || wsStatus === 'Disconnected') &&
+        reconnectAttempts > 0
+      "
+      class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="w-5 h-5 text-red-600 dark:text-red-400 shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+        />
+      </svg>
+      <div class="flex-1">
+        <p class="text-sm font-medium text-red-800 dark:text-red-300">
+          Disconnected from server
+        </p>
+        <p class="text-xs text-red-600 dark:text-red-400">
+          Retrying connection... (attempt {{ reconnectAttempts }})
+        </p>
+      </div>
+    </div>
+
     <!-- Offline Actions -->
     <div
       class="mb-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5"
@@ -501,8 +533,11 @@ let reconnectAttempts = 0;
 let socketCounter = 0;
 let eventCounter = 0;
 
-const RECONNECT_BASE_MS = 1000;
-const RECONNECT_MAX_MS = 30000;
+const RECONNECT_BASE_MS = 5000;
+const RECONNECT_MAX_MS = 60000;
+const FETCH_RETRY_BASE_MS = 1000;
+const FETCH_RETRY_MAX_MS = 30000;
+const FETCH_MAX_ATTEMPTS = 5;
 
 const { lastEvent } = useEventSource();
 
@@ -795,7 +830,11 @@ const modalTitle = computed(() =>
   modalAction.value === "kick" ? "Kick Player" : "Ban Player",
 );
 
-async function fetchOnline() {
+let fetchingOnline = false;
+
+async function fetchOnlineWithRetry(attempt = 0) {
+  if (fetchingOnline) return;
+  fetchingOnline = true;
   onlineLoading.value = true;
   onlineError.value = null;
   try {
@@ -810,13 +849,37 @@ async function fetchOnline() {
     onlinePlayers.value = res.players || [];
     maxPlayers.value = res.max || 0;
   } catch (err: any) {
-    onlineError.value = err?.message || "Failed to load players";
+    const status = err?.response?.status;
+    if (status === 503) {
+      onlinePlayers.value = [];
+      maxPlayers.value = 0;
+      onlineError.value = "Server is offline";
+    } else if (attempt < FETCH_MAX_ATTEMPTS) {
+      const delay = Math.min(
+        FETCH_RETRY_BASE_MS * 2 ** attempt,
+        FETCH_RETRY_MAX_MS,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      fetchingOnline = false;
+      return fetchOnlineWithRetry(attempt + 1);
+    } else {
+      onlineError.value = err?.message || "Failed to load players";
+    }
   } finally {
     onlineLoading.value = false;
+    fetchingOnline = false;
   }
 }
 
+async function fetchOnline() {
+  return fetchOnlineWithRetry();
+}
+
+let fetchingOps = false;
+
 async function fetchOps() {
+  if (fetchingOps) return;
+  fetchingOps = true;
   opsLoading.value = true;
   opsError.value = null;
   try {
@@ -829,10 +892,15 @@ async function fetchOps() {
     opsError.value = err?.message || "Failed to load operators";
   } finally {
     opsLoading.value = false;
+    fetchingOps = false;
   }
 }
 
+let fetchingWl = false;
+
 async function fetchWhitelist() {
+  if (fetchingWl) return;
+  fetchingWl = true;
   wlLoading.value = true;
   wlError.value = null;
   try {
@@ -845,10 +913,15 @@ async function fetchWhitelist() {
     wlError.value = err?.message || "Failed to load whitelist";
   } finally {
     wlLoading.value = false;
+    fetchingWl = false;
   }
 }
 
+let fetchingBans = false;
+
 async function fetchBans() {
+  if (fetchingBans) return;
+  fetchingBans = true;
   bansLoading.value = true;
   bansError.value = null;
   try {
@@ -861,6 +934,7 @@ async function fetchBans() {
     bansError.value = err?.message || "Failed to load bans";
   } finally {
     bansLoading.value = false;
+    fetchingBans = false;
   }
 }
 
