@@ -29,7 +29,7 @@ func main() {
 	jwtSecret := getEnv("JWT_SECRET", "")
 	dbPath := getEnv("DB_PATH", "orchestrator.db")
 	logLevel := getEnv("ORCHESTRATOR_LOG_LEVEL", "info")
-	logFormat := getEnv("ORCHESTRATOR_LOG_FORMAT", "text")
+	logFormat := getEnv("ORCHESTRATOR_LOG_FORMAT", "pretty")
 
 	if apiKey == "" {
 		slog.Error("ORCHESTRATOR_API_KEY must be set")

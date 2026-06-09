@@ -14,7 +14,7 @@ import (
 
 // Init creates a *slog.Logger based on level and format.
 // level: debug, info, warn, error, off
-// format: json, text (default text)
+// format: pretty (default), json
 func Init(level, format string) *slog.Logger {
 	var minLevel slog.Level
 	switch strings.ToLower(level) {
@@ -35,65 +35,74 @@ func Init(level, format string) *slog.Logger {
 	case "json":
 		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: minLevel})
 	default:
-		handler = newCompactHandler(os.Stderr, minLevel, true)
+		handler = newPrettyHandler(os.Stderr, minLevel)
 	}
 
 	return slog.New(handler)
 }
 
-type compactHandler struct {
-	w      io.Writer
-	mu     sync.Mutex
-	level  slog.Level
-	colors bool
-	attrs  []slog.Attr
+// ColorizeStatus returns a colorized HTTP status code string for terminal output.
+// 2xx = green, 4xx = yellow, 5xx = red.
+func ColorizeStatus(status int) string {
+	var color string
+	switch {
+	case status >= 200 && status < 300:
+		color = "\033[32m"
+	case status >= 400 && status < 500:
+		color = "\033[33m"
+	case status >= 500:
+		color = "\033[31m"
+	default:
+		color = "\033[0m"
+	}
+	return fmt.Sprintf("%s%d\033[0m", color, status)
 }
 
-func newCompactHandler(w io.Writer, level slog.Level, colors bool) *compactHandler {
-	return &compactHandler{w: w, level: level, colors: colors}
+type prettyHandler struct {
+	w     io.Writer
+	mu    sync.Mutex
+	level slog.Level
+	attrs []slog.Attr
 }
 
-func (h *compactHandler) clone() *compactHandler {
-	return &compactHandler{
-		w:      h.w,
-		level:  h.level,
-		colors: h.colors,
-		attrs:  append([]slog.Attr(nil), h.attrs...),
+func newPrettyHandler(w io.Writer, level slog.Level) *prettyHandler {
+	return &prettyHandler{w: w, level: level}
+}
+
+func (h *prettyHandler) clone() *prettyHandler {
+	return &prettyHandler{
+		w:     h.w,
+		level: h.level,
+		attrs: append([]slog.Attr(nil), h.attrs...),
 	}
 }
 
-func (h *compactHandler) Enabled(_ context.Context, level slog.Level) bool {
+func (h *prettyHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= h.level
 }
 
-func (h *compactHandler) Handle(_ context.Context, r slog.Record) error {
+func (h *prettyHandler) Handle(_ context.Context, r slog.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	var buf bytes.Buffer
 
-	buf.WriteString(r.Time.Format("15:04:05"))
+	label, color := levelLabel(r.Level)
+	buf.WriteString(color)
+	buf.WriteString(label)
+	buf.WriteString("\033[0m")
 	buf.WriteByte(' ')
 
-	lvl, color := levelLabel(r.Level)
-	if h.colors {
-		buf.WriteString(color)
-	}
-	buf.WriteString(lvl)
-	if h.colors {
-		buf.WriteString("\033[0m")
-	}
-	buf.WriteString(" | ")
 	buf.WriteString(r.Message)
 
 	for _, a := range h.attrs {
 		buf.WriteByte(' ')
-		writeValue(&buf, a.Value)
+		writeAttr(&buf, a)
 	}
 
 	r.Attrs(func(a slog.Attr) bool {
 		buf.WriteByte(' ')
-		writeValue(&buf, a.Value)
+		writeAttr(&buf, a)
 		return true
 	})
 
@@ -102,27 +111,34 @@ func (h *compactHandler) Handle(_ context.Context, r slog.Record) error {
 	return err
 }
 
-func (h *compactHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+func (h *prettyHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	c := h.clone()
 	c.attrs = append(c.attrs, attrs...)
 	return c
 }
 
-func (h *compactHandler) WithGroup(_ string) slog.Handler {
+func (h *prettyHandler) WithGroup(_ string) slog.Handler {
 	return h.clone()
 }
 
 func levelLabel(l slog.Level) (string, string) {
 	switch {
 	case l < slog.LevelInfo:
-		return "D", "\033[90m"
+		return "DBG", "\033[90m"
 	case l == slog.LevelInfo:
-		return "I", "\033[32m"
+		return "INF", "\033[32m"
 	case l == slog.LevelWarn:
-		return "W", "\033[33m"
+		return "WRN", "\033[33m"
 	default:
-		return "E", "\033[31m"
+		return "ERR", "\033[31m"
 	}
+}
+
+func writeAttr(buf *bytes.Buffer, a slog.Attr) {
+	buf.WriteString("\033[36m")
+	buf.WriteString(a.Key)
+	buf.WriteString("\033[0m=")
+	writeValue(buf, a.Value)
 }
 
 func writeValue(buf *bytes.Buffer, v slog.Value) {
@@ -170,7 +186,7 @@ func writeValue(buf *bytes.Buffer, v slog.Value) {
 			}
 		}
 	case slog.KindGroup:
-		// compact handler ignores groups
+		// pretty handler ignores groups
 	}
 }
 
