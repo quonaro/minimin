@@ -223,17 +223,68 @@
                 >
                   <Terminal class="w-4 h-4" />
                 </div>
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p
                     class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                   >
                     Public RCON
                   </p>
-                  <p
-                    class="text-sm font-semibold text-gray-900 dark:text-white"
+                  <div
+                    v-if="!editingPublicRcon"
+                    class="flex items-center gap-2"
                   >
-                    {{ server.publicRcon ? `Yes (${server.rconPort})` : "No" }}
-                  </p>
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    >
+                      {{
+                        server.publicRcon ? `Yes (${server.rconPort})` : "No"
+                      }}
+                    </p>
+                    <button
+                      v-if="server.containerStatus !== 'running'"
+                      class="text-gray-400 hover:text-primary transition-colors"
+                      :disabled="rconLoading"
+                      @click="
+                        tempPublicRcon = server.publicRcon;
+                        tempRconPort = server.rconPort || server.gamePort + 10;
+                        editingPublicRcon = true;
+                      "
+                    >
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div v-else class="flex items-center gap-2">
+                    <select
+                      v-model="tempPublicRcon"
+                      class="text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+                    >
+                      <option :value="false">No</option>
+                      <option :value="true">Yes</option>
+                    </select>
+                    <number-input
+                      v-if="tempPublicRcon"
+                      v-model="tempRconPort"
+                      :min="1024"
+                      :max="65535"
+                      size="sm"
+                      class="w-24"
+                      @keyup.enter="savePublicRcon"
+                    />
+                    <button
+                      class="text-green-500 hover:text-green-600 transition-colors"
+                      :disabled="rconLoading"
+                      @click="savePublicRcon"
+                    >
+                      <Check class="w-4 h-4" />
+                    </button>
+                    <button
+                      class="text-red-500 hover:text-red-600 transition-colors"
+                      :disabled="rconLoading"
+                      @click="editingPublicRcon = false"
+                    >
+                      <XIcon class="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -470,6 +521,10 @@ const portLoading = ref(false);
 const editingRestartPolicy = ref(false);
 const tempRestartPolicy = ref<string>("");
 const restartPolicyLoading = ref(false);
+const editingPublicRcon = ref(false);
+const tempPublicRcon = ref(false);
+const tempRconPort = ref<number | null>(null);
+const rconLoading = ref(false);
 const showIconEditor = ref(false);
 const selectedIconFile = ref<File | null>(null);
 
@@ -660,6 +715,58 @@ async function saveRestartPolicy() {
     showToast("error", "Update failed", { description: msg });
   } finally {
     restartPolicyLoading.value = false;
+  }
+}
+
+async function savePublicRcon() {
+  if (!server.value || tempRconPort.value == null) {
+    editingPublicRcon.value = false;
+    return;
+  }
+  if (
+    tempPublicRcon.value &&
+    (tempRconPort.value < 1024 || tempRconPort.value > 65535)
+  ) {
+    showToast("error", "Invalid port", {
+      description: "Port must be between 1024 and 65535.",
+    });
+    return;
+  }
+  if (
+    tempPublicRcon.value === server.value.publicRcon &&
+    tempRconPort.value === (server.value.rconPort || server.value.gamePort + 10)
+  ) {
+    editingPublicRcon.value = false;
+    return;
+  }
+  rconLoading.value = true;
+  try {
+    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+      baseURL: useApiBase(),
+      method: "PATCH",
+      credentials: "include",
+      body: {
+        publicRcon: tempPublicRcon.value,
+        rconPort: tempPublicRcon.value ? tempRconPort.value : undefined,
+      },
+    });
+    showToast("success", "Public RCON updated", {
+      description: tempPublicRcon.value
+        ? `RCON enabled on port ${tempRconPort.value}.`
+        : "RCON disabled.",
+    });
+    editingPublicRcon.value = false;
+    await refresh();
+  } catch (err: any) {
+    const status = err?.status || err?.statusCode;
+    const msg = err?.data?.detail || err?.message || "Failed to update RCON";
+    if (status === 409) {
+      showToast("error", "Port unavailable", { description: msg });
+    } else {
+      showToast("error", "Update failed", { description: msg });
+    }
+  } finally {
+    rconLoading.value = false;
   }
 }
 
