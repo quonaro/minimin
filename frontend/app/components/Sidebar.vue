@@ -382,6 +382,7 @@ const serverNav = computed(() => {
       label: "Logs",
       to: `${base}/logs`,
       icon: "M4 6h16M4 12h16M4 18h16",
+      requiresRunning: true,
     },
     {
       label: "Console",

@@ -10,30 +10,50 @@
           {{ server.serverId }}
         </h3>
       </div>
-      <span
-        :class="[
-          statusClasses,
-          server.status === 'running' &&
-            'animate-heartbeat dark:animate-heartbeat-dark',
-        ]"
-        class="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 shrink-0"
-      >
-        <component
-          :is="statusIcon"
-          :class="server.status === 'running' && 'animate-pulse-icon'"
-          class="w-3.5 h-3.5"
-        />
-        {{ server.status }}
-      </span>
+      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+        <span
+          :class="[
+            getStatusColor(server.containerStatus),
+            server.containerStatus === 'running' &&
+              'animate-heartbeat dark:animate-heartbeat-dark',
+          ]"
+          class="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
+        >
+          <Activity
+            v-if="server.containerStatus === 'running'"
+            class="w-3 h-3"
+          />
+          container: {{ server.containerStatus }}
+        </span>
+        <span
+          :class="[
+            getStatusColor(server.serverStatus),
+            server.serverStatus === 'running' &&
+              'animate-heartbeat dark:animate-heartbeat-dark',
+          ]"
+          class="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
+        >
+          <Activity v-if="server.serverStatus === 'running'" class="w-3 h-3" />
+          server: {{ server.serverStatus }}
+        </span>
+      </div>
     </div>
 
     <div class="space-y-2.5 mb-5">
       <div
         class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400 min-h-[1.25rem]"
       >
-        <template v-if="uptime">
+        <template v-if="containerUptime">
           <Clock class="w-4 h-4 shrink-0 text-gray-400 dark:text-neutral-500" />
-          <span>Running for {{ uptime }}</span>
+          <span>Container: {{ containerUptime }}</span>
+        </template>
+      </div>
+      <div
+        class="flex items-center gap-2 text-sm text-gray-600 dark:text-neutral-400 min-h-[1.25rem]"
+      >
+        <template v-if="serverUptime">
+          <Clock class="w-4 h-4 shrink-0 text-gray-400 dark:text-neutral-500" />
+          <span>Server: {{ serverUptime }}</span>
         </template>
       </div>
 
@@ -83,13 +103,16 @@ import {
 
 interface Server {
   serverId: string;
-  status: string;
+  status?: string; // legacy
+  containerStatus: string;
+  containerStartedAt?: string;
+  serverStatus: string;
+  serverStartedAt?: string;
   gamePort: number;
   publicRcon?: boolean;
   rconPort?: number;
   engineType: string;
   gameVersion: string;
-  startedAt?: string;
 }
 
 const props = defineProps<{
@@ -97,24 +120,32 @@ const props = defineProps<{
   agentId: string;
 }>();
 
-const statusClasses = computed(() => {
-  switch (props.server.status) {
+function getStatusColor(status: string) {
+  switch (status) {
     case "running":
-      return "text-green-800 dark:text-green-400";
+      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "starting":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "exited":
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
       return "bg-gray-100 text-gray-800 dark:bg-neutral-700 dark:text-neutral-300";
   }
-});
+}
 
-const statusIcon = computed(() => {
-  return props.server.status === "running" ? Activity : null;
-});
-
-const startedAt = computed(() =>
-  props.server.status === "running" ? props.server.startedAt : undefined,
+const containerUptime = useUptime(
+  computed(() =>
+    props.server.containerStatus === "running"
+      ? props.server.containerStartedAt
+      : undefined,
+  ),
 );
 
-const uptime = useUptime(startedAt);
+const serverUptime = useUptime(
+  computed(() =>
+    props.server.serverStatus === "running"
+      ? props.server.serverStartedAt
+      : undefined,
+  ),
+);
 </script>

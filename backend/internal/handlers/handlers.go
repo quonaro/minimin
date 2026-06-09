@@ -429,9 +429,12 @@ func (h *Handler) pingAgent(host, apiKey string) bool {
 
 // agentServer is a minimal representation of a server returned by an agent.
 type agentServer struct {
-	ServerID      string `json:"serverId"`
-	Status        string `json:"status"`
-	DesiredStatus string `json:"desiredStatus"`
+	ServerID           string    `json:"serverId"`
+	ContainerStatus    string    `json:"containerStatus"`
+	ContainerStartedAt time.Time `json:"containerStartedAt"`
+	ServerStatus       string    `json:"serverStatus"`
+	ServerStartedAt    time.Time `json:"serverStartedAt"`
+	DesiredStatus      string    `json:"desiredStatus"`
 }
 
 // PollServerStatuses polls every online agent for its server list, compares
@@ -492,13 +495,20 @@ func (h *Handler) PollServerStatuses(lastKnown *sync.Map) bool {
 			for _, srv := range body.Body {
 				key := a.ID + "/" + srv.ServerID
 				desiredKey := key + ":desired"
+				containerKey := key + ":container"
+				serverKey := key + ":server"
 
-				prevStatus, loadedStatus := lastKnown.Load(key)
+				prevContainer, loadedContainer := lastKnown.Load(containerKey)
+				prevServer, loadedServer := lastKnown.Load(serverKey)
 				prevDesired, loadedDesired := lastKnown.Load(desiredKey)
 
 				changed := false
-				if !loadedStatus || prevStatus != srv.Status {
-					lastKnown.Store(key, srv.Status)
+				if !loadedContainer || prevContainer != srv.ContainerStatus {
+					lastKnown.Store(containerKey, srv.ContainerStatus)
+					changed = true
+				}
+				if !loadedServer || prevServer != srv.ServerStatus {
+					lastKnown.Store(serverKey, srv.ServerStatus)
 					changed = true
 				}
 				if !loadedDesired || prevDesired != srv.DesiredStatus {
@@ -506,23 +516,33 @@ func (h *Handler) PollServerStatuses(lastKnown *sync.Map) bool {
 					changed = true
 				}
 
-				if loadedStatus && changed {
-					oldStatus := ""
-					if loadedStatus {
-						oldStatus = prevStatus.(string)
+				if (loadedContainer || loadedServer) && changed {
+					oldContainer := ""
+					if loadedContainer {
+						oldContainer = prevContainer.(string)
+					}
+					oldServer := ""
+					if loadedServer {
+						oldServer = prevServer.(string)
 					}
 					h.Events.Broadcast(events.Event{
-						Type:          "server.status",
-						AgentID:       a.ID,
-						ServerID:      srv.ServerID,
-						OldStatus:     oldStatus,
-						NewStatus:     srv.Status,
-						DesiredStatus: srv.DesiredStatus,
-						Message:       fmt.Sprintf("Server %s is now %s", srv.ServerID, srv.Status),
+						Type:               "server.status",
+						AgentID:            a.ID,
+						ServerID:           srv.ServerID,
+						OldStatus:          oldContainer,
+						NewStatus:          srv.ContainerStatus,
+						DesiredStatus:      srv.DesiredStatus,
+						OldContainerStatus: oldContainer,
+						NewContainerStatus: srv.ContainerStatus,
+						OldServerStatus:    oldServer,
+						NewServerStatus:    srv.ServerStatus,
+						ContainerStartedAt: srv.ContainerStartedAt.Format(time.RFC3339),
+						ServerStartedAt:    srv.ServerStartedAt.Format(time.RFC3339),
+						Message:            fmt.Sprintf("Server %s container=%s server=%s", srv.ServerID, srv.ContainerStatus, srv.ServerStatus),
 					})
 				}
 
-				if srv.DesiredStatus != "" && srv.DesiredStatus != srv.Status {
+				if srv.DesiredStatus != "" && srv.DesiredStatus != srv.ContainerStatus {
 					pending <- true
 				}
 			}

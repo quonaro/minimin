@@ -27,11 +27,13 @@
               <span
                 :class="[
                   'absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-neutral-800',
-                  server.status === 'running'
+                  server.serverStatus === 'running'
                     ? 'bg-green-500 animate-pulse'
-                    : server.status === 'exited'
-                      ? 'bg-red-500'
-                      : 'bg-gray-400',
+                    : server.serverStatus === 'starting'
+                      ? 'bg-yellow-500 animate-pulse'
+                      : server.containerStatus === 'exited'
+                        ? 'bg-red-500'
+                        : 'bg-gray-400',
                 ]"
               />
             </div>
@@ -65,27 +67,56 @@
               <div class="flex items-center gap-3 flex-wrap">
                 <span
                   :class="[
-                    getStatusColor(server.status),
+                    getStatusColor(server.containerStatus),
                     'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-                    server.status === 'running' &&
+                    server.containerStatus === 'running' &&
                       'animate-heartbeat dark:animate-heartbeat-dark',
                   ]"
                 >
                   <Activity
-                    v-if="server.status === 'running'"
-                    :class="server.status === 'running' && 'animate-pulse-icon'"
+                    v-if="server.containerStatus === 'running'"
+                    :class="
+                      server.containerStatus === 'running' &&
+                      'animate-pulse-icon'
+                    "
                     class="w-3.5 h-3.5"
                   />
-                  {{ server.status }}
+                  container: {{ server.containerStatus }}
                 </span>
                 <span
-                  v-if="reactiveUptime"
+                  :class="[
+                    getStatusColor(server.serverStatus),
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                    server.serverStatus === 'running' &&
+                      'animate-heartbeat dark:animate-heartbeat-dark',
+                  ]"
+                >
+                  <Activity
+                    v-if="server.serverStatus === 'running'"
+                    :class="
+                      server.serverStatus === 'running' && 'animate-pulse-icon'
+                    "
+                    class="w-3.5 h-3.5"
+                  />
+                  server: {{ server.serverStatus }}
+                </span>
+                <span
+                  v-if="containerUptime"
                   class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
                 >
                   <Clock
                     class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400"
                   />
-                  Uptime: {{ reactiveUptime }}
+                  Container: {{ containerUptime }}
+                </span>
+                <span
+                  v-if="serverUptime"
+                  class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
+                >
+                  <Clock
+                    class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400"
+                  />
+                  Server: {{ serverUptime }}
                 </span>
                 <span
                   v-if="isPending"
@@ -145,7 +176,7 @@
                       {{ server.gamePort }}
                     </p>
                     <button
-                      v-if="server.status !== 'running'"
+                      v-if="server.containerStatus !== 'running'"
                       class="text-gray-400 hover:text-primary transition-colors"
                       :disabled="portLoading"
                       @click="
@@ -231,7 +262,7 @@
                       {{ server.restartPolicy || "no" }}
                     </p>
                     <button
-                      v-if="server.status !== 'running'"
+                      v-if="server.containerStatus !== 'running'"
                       class="text-gray-400 hover:text-primary transition-colors"
                       :disabled="restartPolicyLoading"
                       @click="
@@ -321,7 +352,9 @@
             <div class="flex flex-wrap gap-3">
               <button
                 :disabled="
-                  actionLoading || server?.status === 'running' || isPending
+                  actionLoading ||
+                  server?.containerStatus === 'running' ||
+                  isPending
                 "
                 class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
                 @click="doAction('start')"
@@ -331,7 +364,9 @@
               </button>
               <button
                 :disabled="
-                  actionLoading || server?.status !== 'running' || isPending
+                  actionLoading ||
+                  server?.containerStatus !== 'running' ||
+                  isPending
                 "
                 class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
                 @click="doAction('stop')"
@@ -341,7 +376,9 @@
               </button>
               <button
                 :disabled="
-                  actionLoading || server?.status !== 'running' || isPending
+                  actionLoading ||
+                  server?.containerStatus !== 'running' ||
+                  isPending
                 "
                 class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
                 @click="doAction('restart')"
@@ -402,7 +439,11 @@ definePageMeta({
 
 interface Server {
   serverId: string;
-  status: string;
+  status?: string; // legacy
+  containerStatus: string;
+  containerStartedAt?: string;
+  serverStatus: string;
+  serverStartedAt?: string;
   desiredStatus?: string;
   gamePort: number;
   publicRcon: boolean;
@@ -410,7 +451,6 @@ interface Server {
   restartPolicy?: string;
   engineType: string;
   gameVersion: string;
-  startedAt?: string;
 }
 
 const route = useRoute();
@@ -438,18 +478,30 @@ const iconUrl = computed(() => {
   return `${useApiBase()}/agent/${agentId.value}/servers/${serverId}/icon?t=${iconTimestamp.value}`;
 });
 
-const startedAt = computed(() => {
+const containerStartedAt = computed(() => {
   if (
     !server.value ||
-    server.value.status !== "running" ||
-    !server.value.startedAt
+    server.value.containerStatus !== "running" ||
+    !server.value.containerStartedAt
   ) {
     return undefined;
   }
-  return server.value.startedAt;
+  return server.value.containerStartedAt;
 });
 
-const reactiveUptime = useUptime(startedAt);
+const serverStartedAt = computed(() => {
+  if (
+    !server.value ||
+    server.value.serverStatus !== "running" ||
+    !server.value.serverStartedAt
+  ) {
+    return undefined;
+  }
+  return server.value.serverStartedAt;
+});
+
+const containerUptime = useUptime(containerStartedAt);
+const serverUptime = useUptime(serverStartedAt);
 
 function onIconFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
@@ -506,20 +558,33 @@ watch(lastEvent, (evt) => {
   if (!evt || evt.type !== "server.status") return;
   if (evt.agentId !== agentId.value || evt.serverId !== serverId) return;
   if (!server.value) return;
-  server.value.status = evt.newStatus || server.value.status;
+  if (evt.newContainerStatus) {
+    server.value.containerStatus = evt.newContainerStatus;
+  }
+  if (evt.newServerStatus) {
+    server.value.serverStatus = evt.newServerStatus;
+  }
+  if (evt.containerStartedAt) {
+    server.value.containerStartedAt = evt.containerStartedAt;
+  }
+  if (evt.serverStartedAt) {
+    server.value.serverStartedAt = evt.serverStartedAt;
+  }
   server.value.desiredStatus = evt.desiredStatus;
 });
 
 const isPending = computed(() => {
   if (!server.value) return false;
   const d = server.value.desiredStatus;
-  return !!d && d !== server.value.status;
+  return !!d && d !== server.value.containerStatus;
 });
 
 function getStatusColor(status: string) {
   switch (status) {
     case "running":
       return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "starting":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "exited":
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:

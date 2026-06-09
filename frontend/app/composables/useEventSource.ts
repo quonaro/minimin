@@ -9,6 +9,12 @@ export interface SseEvent {
   oldStatus?: string;
   newStatus?: string;
   desiredStatus?: string;
+  oldContainerStatus?: string;
+  newContainerStatus?: string;
+  oldServerStatus?: string;
+  newServerStatus?: string;
+  containerStartedAt?: string;
+  serverStartedAt?: string;
 }
 
 // Module-level singleton state

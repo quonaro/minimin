@@ -11,14 +11,20 @@ import (
 
 // Event is a generic notification payload sent over SSE.
 type Event struct {
-	Type          string `json:"type"`
-	AgentID       string `json:"agentId,omitempty"`
-	ServerID      string `json:"serverId,omitempty"`
-	Message       string `json:"message"`
-	Timestamp     string `json:"timestamp"`
-	OldStatus     string `json:"oldStatus,omitempty"`
-	NewStatus     string `json:"newStatus,omitempty"`
-	DesiredStatus string `json:"desiredStatus,omitempty"`
+	Type               string `json:"type"`
+	AgentID            string `json:"agentId,omitempty"`
+	ServerID           string `json:"serverId,omitempty"`
+	Message            string `json:"message"`
+	Timestamp          string `json:"timestamp"`
+	OldStatus          string `json:"oldStatus,omitempty"`
+	NewStatus          string `json:"newStatus,omitempty"`
+	DesiredStatus      string `json:"desiredStatus,omitempty"`
+	OldContainerStatus string `json:"oldContainerStatus,omitempty"`
+	NewContainerStatus string `json:"newContainerStatus,omitempty"`
+	OldServerStatus    string `json:"oldServerStatus,omitempty"`
+	NewServerStatus    string `json:"newServerStatus,omitempty"`
+	ContainerStartedAt string `json:"containerStartedAt,omitempty"`
+	ServerStartedAt    string `json:"serverStartedAt,omitempty"`
 }
 
 // Broadcaster manages SSE clients and distributes events.
