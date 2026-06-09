@@ -20,7 +20,9 @@
       >
         No mods installed.
         <br />
-        <span class="text-xs">Drag & drop .jar or .zip here, or use the button below.</span>
+        <span class="text-xs"
+          >Drag & drop .jar or .zip here, or use the button below.</span
+        >
       </div>
 
       <div
@@ -34,7 +36,9 @@
           <Box class="w-5 h-5" />
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+          <p
+            class="text-sm font-semibold text-gray-900 dark:text-white truncate"
+          >
             {{ mod.name || mod.filename }}
           </p>
           <p class="text-xs text-gray-500 dark:text-neutral-400 truncate">
@@ -51,35 +55,16 @@
         </button>
       </div>
     </div>
-
-    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-700">
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".jar,.zip"
-        class="hidden"
-        @change="onFileSelect"
-      />
-      <button
-        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-        :disabled="uploadLoading"
-        @click="fileInput?.click()"
-      >
-        <Upload class="w-4 h-4" />
-        {{ uploadLoading ? "Uploading..." : "Upload .jar or .zip" }}
-      </button>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Box, Trash2, Upload } from "lucide-vue-next";
+import { Box, Trash2 } from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
 
 interface Props {
   mods: ModInfo[];
   loading: boolean;
-  uploadLoading: boolean;
 }
 
 const props = defineProps<Props>();
@@ -88,22 +73,14 @@ const emit = defineEmits<{
   upload: [file: File];
 }>();
 
-const fileInput = ref<HTMLInputElement | null>(null);
-
-function onFileSelect(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-  emit("upload", file);
-  input.value = "";
-}
-
 function onDrop(e: DragEvent) {
   const file = e.dataTransfer?.files[0];
   if (!file) return;
   const ext = file.name.split(".").pop()?.toLowerCase();
   if (ext !== "jar" && ext !== "zip") {
-    useToast().show("error", "Invalid file type", { description: "Only .jar and .zip files are allowed." });
+    useToast().show("error", "Invalid file type", {
+      description: "Only .jar and .zip files are allowed.",
+    });
     return;
   }
   emit("upload", file);

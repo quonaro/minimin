@@ -6,7 +6,7 @@
           <div class="flex items-center gap-2 self-stretch">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4 text-gray-500 dark:text-neutral-400"
+              class="w-4 h-4 text-blue-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -22,43 +22,6 @@
           </div>
 
           <div class="flex items-center gap-2 self-stretch">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              :class="{
-                'text-green-500': wsStatus === 'Connected',
-                'text-red-500':
-                  wsStatus === 'Error' || wsStatus === 'Disconnected',
-                'text-gray-500 dark:text-neutral-400': !wsStatus,
-              }"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
-              />
-            </svg>
-            <span
-              class="text-xs"
-              :class="{
-                'text-green-500': wsStatus === 'Connected',
-                'text-red-500':
-                  wsStatus === 'Error' || wsStatus === 'Disconnected',
-                'text-gray-500 dark:text-neutral-400': !wsStatus,
-              }"
-            >
-              {{ wsStatus || "Connecting..." }}
-            </span>
-            <button
-              class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
-              @click="reconnect"
-            >
-              Reconnect
-            </button>
             <button
               class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
               @click="clearLogs"
@@ -76,7 +39,7 @@
           <div class="flex items-center gap-2 self-stretch">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4 text-gray-500 dark:text-neutral-400"
+              class="w-4 h-4 text-purple-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -106,7 +69,7 @@
           <div class="flex items-center gap-2 self-stretch">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4 text-gray-500 dark:text-neutral-400"
+              class="w-4 h-4 text-orange-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -129,6 +92,73 @@
               <option value="text-lg">XL</option>
             </select>
           </div>
+
+          <div class="flex items-center gap-2 self-stretch">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-pink-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"
+              />
+              <path d="M2 12h20" />
+              <path
+                d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+              />
+            </svg>
+            <button
+              class="px-3 py-2 rounded-lg text-sm border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
+              @click="colored = !colored"
+            >
+              {{ colored ? "Colored" : "Monochrome" }}
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 self-stretch">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            :class="{
+              'text-green-500': wsStatus === 'Connected',
+              'text-red-500':
+                wsStatus === 'Error' || wsStatus === 'Disconnected',
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
+            }"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
+            />
+          </svg>
+          <span
+            class="text-xs"
+            :class="{
+              'text-green-500': wsStatus === 'Connected',
+              'text-red-500':
+                wsStatus === 'Error' || wsStatus === 'Disconnected',
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
+            }"
+          >
+            {{ wsStatus || "Connecting..." }}
+          </span>
+          <button
+            class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
+            @click="reconnect"
+          >
+            Reconnect
+          </button>
         </div>
       </div>
 
@@ -158,7 +188,10 @@
               {{ i + 1 }}
             </span>
             <span
-              class="whitespace-pre-wrap break-words text-gray-700 dark:text-neutral-300"
+              :class="[
+                'whitespace-pre-wrap break-words',
+                getLogLevelClass(parseLogLevel(line), colored),
+              ]"
               >{{ line }}</span
             >
           </div>
@@ -170,10 +203,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { parseLogLevel, getLogLevelClass } from "~/utils/logLevel";
 
 const props = defineProps<{
   serverId: string;
 }>();
+
+const colored = ref(true);
 
 const route = useRoute();
 const { agentId } = useCurrentAgent();
@@ -375,8 +411,6 @@ function scrollToBottom() {
   }
 }
 
-defineExpose({ scrollToBottom });
-
 function onScroll() {
   const el = logContainer.value;
   if (!el) return;
@@ -388,15 +422,23 @@ function onScroll() {
 
 onMounted(() => {
   console.log("[WS] onMounted");
-  const saved = localStorage.getItem("logs-font-size");
-  if (saved) {
-    fontSize.value = saved;
+  const savedFont = localStorage.getItem("logs-font-size");
+  if (savedFont) {
+    fontSize.value = savedFont;
+  }
+  const savedColor = localStorage.getItem("logs-colored");
+  if (savedColor !== null) {
+    colored.value = savedColor === "true";
   }
   connect();
 });
 
 watch(fontSize, (value) => {
   localStorage.setItem("logs-font-size", value);
+});
+
+watch(colored, (value) => {
+  localStorage.setItem("logs-colored", String(value));
 });
 
 watch(tail, () => {
@@ -427,4 +469,6 @@ onUnmounted(() => {
     oldWs.close();
   }
 });
+
+defineExpose({ scrollToBottom });
 </script>

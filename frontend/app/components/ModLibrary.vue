@@ -3,9 +3,10 @@
     <div class="mb-4 space-y-2">
       <div class="flex items-center gap-2">
         <input
-          v-model="searchQuery"
+          :value="searchQuery"
           type="text"
           placeholder="Search Modrinth..."
+          @input="onInput"
           class="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
           @keyup.enter="onSearch"
         />
@@ -149,6 +150,10 @@ function onSearch() {
   emit("search");
 }
 
+function onInput(e: Event) {
+  emit("update:searchQuery", (e.target as HTMLInputElement).value);
+}
+
 async function loadVersions(projectId: string) {
   if (props.versions[projectId]) return;
   emit("load-versions", projectId);
@@ -175,10 +180,5 @@ watch(
   () => {
     selectedVersion.value = {};
   },
-);
-
-watch(
-  () => props.searchQuery,
-  (v) => emit("update:searchQuery", v),
 );
 </script>

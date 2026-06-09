@@ -69,13 +69,10 @@ const {
 </script>
 
 <template>
-  <div class="flex flex-col h-[calc(100vh-4rem)]">
-    <div class="flex-1 min-h-0 px-6 pt-6 pb-6 flex flex-col gap-4">
+  <div class="p-6">
+    <div class="space-y-6">
       <div class="flex items-center justify-between flex-wrap gap-3">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Files</h1>
-        <div class="text-sm text-gray-500 dark:text-neutral-400">
-          Right click for actions · Drag to move
-        </div>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap text-sm">
@@ -124,16 +121,16 @@ const {
           v-model="search"
           type="text"
           placeholder="Search in current folder..."
-          class="w-full md:w-80 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+          class="w-full md:w-80 px-3 py-2 rounded-xl bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
         />
         <button
-          class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium shadow-sm hover:shadow-md active:scale-95 transition-all hover:bg-primary/90"
           @click="contextCreateFile"
         >
           New file
         </button>
         <button
-          class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-all"
           @click="contextUpload"
         >
           Upload file
@@ -143,26 +140,26 @@ const {
             {{ selectedEntry.name }}
           </span>
           <button
-            class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-all"
             @click="openEntry(selectedEntry)"
           >
             Open
           </button>
           <button
             v-if="!selectedEntry.isDir"
-            class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-all"
             @click="downloadFile(selectedEntry.path)"
           >
             Download
           </button>
           <button
-            class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-all"
             @click="openRenameModal(selectedEntry.path)"
           >
             Rename
           </button>
           <button
-            class="px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/30"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium shadow-sm hover:shadow-md active:scale-95 transition-all"
             @click="openDeleteModal(selectedEntry.path)"
           >
             Delete
@@ -171,13 +168,13 @@ const {
       </div>
 
       <div
-        class="grid grid-cols-1 xl:grid-cols-[1fr_440px] gap-4 flex-1 min-h-0"
+        class="grid grid-cols-1 xl:grid-cols-[1fr_440px] gap-6 h-[calc(100vh-16rem)] min-h-[500px]"
       >
         <div
-          class="border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden flex flex-col min-h-0"
+          class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-0"
         >
           <div
-            class="px-4 py-2 bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 text-xs text-gray-500 dark:text-neutral-400"
+            class="px-4 py-2 bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 text-xs text-gray-500 dark:text-neutral-400"
           >
             {{ currentPath || "/" }} · {{ displayEntries.length }} items
           </div>
@@ -272,10 +269,10 @@ const {
         </div>
 
         <div
-          class="border border-gray-200 dark:border-neutral-800 rounded-xl overflow-hidden flex flex-col min-h-0"
+          class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-0"
         >
           <div
-            class="px-4 py-2 bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 text-sm font-medium text-gray-900 dark:text-white"
+            class="px-4 py-2 bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 text-sm font-medium text-gray-900 dark:text-white"
           >
             Editor
           </div>
@@ -317,11 +314,11 @@ const {
               <template v-else>
                 <textarea
                   v-model="editorContent"
-                  class="flex-1 min-h-0 w-full rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 font-mono text-xs text-gray-900 dark:text-neutral-100 resize-none"
+                  class="flex-1 min-h-0 w-full rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 font-mono text-xs text-gray-900 dark:text-neutral-100 resize-none focus:ring-2 focus:ring-primary focus:outline-none"
                 />
                 <div class="flex justify-end">
                   <button
-                    class="px-3 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium shadow-sm hover:shadow-md active:scale-95 transition-all hover:bg-primary/90"
                     :disabled="saveLoading"
                     @click="openSaveModal"
                   >
@@ -448,7 +445,7 @@ const {
           </p>
           <div class="mt-5 flex justify-end">
             <button
-              class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-medium shadow-sm hover:shadow-md active:scale-95 transition-all hover:bg-red-700"
               @click="warningModalOpen = false"
             >
               I understand the risk
@@ -478,18 +475,18 @@ const {
             <input
               v-model="confirmInputValue"
               type="text"
-              class="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-neutral-100"
+              class="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary focus:outline-none"
             />
           </div>
           <div class="mt-5 flex justify-end gap-2">
             <button
-              class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm text-gray-700 dark:text-neutral-200"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium text-gray-700 dark:text-neutral-200 transition-all"
               @click="closeConfirmModal"
             >
               Cancel
             </button>
             <button
-              class="px-3 py-1.5 rounded-lg text-white text-sm"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium shadow-sm hover:shadow-md active:scale-95 transition-all"
               :class="
                 confirmDanger
                   ? 'bg-red-600 hover:bg-red-700'

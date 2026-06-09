@@ -6,54 +6,51 @@
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
             Console
           </h1>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              :class="{
-                'text-green-500': wsStatus === 'Connected',
-                'text-red-500':
-                  wsStatus === 'Error' || wsStatus === 'Disconnected',
-                'text-gray-500 dark:text-neutral-400': !wsStatus,
-              }"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
-              />
-            </svg>
-            <span
-              class="text-xs leading-none"
-              :class="{
-                'text-green-500': wsStatus === 'Connected',
-                'text-red-500':
-                  wsStatus === 'Error' || wsStatus === 'Disconnected',
-                'text-gray-500 dark:text-neutral-400': !wsStatus,
-              }"
-            >
-              {{ wsStatus || "Connecting..." }}
-            </span>
-            <button
-              class="text-xs leading-none rounded-full bg-primary text-white hover:bg-primary/90 focus:outline-none px-2 py-0.5"
-              @click="reconnect"
-            >
-              Reconnect
-            </button>
-          </div>
-
           <button
-            class="text-xs leading-none rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 focus:outline-none px-2 py-0.5"
+            class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
             @click="clearMessages"
           >
             Clear
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            :class="{
+              'text-green-500': wsStatus === 'Connected',
+              'text-red-500':
+                wsStatus === 'Error' || wsStatus === 'Disconnected',
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
+            }"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
+            />
+          </svg>
+          <span
+            class="text-xs"
+            :class="{
+              'text-green-500': wsStatus === 'Connected',
+              'text-red-500':
+                wsStatus === 'Error' || wsStatus === 'Disconnected',
+              'text-gray-500 dark:text-neutral-400': !wsStatus,
+            }"
+          >
+            {{ wsStatus || "Connecting..." }}
+          </span>
+          <button
+            class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
+            @click="reconnect"
+          >
+            Reconnect
           </button>
         </div>
       </div>
