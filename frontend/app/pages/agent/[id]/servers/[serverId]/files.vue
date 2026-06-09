@@ -120,6 +120,18 @@ const {
         placeholder="Search in current folder..."
         class="w-full md:w-80 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500"
       />
+      <button
+        class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
+        @click="contextCreateFile"
+      >
+        New file
+      </button>
+      <button
+        class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+        @click="contextUpload"
+      >
+        Upload file
+      </button>
       <template v-if="selectedEntry">
         <span class="text-sm text-gray-700 dark:text-neutral-300 font-medium">
           {{ selectedEntry.name }}
