@@ -1,0 +1,19 @@
+services:
+  minimin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: MiniMin
+    ports:
+      - "8080:80"
+    volumes:
+      - ./servers:/app/servers
+      - instance:/app/instance.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ORCHESTRATOR_API_KEY=changeme
+    restart: unless-stopped
+
+
+volumes:
+  instance:

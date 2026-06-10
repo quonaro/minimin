@@ -187,6 +187,9 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  noSidebar: true,
+});
 import {
   Loader2,
   AlertCircle,

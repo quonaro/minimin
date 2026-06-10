@@ -1,0 +1,45 @@
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Node.js
+frontend/node_modules
+frontend/.output
+frontend/.nuxt
+frontend/dist
+frontend/.env
+
+# Go
+backend/tmp
+backend/vendor
+backend/coverage
+
+# Data directories (large files, not needed for build)
+backend/servers
+frontend/data
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+
+# Allow docker config files needed for runtime
+!docker/Caddyfile
+!docker/supervisord.conf
+
+# Misc
+*.log
+*.pid
+*.seed
+*.pid.lock
+node_modules

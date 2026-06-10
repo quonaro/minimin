@@ -18,7 +18,7 @@
 const route = useRoute();
 
 const hasSidebar = computed(() => {
-  return route.path !== "/login" && !route.path.startsWith("/client-archive");
+  return !route.meta.noSidebar;
 });
 </script>
 
