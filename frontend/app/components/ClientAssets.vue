@@ -15,7 +15,7 @@
           title
         }}</span>
         <span class="text-xs text-gray-400 dark:text-neutral-500"
-          >({{ assets.length }})</span
+          >({{ filteredAssets.length }})</span
         >
       </div>
       <ChevronDown
@@ -42,7 +42,7 @@
         </button>
       </div>
       <div
-        v-if="assets.length === 0 && !loading"
+        v-if="filteredAssets.length === 0 && !loading"
         class="text-center text-gray-500 dark:text-neutral-400 py-6 text-sm"
       >
         No files.
@@ -52,7 +52,7 @@
       </div>
       <div v-else class="space-y-1">
         <div
-          v-for="asset in assets"
+          v-for="asset in filteredAssets"
           :key="asset.filename"
           class="flex items-center justify-between px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700"
         >
@@ -104,9 +104,18 @@ interface Props {
   type: "resourcepacks" | "shaderpacks";
   title: string;
   icon: Component;
+  searchQuery?: string;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  searchQuery: "",
+});
+
+const filteredAssets = computed(() => {
+  const q = props.searchQuery.trim().toLowerCase();
+  if (!q) return assets.value;
+  return assets.value.filter((a) => a.filename.toLowerCase().includes(q));
+});
 
 const isOpen = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);

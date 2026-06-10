@@ -79,6 +79,7 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	var req struct {
 		Formats []string `json:"formats"` // "zip", "mrpack", "curseforge", "prism"
 		TTL     int      `json:"ttl"`     // hours
+		Include []string `json:"include"` // "mods", "resourcepacks", "shaderpacks"
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
@@ -90,27 +91,50 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	if req.TTL <= 0 {
 		req.TTL = 24
 	}
-
-	clientDir := filepath.Join(s.VolumePath, "mods-client")
-	entries, err := os.ReadDir(clientDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			jsonError(w, "no client mods found", http.StatusNotFound)
-			return
-		}
-		jsonError(w, "failed to read client mods directory", http.StatusInternalServerError)
-		return
+	if len(req.Include) == 0 {
+		req.Include = []string{"mods"}
 	}
 
-	var jarFiles []string
-	for _, e := range entries {
-		if e.IsDir() {
+	typeDirMap := map[string]string{
+		"mods":          filepath.Join(s.VolumePath, "mods-client"),
+		"resourcepacks": filepath.Join(s.VolumePath, "resourcepacks"),
+		"shaderpacks":   filepath.Join(s.VolumePath, "shaderpacks"),
+	}
+	extMap := map[string]string{
+		"mods":          ".jar",
+		"resourcepacks": ".zip",
+		"shaderpacks":   ".zip",
+	}
+
+	filesByType := make(map[string][]string)
+	for _, t := range req.Include {
+		dir, ok := typeDirMap[t]
+		if !ok {
 			continue
 		}
-		name := strings.ToLower(e.Name())
-		if strings.HasSuffix(name, ".jar") {
-			jarFiles = append(jarFiles, filepath.Join(clientDir, e.Name()))
+		ext := extMap[t]
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			jsonError(w, fmt.Sprintf("failed to read %s directory", t), http.StatusInternalServerError)
+			return
 		}
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			name := strings.ToLower(e.Name())
+			if strings.HasSuffix(name, ext) || strings.HasSuffix(name, ext+".disabled") {
+				filesByType[t] = append(filesByType[t], filepath.Join(dir, e.Name()))
+			}
+		}
+	}
+
+	if len(filesByType) == 0 {
+		jsonError(w, "no files found for selected types", http.StatusNotFound)
+		return
 	}
 
 	tmpDir := filepath.Join(os.TempDir(), "webui-archives")
@@ -132,28 +156,28 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 		switch format {
 		case "zip":
 			zipPath := filepath.Join(tmpDir, token+".zip")
-			if err := createZipArchive(zipPath, jarFiles); err != nil {
+			if err := createZipArchive(zipPath, filesByType); err != nil {
 				jsonError(w, fmt.Sprintf("failed to create zip: %v", err), http.StatusInternalServerError)
 				return
 			}
 			archive.ZipPath = zipPath
 		case "mrpack":
 			mrpackPath := filepath.Join(tmpDir, token+".mrpack")
-			if err := createMrpackArchive(mrpackPath, s.ServerID, jarFiles); err != nil {
+			if err := createMrpackArchive(mrpackPath, s.ServerID, filesByType); err != nil {
 				jsonError(w, fmt.Sprintf("failed to create mrpack: %v", err), http.StatusInternalServerError)
 				return
 			}
 			archive.MrpackPath = mrpackPath
 		case "curseforge":
 			cfPath := filepath.Join(tmpDir, token+"-curseforge.zip")
-			if err := createCurseForgeArchive(cfPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, jarFiles); err != nil {
+			if err := createCurseForgeArchive(cfPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, filesByType); err != nil {
 				jsonError(w, fmt.Sprintf("failed to create curseforge archive: %v", err), http.StatusInternalServerError)
 				return
 			}
 			archive.CurseForgePath = cfPath
 		case "prism":
 			prismPath := filepath.Join(tmpDir, token+"-prism.zip")
-			if err := createPrismArchive(prismPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, jarFiles); err != nil {
+			if err := createPrismArchive(prismPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, filesByType); err != nil {
 				jsonError(w, fmt.Sprintf("failed to create prism archive: %v", err), http.StatusInternalServerError)
 				return
 			}
@@ -173,7 +197,7 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-func createZipArchive(zipPath string, files []string) error {
+func createZipArchive(zipPath string, filesByType map[string][]string) error {
 	zf, err := os.Create(zipPath)
 	if err != nil {
 		return err
@@ -183,33 +207,42 @@ func createZipArchive(zipPath string, files []string) error {
 	zw := zip.NewWriter(zf)
 	defer func() { _ = zw.Close() }()
 
-	for _, path := range files {
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
-		}
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			continue
-		}
-		header.Name = filepath.Base(path)
-		header.Method = zip.Deflate
+	zipDirMap := map[string]string{
+		"mods":          "mods/",
+		"resourcepacks": "resourcepacks/",
+		"shaderpacks":   "shaderpacks/",
+	}
 
-		w, err := zw.CreateHeader(header)
-		if err != nil {
-			continue
+	for t, files := range filesByType {
+		prefix := zipDirMap[t]
+		for _, path := range files {
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			header, err := zip.FileInfoHeader(info)
+			if err != nil {
+				continue
+			}
+			header.Name = prefix + filepath.Base(path)
+			header.Method = zip.Deflate
+
+			w, err := zw.CreateHeader(header)
+			if err != nil {
+				continue
+			}
+			f, err := os.Open(path)
+			if err != nil {
+				continue
+			}
+			_, _ = io.Copy(w, f)
+			_ = f.Close()
 		}
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		_, _ = io.Copy(w, f)
-		_ = f.Close()
 	}
 	return nil
 }
 
-func createMrpackArchive(mrpackPath, packName string, files []string) error {
+func createMrpackArchive(mrpackPath, packName string, filesByType map[string][]string) error {
 	zf, err := os.Create(mrpackPath)
 	if err != nil {
 		return err
@@ -240,36 +273,44 @@ func createMrpackArchive(mrpackPath, packName string, files []string) error {
 		Files:         []mrpackFile{},
 	}
 
-	for _, path := range files {
-		name := filepath.Base(path)
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		_ = f.Close()
+	dirMap := map[string]string{
+		"mods":          "overrides/mods/",
+		"resourcepacks": "overrides/resourcepacks/",
+		"shaderpacks":   "overrides/shaderpacks/",
+	}
 
-		index.Files = append(index.Files, mrpackFile{
-			Path:   "overrides/mods/" + name,
-			Hashes: map[string]string{},
-			Size:   info.Size(),
-		})
+	for t, files := range filesByType {
+		prefix := dirMap[t]
+		for _, path := range files {
+			name := filepath.Base(path)
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			f, err := os.Open(path)
+			if err != nil {
+				continue
+			}
+			_ = f.Close()
 
-		// Write file into overrides/mods/
-		header := &zip.FileHeader{Name: "overrides/mods/" + name, Method: zip.Deflate, Modified: info.ModTime()}
-		w, err := zw.CreateHeader(header)
-		if err != nil {
-			continue
+			index.Files = append(index.Files, mrpackFile{
+				Path:   prefix + name,
+				Hashes: map[string]string{},
+				Size:   info.Size(),
+			})
+
+			header := &zip.FileHeader{Name: prefix + name, Method: zip.Deflate, Modified: info.ModTime()}
+			w, err := zw.CreateHeader(header)
+			if err != nil {
+				continue
+			}
+			f2, err := os.Open(path)
+			if err != nil {
+				continue
+			}
+			_, _ = io.Copy(w, f2)
+			_ = f2.Close()
 		}
-		f2, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		_, _ = io.Copy(w, f2)
-		_ = f2.Close()
 	}
 
 	indexData, _ := json.MarshalIndent(index, "", "  ")
@@ -281,7 +322,7 @@ func createMrpackArchive(mrpackPath, packName string, files []string) error {
 	return nil
 }
 
-func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, files []string) error {
+func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, filesByType map[string][]string) error {
 	zf, err := os.Create(zipPath)
 	if err != nil {
 		return err
@@ -320,28 +361,37 @@ func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderV
 	}
 	_, _ = w.Write(manifestData)
 
-	for _, path := range files {
-		name := filepath.Base(path)
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
+	dirMap := map[string]string{
+		"mods":          "overrides/mods/",
+		"resourcepacks": "overrides/resourcepacks/",
+		"shaderpacks":   "overrides/shaderpacks/",
+	}
+
+	for t, files := range filesByType {
+		prefix := dirMap[t]
+		for _, path := range files {
+			name := filepath.Base(path)
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			header := &zip.FileHeader{Name: prefix + name, Method: zip.Deflate, Modified: info.ModTime()}
+			w, err := zw.CreateHeader(header)
+			if err != nil {
+				continue
+			}
+			f, err := os.Open(path)
+			if err != nil {
+				continue
+			}
+			_, _ = io.Copy(w, f)
+			_ = f.Close()
 		}
-		header := &zip.FileHeader{Name: "overrides/mods/" + name, Method: zip.Deflate, Modified: info.ModTime()}
-		w, err := zw.CreateHeader(header)
-		if err != nil {
-			continue
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		_, _ = io.Copy(w, f)
-		_ = f.Close()
 	}
 	return nil
 }
 
-func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, files []string) error {
+func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, filesByType map[string][]string) error {
 	zf, err := os.Create(zipPath)
 	if err != nil {
 		return err
@@ -403,23 +453,32 @@ func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersio
 	}
 	_, _ = w.Write(mmcData)
 
-	for _, path := range files {
-		name := filepath.Base(path)
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
+	dirMap := map[string]string{
+		"mods":          ".minecraft/mods/",
+		"resourcepacks": ".minecraft/resourcepacks/",
+		"shaderpacks":   ".minecraft/shaderpacks/",
+	}
+
+	for t, files := range filesByType {
+		prefix := dirMap[t]
+		for _, path := range files {
+			name := filepath.Base(path)
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			header := &zip.FileHeader{Name: prefix + name, Method: zip.Deflate, Modified: info.ModTime()}
+			w, err := zw.CreateHeader(header)
+			if err != nil {
+				continue
+			}
+			f, err := os.Open(path)
+			if err != nil {
+				continue
+			}
+			_, _ = io.Copy(w, f)
+			_ = f.Close()
 		}
-		header := &zip.FileHeader{Name: ".minecraft/mods/" + name, Method: zip.Deflate, Modified: info.ModTime()}
-		w, err := zw.CreateHeader(header)
-		if err != nil {
-			continue
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		_, _ = io.Copy(w, f)
-		_ = f.Close()
 	}
 	return nil
 }

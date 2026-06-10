@@ -3,8 +3,29 @@
     <div class="flex items-center justify-between mb-2">
       <h2 class="text-lg font-bold text-gray-900 dark:text-white">Client</h2>
       <span class="text-xs text-gray-500 dark:text-neutral-400">
-        {{ filteredMods.length }} mods
+        {{
+          filteredMods.length +
+          assetCounts.resourcepacks +
+          assetCounts.shaderpacks
+        }}
+        items
       </span>
+    </div>
+    <div class="mb-4 flex items-center gap-2">
+      <input
+        :value="searchQuery"
+        type="text"
+        placeholder="Search client mods, resource packs, shader packs..."
+        class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
+        @input="onSearchInput"
+      />
+      <button
+        class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
+        @click="showArchiveModal = true"
+      >
+        <Archive class="w-3.5 h-3.5" />
+        Export
+      </button>
     </div>
 
     <div
@@ -29,23 +50,6 @@
         />
       </button>
       <div v-if="modsOpen" class="p-4 space-y-4">
-        <div class="flex items-center gap-2">
-          <input
-            :value="searchQuery"
-            type="text"
-            placeholder="Search client mods..."
-            class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
-            @input="onSearchInput"
-          />
-          <button
-            class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
-            @click="showArchiveModal = true"
-          >
-            <Archive class="w-3.5 h-3.5" />
-            Export
-          </button>
-        </div>
-
         <div
           class="flex-1 overflow-y-auto space-y-2 pr-1"
           :class="
@@ -203,10 +207,52 @@
           >
             <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
               <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-                Export Client Mods
+                Export Client Archive
               </h2>
             </div>
             <div class="p-6 space-y-4">
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
+                >
+                  Include
+                </label>
+                <div class="flex flex-wrap gap-3">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="archiveInclude"
+                      type="checkbox"
+                      value="mods"
+                      class="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-neutral-300"
+                      >Mods</span
+                    >
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="archiveInclude"
+                      type="checkbox"
+                      value="resourcepacks"
+                      class="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-neutral-300"
+                      >Resource Packs</span
+                    >
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="archiveInclude"
+                      type="checkbox"
+                      value="shaderpacks"
+                      class="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-neutral-300"
+                      >Shader Packs</span
+                    >
+                  </label>
+                </div>
+              </div>
               <div>
                 <label
                   class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
@@ -259,6 +305,10 @@
                     >
                   </label>
                 </div>
+                <p class="text-xs text-gray-400 dark:text-neutral-500 mt-1">
+                  All formats include the selected asset types (mods, resource
+                  packs, shader packs) in their respective folders.
+                </p>
               </div>
               <div>
                 <label
@@ -314,7 +364,11 @@
                 </button>
                 <button
                   class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-                  :disabled="archiveLoading || archiveFormats.length === 0"
+                  :disabled="
+                    archiveLoading ||
+                    archiveFormats.length === 0 ||
+                    archiveInclude.length === 0
+                  "
                   @click="generateArchive"
                 >
                   <Archive class="w-4 h-4" />
@@ -333,6 +387,7 @@
       type="resourcepacks"
       title="Resource Packs"
       :icon="Image"
+      :search-query="searchQuery"
     />
     <client-assets
       v-if="serverId"
@@ -340,6 +395,7 @@
       type="shaderpacks"
       title="Shader Packs"
       :icon="Sparkles"
+      :search-query="searchQuery"
     />
   </div>
 </template>
@@ -386,15 +442,18 @@ const emit = defineEmits<{
     target: "server" | "client",
   ];
   "update:searchQuery": [value: string];
-  "generate-archive": [formats: string[], ttl: number];
+  "generate-archive": [formats: string[], ttl: number, include: string[]];
 }>();
 
 const modsOpen = ref(true);
 const isDragOver = ref(false);
 const showArchiveModal = ref(false);
 const archiveFormats = ref<string[]>(["zip"]);
+const archiveInclude = ref<string[]>(["mods"]);
 const archiveTTL = ref(24);
 const archiveResult = ref<ArchiveInfo | null>(null);
+
+const assetCounts = ref({ resourcepacks: 0, shaderpacks: 0 });
 
 const contextMenuOpen = ref(false);
 const contextMenuX = ref(0);
@@ -509,7 +568,12 @@ function onDragStart(e: DragEvent, mod: ModInfo) {
 
 function generateArchive() {
   archiveResult.value = null;
-  emit("generate-archive", archiveFormats.value, archiveTTL.value);
+  emit(
+    "generate-archive",
+    archiveFormats.value,
+    archiveTTL.value,
+    archiveInclude.value,
+  );
 }
 
 const archiveLink = computed(() => {

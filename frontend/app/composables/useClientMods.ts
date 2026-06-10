@@ -167,7 +167,11 @@ export function useClientMods(serverId: string) {
     }
   }
 
-  async function createArchive(formats: string[], ttl: number): Promise<ArchiveInfo | null> {
+  async function createArchive(
+    formats: string[],
+    ttl: number,
+    include: string[] = ["mods"],
+  ): Promise<ArchiveInfo | null> {
     archiveLoading.value = true;
     try {
       const res = await $fetch<{
@@ -179,7 +183,7 @@ export function useClientMods(serverId: string) {
       }>(`/servers/${serverId}/client-mods/archive`, {
         baseURL: useApiBase(),
         method: "POST",
-        body: { formats, ttl },
+        body: { formats, ttl, include },
         credentials: "include",
       });
       const data = (res as any).body ?? res;
