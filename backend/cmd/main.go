@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"orchestrator/internal/handlers"
-	"orchestrator/internal/runner"
 	"orchestrator/internal/routes"
+	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
 
 	"github.com/docker/docker/client"
@@ -25,6 +25,7 @@ func main() {
 	apiBind := getEnv("ORCHESTRATOR_API_BIND", ":8081")
 	apiKey := getEnv("ORCHESTRATOR_API_KEY", "")
 	serversDir := getEnv("MC_SERVERS_DIR", "./servers")
+	serversHostDir := getEnv("MC_SERVERS_HOST_DIR", serversDir)
 	instanceFile := getEnv("MC_INSTANCE_FILE", "./instance.yml")
 	logLevel := getEnv("ORCHESTRATOR_LOG_LEVEL", "info")
 
@@ -129,6 +130,7 @@ func main() {
 
 	h := handlers.NewHandler(cli, instance, apiKey)
 	h.ServersDir = serversDir
+	h.ServersHostDir = serversHostDir
 	router := routes.SetupRoutes(h, apiKey)
 
 	// Background health-checker

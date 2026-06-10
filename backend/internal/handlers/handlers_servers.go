@@ -114,7 +114,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		r.Context(), h.Cli, req.ServerID,
 		req.RamBytes, req.CPUs, req.GamePort,
 		req.EngineType, req.GameVersion, req.LoaderVersion,
-		h.ServersDir,
+		h.ServersDir, h.ServersHostDir,
 		req.RconPort, rconPassword, req.PublicRcon,
 		"",
 		worldGenEnv,

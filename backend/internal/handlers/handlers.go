@@ -12,10 +12,11 @@ import (
 
 // Handler holds dependencies for the orchestrator API.
 type Handler struct {
-	Cli        *client.Client
-	Instance   *state.InstanceFile
-	APIKey     string
-	ServersDir string
+	Cli            *client.Client
+	Instance       *state.InstanceFile
+	APIKey         string
+	ServersDir     string
+	ServersHostDir string
 }
 
 // NewHandler creates a new Handler.

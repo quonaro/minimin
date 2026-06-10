@@ -87,7 +87,7 @@ func (h *Handler) doStart(id string) {
 			context.Background(), h.Cli, s.ServerID,
 			s.RamBytes, s.CPUs, s.GamePort,
 			s.EngineType, s.GameVersion, s.LoaderVersion,
-			h.ServersDir,
+			h.ServersDir, h.ServersHostDir,
 			s.RconPort, s.RconPassword, s.PublicRcon,
 			s.VolumePath,
 			nil,

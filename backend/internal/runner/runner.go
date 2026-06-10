@@ -360,6 +360,19 @@ func FindFreePort(host string, preferred uint16) (uint16, error) {
 // creates a unique servers/<volume_id> directory, builds configuration and runs the container.
 // It returns the Docker container ID, the generated volume ID, and the absolute host path of the volume.
 // If existingVolumePath is non-empty and the directory exists, it is reused instead of creating a new one.
+// hostPathForDocker translates a local path inside the backend container to the
+// corresponding host path so that Docker daemon binds the correct directory.
+func hostPathForDocker(localPath, serversDir, serversHostDir string) string {
+	if serversHostDir == "" || serversHostDir == serversDir {
+		return localPath
+	}
+	rel, err := filepath.Rel(serversDir, localPath)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return localPath
+	}
+	return filepath.Join(serversHostDir, rel)
+}
+
 func StartServerContainer(
 	ctx context.Context,
 	cli *client.Client,
@@ -371,6 +384,7 @@ func StartServerContainer(
 	gameVersion string,
 	loaderVersion string,
 	serversDir string,
+	serversHostDir string,
 	rconHostPort uint16,
 	rconPassword string,
 	publicRcon bool,
@@ -393,21 +407,21 @@ func StartServerContainer(
 	}
 
 	var volumeID string
-	var hostPath string
+	var localPath string
 	if existingVolumePath != "" {
 		if info, err := os.Stat(existingVolumePath); err == nil && info.IsDir() {
-			hostPath = existingVolumePath
-			volumeID = filepath.Base(hostPath)
+			localPath = existingVolumePath
+			volumeID = filepath.Base(localPath)
 		}
 	}
-	if hostPath == "" {
+	if localPath == "" {
 		if serverID == "" {
 			return "", "", "", fmt.Errorf("server id is required to create volume directory")
 		}
 		volumeID = serverID
-		hostPath = filepath.Join(absServersDir, volumeID)
-		if mkdirErr := os.MkdirAll(hostPath, 0o755); mkdirErr != nil {
-			return "", "", "", fmt.Errorf("failed to create server data directory %s: %w", hostPath, mkdirErr)
+		localPath = filepath.Join(absServersDir, volumeID)
+		if mkdirErr := os.MkdirAll(localPath, 0o755); mkdirErr != nil {
+			return "", "", "", fmt.Errorf("failed to create server data directory %s: %w", localPath, mkdirErr)
 		}
 	}
 
@@ -426,12 +440,14 @@ func StartServerContainer(
 	}
 
 	uid, gid := ContainerUIDGID()
-	if err := os.Chown(hostPath, uid, gid); err != nil {
-		slog.Warn("failed to chown server data directory", "path", hostPath, "uid", uid, "gid", gid, "error", err)
+	if err := os.Chown(localPath, uid, gid); err != nil {
+		slog.Warn("failed to chown server data directory", "path", localPath, "uid", uid, "gid", gid, "error", err)
 	}
-	if err := os.Chmod(hostPath, 0o775); err != nil {
-		slog.Warn("failed to chmod server data directory", "path", hostPath, "error", err)
+	if err := os.Chmod(localPath, 0o775); err != nil {
+		slog.Warn("failed to chmod server data directory", "path", localPath, "error", err)
 	}
+
+	dockerHostPath := hostPathForDocker(localPath, serversDir, serversHostDir)
 
 	b := NewContainerBuilder(ImageName).
 		WithResources(ramBytes, cpus).
@@ -441,7 +457,7 @@ func StartServerContainer(
 		WithEnv("VERSION", gameVersion).
 		WithEnv("UID", strconv.Itoa(uid)).
 		WithEnv("GID", strconv.Itoa(gid)).
-		WithVolume(hostPath, "/data").
+		WithVolume(dockerHostPath, "/data").
 		WithRcon(rconPassword, rconHostPort, publicRcon).
 		WithLabel(LabelManaged, "mc-agent").
 		WithLabel(LabelServerID, serverID).
@@ -482,7 +498,7 @@ func StartServerContainer(
 	}
 	slog.Info("container started", "server_id", serverID, "container_id", resp.ID[:12])
 
-	return resp.ID, volumeID, hostPath, nil
+	return resp.ID, volumeID, localPath, nil
 }
 
 // ScanManagedContainers discovers every Docker container that carries our agent labels,
