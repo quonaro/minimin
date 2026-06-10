@@ -10,6 +10,15 @@
           class="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
           @keyup.enter="onSearch"
         />
+        <select
+          :value="projectType"
+          class="px-2 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+          @change="onProjectTypeChange"
+        >
+          <option value="mod">Mods</option>
+          <option value="resourcepack">Resource Packs</option>
+          <option value="shader">Shaders</option>
+        </select>
         <button
           class="px-3 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
           :disabled="searchLoading"
@@ -136,7 +145,10 @@
         </div>
 
         <div class="px-6 pb-3 space-y-2">
-          <label class="flex items-center gap-2 cursor-pointer">
+          <label
+            v-if="projectType === 'mod'"
+            class="flex items-center gap-2 cursor-pointer"
+          >
             <input
               v-model="installToServer"
               type="checkbox"
@@ -320,15 +332,18 @@ interface Props {
   sideFilter?: "all" | "server" | "client";
   versionDetails?: Record<string, ModrinthVersion>;
   depProjects?: Record<string, ModrinthProject>;
+  projectType?: "mod" | "resourcepack" | "shader";
 }
 
 const props = withDefaults(defineProps<Props>(), {
   versions: () => ({}),
   sideFilter: "all",
+  projectType: "mod",
 });
 const emit = defineEmits<{
   search: [];
   "update:searchQuery": [value: string];
+  "update:projectType": [value: "mod" | "resourcepack" | "shader"];
   install: [
     projectId: string,
     versionId: string,
@@ -487,6 +502,13 @@ function onSearch() {
 
 function onInput(e: Event) {
   emit("update:searchQuery", (e.target as HTMLInputElement).value);
+}
+
+function onProjectTypeChange(e: Event) {
+  emit(
+    "update:projectType",
+    (e.target as HTMLSelectElement).value as "mod" | "resourcepack" | "shader",
+  );
 }
 
 async function loadVersions(projectId: string) {

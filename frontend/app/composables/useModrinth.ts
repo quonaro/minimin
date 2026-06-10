@@ -62,8 +62,8 @@ function isCacheValid(timestamp: number): boolean {
   return Date.now() - timestamp < CACHE_TTL_MS;
 }
 
-function buildSearchKey(query: string, loader: string, gameVersion: string, offset: number): string {
-  return `${query.toLowerCase().trim()}:${loader.toLowerCase()}:${gameVersion}:${offset}`;
+function buildSearchKey(query: string, loader: string, gameVersion: string, offset: number, projectType: string): string {
+  return `${query.toLowerCase().trim()}:${loader.toLowerCase()}:${gameVersion}:${offset}:${projectType}`;
 }
 
 function buildVersionsKey(projectId: string, loader: string, gameVersion: string): string {
@@ -74,6 +74,7 @@ export function useModrinth() {
   const { show } = useToast();
 
   const searchQuery = ref("");
+  const projectType = ref<"mod" | "resourcepack" | "shader">("mod");
   const searchResults = ref<ModrinthProject[]>([]);
   const searchLoading = ref(false);
   const searchOffset = ref(0);
@@ -87,7 +88,7 @@ export function useModrinth() {
     searchOffset.value = 0;
     hasMore.value = true;
 
-    const key = buildSearchKey(searchQuery.value, loader, gameVersion, 0);
+    const key = buildSearchKey(searchQuery.value, loader, gameVersion, 0, projectType.value);
     const cached = searchCache.get(key);
     if (cached && isCacheValid(cached.timestamp)) {
       searchResults.value = cached.results;
@@ -98,7 +99,12 @@ export function useModrinth() {
     }
 
     try {
-      const facets = [`["categories:${loader.toLowerCase()}"]`, `["versions:${gameVersion}"]`];
+      const facets: string[] = [];
+      facets.push(`["project_type:${projectType.value}"]`);
+      if (projectType.value !== "resourcepack") {
+        facets.push(`["categories:${loader.toLowerCase()}"]`);
+      }
+      facets.push(`["versions:${gameVersion}"]`);
       const res = await $fetch<any>(
         `/modrinth/search`,
         {
@@ -143,7 +149,7 @@ export function useModrinth() {
     searchLoading.value = true;
     const nextOffset = searchOffset.value + searchLimit;
 
-    const key = buildSearchKey(searchQuery.value, loader, gameVersion, nextOffset);
+    const key = buildSearchKey(searchQuery.value, loader, gameVersion, nextOffset, projectType.value);
     const cached = searchCache.get(key);
     if (cached && isCacheValid(cached.timestamp)) {
       searchResults.value.push(...cached.results);
@@ -154,7 +160,12 @@ export function useModrinth() {
     }
 
     try {
-      const facets = [`["categories:${loader.toLowerCase()}"]`, `["versions:${gameVersion}"]`];
+      const facets: string[] = [];
+      facets.push(`["project_type:${projectType.value}"]`);
+      if (projectType.value !== "resourcepack") {
+        facets.push(`["categories:${loader.toLowerCase()}"]`);
+      }
+      facets.push(`["versions:${gameVersion}"]`);
       const res = await $fetch<any>(
         `/modrinth/search`,
         {
@@ -353,6 +364,7 @@ export function useModrinth() {
 
   return {
     searchQuery,
+    projectType,
     searchResults,
     searchLoading,
     hasMore,

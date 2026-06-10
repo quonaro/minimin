@@ -3,7 +3,7 @@
     <div class="mb-4 space-y-2">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-          Installed Mods
+          Server Mods
         </h2>
         <span class="text-xs text-gray-500 dark:text-neutral-400">
           {{ filteredMods.length }} mods
@@ -13,7 +13,7 @@
         <input
           :value="searchQuery"
           type="text"
-          placeholder="Search installed mods..."
+          placeholder="Search server mods..."
           class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
           @input="onSearchInput"
         />

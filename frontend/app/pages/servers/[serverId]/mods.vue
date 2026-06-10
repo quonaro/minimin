@@ -228,8 +228,10 @@
             :has-more="modrinth.hasMore.value"
             :version-details="versionDetailsMap"
             :dep-projects="depProjectsMap"
+            :project-type="modrinth.projectType.value"
             v-model:side-filter="librarySideFilter"
             @update:search-query="onSearchInput"
+            @update:project-type="onProjectTypeChange"
             @search="modrinth.search(serverEngine, serverGameVersion)"
             @load-more="modrinth.searchMore(serverEngine, serverGameVersion)"
             @install="handleInstall"
@@ -372,6 +374,11 @@ onBeforeUnmount(() => {
 
 function onSearchInput(v: string) {
   modrinth.searchQuery.value = v;
+  debouncedSearch();
+}
+
+function onProjectTypeChange(v: "mod" | "resourcepack" | "shader") {
+  modrinth.projectType.value = v;
   debouncedSearch();
 }
 
