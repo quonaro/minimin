@@ -17,6 +17,7 @@ type Handler struct {
 	APIKey         string
 	ServersDir     string
 	ServersHostDir string
+	ModUploadMaxMB int
 }
 
 // NewHandler creates a new Handler.

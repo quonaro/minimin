@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -27,6 +28,12 @@ func main() {
 	serversDir := getEnv("MC_SERVERS_DIR", "./servers")
 	serversHostDir := getEnv("MC_SERVERS_HOST_DIR", serversDir)
 	instanceFile := getEnv("MC_INSTANCE_FILE", "./instance.yml")
+	modUploadMaxMB := 1024
+	if v := os.Getenv("MC_MOD_UPLOAD_MAX_MB"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			modUploadMaxMB = n
+		}
+	}
 	logLevel := getEnv("ORCHESTRATOR_LOG_LEVEL", "info")
 
 	if apiKey == "" {
@@ -131,6 +138,7 @@ func main() {
 	h := handlers.NewHandler(cli, instance, apiKey)
 	h.ServersDir = serversDir
 	h.ServersHostDir = serversHostDir
+	h.ModUploadMaxMB = modUploadMaxMB
 	router := routes.SetupRoutes(h, apiKey)
 
 	// Background health-checker

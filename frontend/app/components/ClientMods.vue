@@ -51,7 +51,7 @@
       </button>
       <div v-if="modsOpen" class="p-4 space-y-4">
         <div
-          class="flex-1 overflow-y-auto space-y-2 pr-1"
+          class="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1"
           :class="
             isDragOver
               ? 'border-2 border-dashed border-primary rounded-xl bg-primary/5'

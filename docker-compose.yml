@@ -13,6 +13,7 @@ services:
     environment:
       - ORCHESTRATOR_API_KEY=changeme
       - MC_SERVERS_HOST_DIR=/srv/projects/my/minecraft/minimin/servers
+      - MC_MOD_UPLOAD_MAX_MB=1024
     networks:
       - mc-agent-mesh
     restart: unless-stopped

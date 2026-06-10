@@ -193,7 +193,10 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto space-y-3 pr-1" ref="scrollContainer">
+    <div
+      class="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1"
+      ref="scrollContainer"
+    >
       <div
         v-if="filteredResults.length === 0 && !searchLoading"
         class="text-center text-gray-500 dark:text-neutral-400 py-12 text-sm"
