@@ -538,7 +538,7 @@ func ScanManagedContainers(ctx context.Context, cli *client.Client, serversDir s
 			s.ContainerStartedAt = t
 		}
 		if s.ContainerStatus == "running" {
-			if ok, _ := PingServer("127.0.0.1", s.GamePort, 2*time.Second); ok {
+			if ok, _ := PingServer(fmt.Sprintf("mc-srv-%s", s.ServerID), 25565, 2*time.Second); ok {
 				s.ServerStatus = "running"
 			} else {
 				s.ServerStatus = "starting"

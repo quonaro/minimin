@@ -154,7 +154,7 @@ func (h *Handler) WSRcon(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	addr := fmt.Sprintf("127.0.0.1:%d", s.RconPort)
+	addr := fmt.Sprintf("mc-srv-%s:25575", r.PathValue("id"))
 	rconClient, err := runner.DialRCON(addr, s.RconPassword, 5*time.Second)
 	if err != nil {
 		_ = conn.WriteJSON(map[string]string{"error": err.Error()})

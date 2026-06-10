@@ -144,7 +144,7 @@ func main() {
 					if s.ContainerStatus != "running" {
 						continue
 					}
-					ok, _ := runner.PingServer("127.0.0.1", s.GamePort, 5*time.Second)
+					ok, _ := runner.PingServer(fmt.Sprintf("mc-srv-%s", s.ServerID), 25565, 5*time.Second)
 					if ok && s.ServerStatus != "running" {
 						s.ServerStatus = "running"
 						s.ServerStartedAt = time.Now().UTC()

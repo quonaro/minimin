@@ -27,6 +27,8 @@ frontend/.cache/
 # Data
 data/
 
+servers
+
 # IDE
 .vscode/
 .idea/

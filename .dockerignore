@@ -21,6 +21,8 @@ backend/coverage
 
 # Data directories (large files, not needed for build)
 backend/servers
+servers/
+data/
 frontend/data
 
 # Environment files

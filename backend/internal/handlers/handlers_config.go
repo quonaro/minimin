@@ -126,7 +126,7 @@ func (h *Handler) HandleSendRconCommand(w http.ResponseWriter, r *http.Request) 
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	addr := fmt.Sprintf("127.0.0.1:%d", s.RconPort)
+	addr := fmt.Sprintf("mc-srv-%s:25575", id)
 	rconClient, err := runner.DialRCON(addr, s.RconPassword, 5*time.Second)
 	if err != nil {
 		jsonError(w, fmt.Sprintf("rcon connection failed: %s", err.Error()), http.StatusInternalServerError)
@@ -218,7 +218,7 @@ func (h *Handler) HandleGetPlayers(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "server is not running", http.StatusServiceUnavailable)
 		return
 	}
-	addr := fmt.Sprintf("127.0.0.1:%d", s.RconPort)
+	addr := fmt.Sprintf("mc-srv-%s:25575", id)
 	rconClient, err := runner.DialRCON(addr, s.RconPassword, 5*time.Second)
 	if err != nil {
 		jsonError(w, fmt.Sprintf("rcon connection failed: %s", err.Error()), http.StatusServiceUnavailable)

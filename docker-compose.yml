@@ -13,4 +13,10 @@ services:
     environment:
       - ORCHESTRATOR_API_KEY=changeme
       - MC_SERVERS_HOST_DIR=/srv/projects/my/minecraft/minimin/servers
+    networks:
+      - mc-agent-mesh
     restart: unless-stopped
+
+networks:
+  mc-agent-mesh:
+    name: mc-agent-mesh
