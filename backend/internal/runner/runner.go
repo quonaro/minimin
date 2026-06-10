@@ -449,8 +449,14 @@ func StartServerContainer(
 
 	dockerHostPath := hostPathForDocker(localPath, serversDir, serversHostDir)
 
+	// Leave ~20 % headroom for JVM off-heap / native / container overhead.
+	heapBytes := int64(float64(ramBytes) * 0.8)
+	memoryVal := fmt.Sprintf("%dM", heapBytes/1024/1024)
+
 	b := NewContainerBuilder(ImageName).
 		WithResources(ramBytes, cpus).
+		WithEnv("MEMORY", memoryVal).
+		WithEnv("INIT_MEMORY", memoryVal).
 		WithPort(25565, gamePort, "0.0.0.0").
 		WithNetwork(NetworkName).
 		WithEnv("TYPE", engineType).
