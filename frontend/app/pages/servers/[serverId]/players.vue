@@ -477,6 +477,8 @@ import PlayerAllTimeList, {
   type AllTimePlayer,
 } from "~/components/PlayerAllTimeList.vue";
 
+usePageTitle("Players");
+
 definePageMeta({
   middleware: "auth",
 });

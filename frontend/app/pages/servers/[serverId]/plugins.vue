@@ -10,6 +10,8 @@
 </template>
 
 <script setup lang="ts">
+usePageTitle("Plugins");
+
 const route = useRoute();
 const serverId = route.params.serverId as string;
 

@@ -247,6 +247,8 @@
 </template>
 
 <script setup lang="ts">
+usePageTitle("Sign In");
+
 const colorMode = useColorMode();
 
 function toggleColorMode() {

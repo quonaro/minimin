@@ -166,6 +166,8 @@ definePageMeta({
 const route = useRoute();
 const serverId = route.params.serverId as string;
 
+usePageTitle("Console");
+
 interface ConsoleMessage {
   type: "command" | "response" | "error" | "system";
   text: string;

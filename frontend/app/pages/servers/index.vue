@@ -42,6 +42,8 @@
 </template>
 
 <script setup lang="ts">
+usePageTitle("Servers");
+
 definePageMeta({
   middleware: "auth",
 });

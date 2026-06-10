@@ -1,4 +1,6 @@
 <script setup lang="ts">
+usePageTitle("Files");
+
 definePageMeta({ middleware: "auth" });
 
 const {

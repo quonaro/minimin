@@ -585,6 +585,7 @@ const route = useRoute();
 const { show: showToast } = useToast();
 const serverId = route.params.serverId as string;
 const server = ref<Server | null>(null);
+usePageTitle(() => server.value?.serverId || serverId);
 const { refresh: refreshServers } = useServers();
 const actionLoading = ref(false);
 const iconTimestamp = ref(Date.now());

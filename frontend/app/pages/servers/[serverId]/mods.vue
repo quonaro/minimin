@@ -385,6 +385,8 @@ import { debounce } from "~/utils/debounce";
 import { Upload, Link, Download, Copy, Box } from "lucide-vue-next";
 import JSZip from "jszip";
 
+usePageTitle("Mods");
+
 definePageMeta({
   middleware: "auth",
 });

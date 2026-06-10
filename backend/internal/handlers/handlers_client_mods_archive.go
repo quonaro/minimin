@@ -402,7 +402,7 @@ func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersio
 	defer func() { _ = zw.Close() }()
 
 	// instance.cfg
-	cfg := fmt.Sprintf("name=%s\nInstanceType=OneSix\n", packName)
+	cfg := fmt.Sprintf("[General]\nname=%s\nInstanceType=OneSix\niconKey=default\n", packName)
 	w, err := zw.Create("instance.cfg")
 	if err != nil {
 		return err
@@ -411,20 +411,41 @@ func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersio
 
 	// mmc-pack.json
 	engine := strings.ToLower(engineType)
-	components := []map[string]any{
-		{
-			"cachedName":    "Minecraft",
-			"cachedVersion": gameVersion,
-			"important":     true,
-			"uid":           "net.minecraft",
-		},
+
+	minecraftComponent := map[string]any{
+		"cachedName":    "Minecraft",
+		"cachedVersion": gameVersion,
+		"important":     true,
+		"uid":           "net.minecraft",
+		"version":       gameVersion,
 	}
-	if engine != "vanilla" && loaderVersion != "" {
+
+	var components []map[string]any
+
+	switch {
+	case engine == "fabric" && loaderVersion != "":
+		components = []map[string]any{
+			minecraftComponent,
+			{
+				"cachedName":     "Intermediary Mappings",
+				"cachedRequires": []map[string]any{{"equals": gameVersion, "uid": "net.minecraft"}},
+				"cachedVersion":  gameVersion,
+				"dependencyOnly": true,
+				"uid":            "net.fabricmc.intermediary",
+				"version":        gameVersion,
+			},
+			{
+				"cachedName":     "Fabric Loader",
+				"cachedRequires": []map[string]any{{"uid": "net.fabricmc.intermediary"}},
+				"cachedVersion":  loaderVersion,
+				"important":      true,
+				"uid":            "net.fabricmc.fabric-loader",
+				"version":        loaderVersion,
+			},
+		}
+	case engine != "vanilla" && loaderVersion != "":
 		var uid, cachedName string
 		switch engine {
-		case "fabric":
-			uid = "net.fabricmc.fabric-loader"
-			cachedName = "Fabric Loader"
 		case "forge":
 			uid = "net.minecraftforge"
 			cachedName = "Forge"
@@ -435,13 +456,21 @@ func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersio
 			uid = engine
 			cachedName = engine
 		}
-		components = append(components, map[string]any{
-			"cachedName":    cachedName,
-			"cachedVersion": loaderVersion,
-			"important":     true,
-			"uid":           uid,
-		})
+		components = []map[string]any{
+			minecraftComponent,
+			{
+				"cachedName":     cachedName,
+				"cachedRequires": []map[string]any{{"equals": gameVersion, "uid": "net.minecraft"}},
+				"cachedVersion":  loaderVersion,
+				"important":      true,
+				"uid":            uid,
+				"version":        loaderVersion,
+			},
+		}
+	default:
+		components = []map[string]any{minecraftComponent}
 	}
+
 	mmcPack := map[string]any{
 		"components":    components,
 		"formatVersion": 1,

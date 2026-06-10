@@ -213,6 +213,8 @@ const token = route.params.token as string;
 const loading = ref(true);
 const error = ref("");
 const info = ref<ArchiveInfoResponse | null>(null);
+
+usePageTitle(() => info.value?.serverName || "Modpack");
 const copiedFormat = ref<string | null>(null);
 
 function copyUrl(format: string) {

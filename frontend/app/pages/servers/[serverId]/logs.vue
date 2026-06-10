@@ -10,6 +10,8 @@
 </template>
 
 <script setup lang="ts">
+usePageTitle("Logs");
+
 definePageMeta({
   middleware: "auth",
 });
