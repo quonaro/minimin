@@ -119,13 +119,13 @@
             @keydown.esc.prevent="closeSuggestions"
           />
           <div
-            v-if="showSuggestions && filteredCommands.length"
+            v-if="showSuggestions && suggestions.length"
             class="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg z-50"
           >
             <div
-              v-for="(cmd, i) in filteredCommands"
-              :key="cmd.name"
-              class="px-3 py-2 cursor-pointer text-sm font-mono flex items-center justify-between"
+              v-for="(item, i) in suggestions"
+              :key="suggestionMode === 'command' ? (item as any).name : item"
+              class="px-3 py-2 cursor-pointer text-sm flex items-center justify-between"
               :class="{
                 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300':
                   selectedIndex === i,
@@ -135,11 +135,26 @@
               @click="acceptSuggestion(i)"
               @mouseenter="selectedIndex = i"
             >
-              <span>{{ cmd.name }}</span>
-              <span
-                class="text-xs text-gray-400 dark:text-neutral-500 truncate ml-2 max-w-[60%]"
-                >{{ cmd.desc }}</span
-              >
+              <template v-if="suggestionMode === 'command'">
+                <span class="font-mono">{{ (item as any).name }}</span>
+                <span
+                  class="text-xs text-gray-400 dark:text-neutral-500 truncate ml-2 max-w-[60%]"
+                  >{{ (item as any).desc }}</span
+                >
+              </template>
+              <template v-else>
+                <div class="flex items-center gap-2">
+                  <img
+                    :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(item as string)}/24.png`"
+                    alt=""
+                    class="w-6 h-6 rounded"
+                  />
+                  <span class="font-medium">{{ item }}</span>
+                </div>
+                <span class="text-xs text-gray-400 dark:text-neutral-500"
+                  >Player</span
+                >
+              </template>
             </div>
           </div>
         </div>
@@ -207,15 +222,48 @@ const MINECRAFT_COMMANDS: MinecraftCommand[] = minecraftCommandsRaw;
 
 const showSuggestions = ref(false);
 const selectedIndex = ref(0);
+const suggestionMode = ref<"command" | "player">("command");
 
-const filteredCommands = computed(() => {
+const players = ref<string[]>([]);
+let playersPollTimer: ReturnType<typeof setInterval> | null = null;
+
+const PLAYER_COMMANDS = new Set([
+  "kick",
+  "ban",
+  "op",
+  "deop",
+  "pardon",
+  "tp",
+  "teleport",
+  "give",
+  "gamemode",
+  "clear",
+  "effect",
+  "enchant",
+  "kill",
+  "msg",
+  "tell",
+  "w",
+  "whitelist",
+]);
+
+const suggestions = computed<(MinecraftCommand | string)[]>(() => {
   const q = command.value.trimStart();
-  if (!q) return MINECRAFT_COMMANDS.slice(0, 10);
-  const prefix = q.startsWith("/") ? q.slice(1) : q;
-  if (!prefix) return MINECRAFT_COMMANDS.slice(0, 10);
-  return MINECRAFT_COMMANDS.filter((c) =>
-    c.name.toLowerCase().startsWith(prefix.toLowerCase()),
-  ).slice(0, 10);
+  if (suggestionMode.value === "command") {
+    if (!q) return MINECRAFT_COMMANDS.slice(0, 10);
+    const prefix = q.startsWith("/") ? q.slice(1) : q;
+    if (!prefix) return MINECRAFT_COMMANDS.slice(0, 10);
+    return MINECRAFT_COMMANDS.filter((c) =>
+      c.name.toLowerCase().startsWith(prefix.toLowerCase()),
+    ).slice(0, 10);
+  }
+  // player mode
+  const lastSpace = q.lastIndexOf(" ");
+  const prefix = lastSpace >= 0 ? q.slice(lastSpace + 1) : q;
+  if (!prefix) return players.value.slice(0, 10);
+  return players.value
+    .filter((p) => p.toLowerCase().startsWith(prefix.toLowerCase()))
+    .slice(0, 10);
 });
 
 function onInput() {
@@ -224,12 +272,49 @@ function onInput() {
 
 function updateSuggestions() {
   const q = command.value.trimStart();
-  if (!q || q.includes(" ")) {
+  if (!q) {
+    suggestionMode.value = "command";
+    selectedIndex.value = 0;
+    showSuggestions.value = true;
+    return;
+  }
+
+  const trimmed = q.startsWith("/") ? q.slice(1) : q;
+  const spaceIdx = trimmed.indexOf(" ");
+
+  if (spaceIdx === -1) {
+    suggestionMode.value = "command";
+    selectedIndex.value = 0;
+    showSuggestions.value = true;
+    return;
+  }
+
+  const baseCmd = trimmed.slice(0, spaceIdx).toLowerCase();
+  const afterCmd = trimmed.slice(spaceIdx + 1);
+
+  if (baseCmd === "whitelist") {
+    const subArgs = afterCmd.trim().split(/\s+/);
+    if (
+      subArgs.length === 1 &&
+      (subArgs[0] === "add" || subArgs[0] === "remove")
+    ) {
+      suggestionMode.value = "player";
+      selectedIndex.value = 0;
+      showSuggestions.value = players.value.length > 0;
+      return;
+    }
     showSuggestions.value = false;
     return;
   }
-  selectedIndex.value = 0;
-  showSuggestions.value = true;
+
+  if (PLAYER_COMMANDS.has(baseCmd)) {
+    suggestionMode.value = "player";
+    selectedIndex.value = 0;
+    showSuggestions.value = players.value.length > 0;
+    return;
+  }
+
+  showSuggestions.value = false;
 }
 
 function closeSuggestions() {
@@ -237,19 +322,32 @@ function closeSuggestions() {
 }
 
 function acceptSuggestion(index: number) {
-  const cmds = filteredCommands.value;
-  if (index < 0 || index >= cmds.length) return;
-  const item = cmds[index];
+  const items = suggestions.value;
+  if (index < 0 || index >= items.length) return;
+  const item = items[index];
   if (!item) return;
-  command.value = command.value.trimStart().startsWith("/")
-    ? `/${item.name} `
-    : `${item.name} `;
+
+  if (suggestionMode.value === "command") {
+    const cmd = item as MinecraftCommand;
+    command.value = command.value.trimStart().startsWith("/")
+      ? `/${cmd.name} `
+      : `${cmd.name} `;
+  } else {
+    const name = item as string;
+    const q = command.value;
+    const lastSpace = q.lastIndexOf(" ");
+    if (lastSpace >= 0) {
+      command.value = q.slice(0, lastSpace + 1) + name + " ";
+    } else {
+      command.value = name + " ";
+    }
+  }
   showSuggestions.value = false;
   nextTick(() => inputRef.value?.focus());
 }
 
 function onEnter() {
-  if (showSuggestions.value && filteredCommands.value.length) {
+  if (showSuggestions.value && suggestions.value.length) {
     acceptSuggestion(selectedIndex.value);
   } else {
     sendCommand();
@@ -257,10 +355,10 @@ function onEnter() {
 }
 
 function onUp() {
-  if (showSuggestions.value && filteredCommands.value.length) {
+  if (showSuggestions.value && suggestions.value.length) {
     selectedIndex.value =
       selectedIndex.value <= 0
-        ? filteredCommands.value.length - 1
+        ? suggestions.value.length - 1
         : selectedIndex.value - 1;
   } else {
     historyPrev();
@@ -268,9 +366,9 @@ function onUp() {
 }
 
 function onDown() {
-  if (showSuggestions.value && filteredCommands.value.length) {
+  if (showSuggestions.value && suggestions.value.length) {
     selectedIndex.value =
-      selectedIndex.value >= filteredCommands.value.length - 1
+      selectedIndex.value >= suggestions.value.length - 1
         ? 0
         : selectedIndex.value + 1;
   } else {
@@ -279,9 +377,21 @@ function onDown() {
 }
 
 function onTab(e: KeyboardEvent) {
-  if (showSuggestions.value && filteredCommands.value.length) {
+  if (showSuggestions.value && suggestions.value.length) {
     e.preventDefault();
     acceptSuggestion(selectedIndex.value);
+  }
+}
+
+async function fetchPlayers() {
+  try {
+    const res = await $fetch<{ players?: string[] }>(
+      `/api/servers/${serverId}/players`,
+      { credentials: "include" },
+    );
+    players.value = res.players || [];
+  } catch {
+    // silently fail
   }
 }
 
@@ -458,6 +568,8 @@ onMounted(() => {
   }
   connect();
   inputRef.value?.focus();
+  fetchPlayers();
+  playersPollTimer = setInterval(fetchPlayers, 30000);
 });
 
 watch(fontSize, (value) => {
@@ -469,6 +581,10 @@ onUnmounted(() => {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
+  }
+  if (playersPollTimer) {
+    clearInterval(playersPollTimer);
+    playersPollTimer = null;
   }
   if (ws) {
     const oldWs = ws;
