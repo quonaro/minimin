@@ -68,5 +68,11 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("DELETE /api/servers/{id}/mods/{filename}", middleware.WithAuth(apiKey, h.HandleDeleteServerMod))
 	mux.HandleFunc("POST /api/servers/{id}/mods/{filename}/toggle", middleware.WithAuth(apiKey, h.HandleToggleServerMod))
 
+	// Modrinth proxy (protected)
+	mux.HandleFunc("GET /api/modrinth/search", middleware.WithAuth(apiKey, h.HandleModrinthSearch))
+	mux.HandleFunc("GET /api/modrinth/project/{id}", middleware.WithAuth(apiKey, h.HandleModrinthGetProject))
+	mux.HandleFunc("GET /api/modrinth/project/{id}/versions", middleware.WithAuth(apiKey, h.HandleModrinthGetVersions))
+	mux.HandleFunc("GET /api/modrinth/version/{id}", middleware.WithAuth(apiKey, h.HandleModrinthGetVersion))
+
 	return middleware.RequestLogger(mux)
 }

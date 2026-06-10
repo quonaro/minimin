@@ -120,6 +120,7 @@
             :versions="versionsMap"
             :has-more="modrinth.hasMore.value"
             :version-details="versionDetailsMap"
+            :dep-projects="depProjectsMap"
             v-model:side-filter="librarySideFilter"
             @update:search-query="onSearchInput"
             @search="modrinth.search(serverEngine, serverGameVersion)"
@@ -127,6 +128,7 @@
             @install="handleInstall"
             @load-versions="handleLoadVersions"
             @load-version-details="handleLoadVersionDetails"
+            @load-project="handleLoadProject"
           />
         </div>
       </div>
@@ -165,6 +167,9 @@ const installedSideFilter = ref<"all" | "server" | "client">("all");
 const librarySideFilter = ref<"all" | "server" | "client">("all");
 const versionDetailsMap = ref<
   Record<string, import("~/composables/useModrinth").ModrinthVersion>
+>({});
+const depProjectsMap = ref<
+  Record<string, import("~/composables/useModrinth").ModrinthProject>
 >({});
 
 function onFileSelect(e: Event) {
@@ -300,6 +305,13 @@ async function handleLoadVersionDetails(versionId: string) {
       ...versionDetailsMap.value,
       [versionId]: details,
     };
+  }
+}
+
+async function handleLoadProject(projectId: string) {
+  const project = await modrinth.getProject(projectId);
+  if (project) {
+    depProjectsMap.value = { ...depProjectsMap.value, [projectId]: project };
   }
 }
 

@@ -93,23 +93,44 @@
               type="checkbox"
               :checked="selectedDepIds.has(dep.project_id)"
               :disabled="dep.dependency_type === 'required'"
-              class="mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
+              class="mt-2 w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
               @change="toggleDep(dep.project_id)"
             />
-            <label :for="dep.project_id" class="flex-1 text-sm">
-              <span class="font-medium text-gray-900 dark:text-white">
-                {{ dep.project_id }}
-              </span>
-              <span
-                class="ml-2 text-xs px-1.5 py-0.5 rounded capitalize"
-                :class="
-                  dep.dependency_type === 'required'
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                    : 'bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300'
-                "
+            <label :for="dep.project_id" class="flex-1 flex items-start gap-2">
+              <img
+                v-if="props.depProjects?.[dep.project_id]?.icon_url"
+                :src="props.depProjects?.[dep.project_id]?.icon_url"
+                class="w-8 h-8 rounded-lg object-cover shrink-0 bg-gray-200 dark:bg-neutral-600"
+                alt=""
+              />
+              <div
+                v-else
+                class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0"
               >
-                {{ dep.dependency_type }}
-              </span>
+                <Box class="w-4 h-4" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <span
+                  class="font-medium text-sm text-gray-900 dark:text-white block truncate"
+                >
+                  {{
+                    props.depProjects?.[dep.project_id]?.title || dep.project_id
+                  }}
+                </span>
+                <span class="text-[10px] text-gray-400 dark:text-neutral-500">
+                  {{ props.depProjects?.[dep.project_id]?.author || "" }}
+                </span>
+                <span
+                  class="ml-1 text-[10px] px-1 py-0.5 rounded capitalize"
+                  :class="
+                    dep.dependency_type === 'required'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300'
+                  "
+                >
+                  {{ dep.dependency_type }}
+                </span>
+              </div>
             </label>
           </div>
         </div>
@@ -275,6 +296,7 @@ interface Props {
   hasMore?: boolean;
   sideFilter?: "all" | "server" | "client";
   versionDetails?: Record<string, ModrinthVersion>;
+  depProjects?: Record<string, ModrinthProject>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -289,6 +311,7 @@ const emit = defineEmits<{
   "load-more": [];
   "update:sideFilter": [value: "all" | "server" | "client"];
   "load-version-details": [versionId: string];
+  "load-project": [projectId: string];
 }>();
 
 function activeDeps(projectId: string) {
@@ -361,6 +384,9 @@ function openConfirm(project: ModrinthProject, versionId: string) {
   for (const d of deps) {
     if (d.dependency_type === "required" || d.dependency_type === "embedded") {
       ids.add(d.project_id);
+    }
+    if (!props.depProjects?.[d.project_id]) {
+      emit("load-project", d.project_id);
     }
   }
   selectedDepIds.value = ids;

@@ -55,6 +55,8 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const searchCache = new Map<string, SearchCacheEntry>();
 const versionsCache = new Map<string, VersionsCacheEntry>();
+const projectCache = new Map<string, { project: ModrinthProject; timestamp: number }>();
+const versionDetailsCache = new Map<string, { version: ModrinthVersion; timestamp: number }>();
 
 function isCacheValid(timestamp: number): boolean {
   return Date.now() - timestamp < CACHE_TTL_MS;
@@ -98,8 +100,10 @@ export function useModrinth() {
     try {
       const facets = [`["categories:${loader.toLowerCase()}"]`, `["versions:${gameVersion}"]`];
       const res = await $fetch<any>(
-        `https://api.modrinth.com/v2/search`,
+        `/modrinth/search`,
         {
+          baseURL: useApiBase(),
+          credentials: "include",
           query: {
             query: searchQuery.value,
             facets: `[${facets.join(",")}]`,
@@ -152,8 +156,10 @@ export function useModrinth() {
     try {
       const facets = [`["categories:${loader.toLowerCase()}"]`, `["versions:${gameVersion}"]`];
       const res = await $fetch<any>(
-        `https://api.modrinth.com/v2/search`,
+        `/modrinth/search`,
         {
+          baseURL: useApiBase(),
+          credentials: "include",
           query: {
             query: searchQuery.value,
             facets: `[${facets.join(",")}]`,
@@ -199,10 +205,12 @@ export function useModrinth() {
     }
 
     try {
-      const res = await $fetch<any[]>(`https://api.modrinth.com/v2/project/${projectId}/version`, {
+      const res = await $fetch<any[]>(`/modrinth/project/${projectId}/versions`, {
+        baseURL: useApiBase(),
+        credentials: "include",
         query: {
-          loaders: `["${loader.toLowerCase()}"]`,
-          game_versions: `["${gameVersion}"]`,
+          loaders: loader.toLowerCase(),
+          game_versions: gameVersion,
         },
       });
       const versions = (res || []).map((v: any) => ({
@@ -228,9 +236,16 @@ export function useModrinth() {
   }
 
   async function getVersionDetails(versionId: string): Promise<ModrinthVersion | null> {
+    const cached = versionDetailsCache.get(versionId);
+    if (cached && isCacheValid(cached.timestamp)) {
+      return cached.version;
+    }
     try {
-      const v = await $fetch<any>(`https://api.modrinth.com/v2/version/${versionId}`);
-      return {
+      const v = await $fetch<any>(`/modrinth/version/${versionId}`, {
+        baseURL: useApiBase(),
+        credentials: "include",
+      });
+      const version: ModrinthVersion = {
         id: v.id,
         project_id: v.project_id,
         version_number: v.version_number,
@@ -243,6 +258,8 @@ export function useModrinth() {
         })),
         dependencies: v.dependencies || [],
       };
+      versionDetailsCache.set(versionId, { version, timestamp: Date.now() });
+      return version;
     } catch (err: any) {
       show("error", "Failed to load version details", {
         description: err?.message || "Unknown error",
@@ -303,6 +320,37 @@ export function useModrinth() {
     return results;
   }
 
+  async function getProject(projectId: string): Promise<ModrinthProject | null> {
+    const cached = projectCache.get(projectId);
+    if (cached && isCacheValid(cached.timestamp)) {
+      return cached.project;
+    }
+    try {
+      const p = await $fetch<any>(`/modrinth/project/${projectId}`, {
+        baseURL: useApiBase(),
+        credentials: "include",
+      });
+      const project: ModrinthProject = {
+        project_id: p.id,
+        slug: p.slug,
+        title: p.title,
+        description: p.description,
+        icon_url: p.icon_url,
+        author: p.author,
+        downloads: p.downloads,
+        server_side: p.server_side,
+        client_side: p.client_side,
+      };
+      projectCache.set(projectId, { project, timestamp: Date.now() });
+      return project;
+    } catch (err: any) {
+      show("error", "Failed to load project info", {
+        description: err?.message || "Unknown error",
+      });
+      return null;
+    }
+  }
+
   return {
     searchQuery,
     searchResults,
@@ -313,6 +361,7 @@ export function useModrinth() {
     searchMore,
     getVersions,
     getVersionDetails,
+    getProject,
     install,
     resolveDependency,
     bulkInstall,
