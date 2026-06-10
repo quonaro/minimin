@@ -11,7 +11,6 @@
 
 <script setup lang="ts">
 const route = useRoute();
-const { agentId } = useCurrentAgent();
 const serverId = route.params.serverId as string;
 
 definePageMeta({
@@ -19,11 +18,10 @@ definePageMeta({
 });
 
 async function fetchServerInfo() {
-  if (!agentId.value) return;
   try {
     const res = await $fetch<
       { body: { engineType: string } } | { engineType: string }
-    >(`/agent/${agentId.value}/servers/${serverId}`, {
+    >(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       credentials: "include",
     });
@@ -31,13 +29,13 @@ async function fetchServerInfo() {
     const engine = (data.engineType ?? "").toUpperCase();
 
     if (engine === "FABRIC" || engine === "FORGE") {
-      await navigateTo(`/agent/${agentId.value}/servers/${serverId}/mods`, {
+      await navigateTo(`/servers/${serverId}/mods`, {
         replace: true,
       });
       return;
     }
     if (engine === "VANILLA") {
-      await navigateTo(`/agent/${agentId.value}/servers/${serverId}`, {
+      await navigateTo(`/servers/${serverId}`, {
         replace: true,
       });
       return;

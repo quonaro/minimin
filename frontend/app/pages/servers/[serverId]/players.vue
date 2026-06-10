@@ -482,7 +482,6 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { agentId } = useCurrentAgent();
 const { show: showToast } = useToast();
 const serverId = route.params.serverId as string;
 
@@ -534,10 +533,8 @@ const FETCH_RETRY_BASE_MS = 1000;
 const FETCH_RETRY_MAX_MS = 30000;
 const FETCH_MAX_ATTEMPTS = 5;
 
-const { lastEvent } = useEventSource();
-
 function lsKey(): string {
-  return `mc-players-${agentId.value}-${serverId}`;
+  return `mc-players-`;
 }
 
 function loadAllPlayers() {
@@ -761,12 +758,11 @@ function connectLogsWS() {
     oldWs.onclose = null;
     oldWs.close();
   }
-  if (!agentId.value) return;
 
   const config = useRuntimeConfig();
   const base = (config.public.apiBase as string) || "http://localhost:8081";
   const wsBase = base.replace(/^http/, "ws");
-  const url = `${wsBase}/ws/agent/${agentId.value}/servers/${serverId}/logs?tail=50`;
+  const url = `${wsBase}/ws/servers/${serverId}/logs?tail=50`;
 
   ++socketCounter;
   const socket = new WebSocket(url);
@@ -837,7 +833,7 @@ async function fetchOnlineWithRetry(attempt = 0) {
       online?: number;
       max?: number;
       players?: string[];
-    }>(`/agent/${agentId.value}/servers/${serverId}/players`, {
+    }>(`/servers/${serverId}/players`, {
       baseURL: apiBase,
       credentials: "include",
     });
@@ -879,7 +875,7 @@ async function fetchOps() {
   opsError.value = null;
   try {
     const res = await $fetch<{ ops?: PlayerEntry[] }>(
-      `/agent/${agentId.value}/servers/${serverId}/ops`,
+      `/servers/${serverId}/ops`,
       { baseURL: apiBase, credentials: "include" },
     );
     opsList.value = res.ops || [];
@@ -900,7 +896,7 @@ async function fetchWhitelist() {
   wlError.value = null;
   try {
     const res = await $fetch<{ whitelist?: PlayerEntry[] }>(
-      `/agent/${agentId.value}/servers/${serverId}/whitelist`,
+      `/servers/${serverId}/whitelist`,
       { baseURL: apiBase, credentials: "include" },
     );
     wlList.value = res.whitelist || [];
@@ -921,7 +917,7 @@ async function fetchBans() {
   bansError.value = null;
   try {
     const res = await $fetch<{ bans?: PlayerEntry[] }>(
-      `/agent/${agentId.value}/servers/${serverId}/bans`,
+      `/servers/${serverId}/bans`,
       { baseURL: apiBase, credentials: "include" },
     );
     bansList.value = res.bans || [];
@@ -941,7 +937,7 @@ async function refreshAll() {
 
 async function sendRcon(command: string) {
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}/rcon`, {
+    await $fetch(`/servers/${serverId}/rcon`, {
       baseURL: apiBase,
       method: "POST",
       credentials: "include",
@@ -993,13 +989,6 @@ onMounted(() => {
   loadAllPlayers();
   refreshAll();
   connectLogsWS();
-
-  watch(lastEvent, (evt) => {
-    if (!evt || evt.type !== "server.status") return;
-    if (evt.agentId === agentId.value && evt.serverId === serverId) {
-      refreshAll();
-    }
-  });
 });
 
 onUnmounted(() => {

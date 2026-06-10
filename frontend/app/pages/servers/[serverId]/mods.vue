@@ -96,7 +96,6 @@
           <installed-mods
             :mods="mods"
             :loading="loading"
-            :agent-id="agentId"
             :server-id="serverId"
             @delete="deleteMod"
             @upload="handleUpload"
@@ -139,7 +138,6 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { agentId } = useCurrentAgent();
 const serverId = route.params.serverId as string;
 
 const {
@@ -152,7 +150,7 @@ const {
   uploadFile,
   downloadFromURL,
   toggleMod,
-} = useMods(agentId, serverId);
+} = useMods(serverId);
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const showDownloadModal = ref(false);
@@ -195,12 +193,11 @@ function onSearchInput(v: string) {
 }
 
 async function fetchServerInfo() {
-  if (!agentId.value) return;
   try {
     const res = await $fetch<
       | { body: { engineType: string; gameVersion: string } }
       | { engineType: string; gameVersion: string }
-    >(`/agent/${agentId.value}/servers/${serverId}`, {
+    >(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       credentials: "include",
     });
@@ -210,13 +207,13 @@ async function fetchServerInfo() {
     serverGameVersion.value = data.gameVersion ?? "";
 
     if (engine === "PAPERMC" || engine === "PAPER") {
-      await navigateTo(`/agent/${agentId.value}/servers/${serverId}/plugins`, {
+      await navigateTo(`/servers/${serverId}/plugins`, {
         replace: true,
       });
       return;
     }
     if (engine === "VANILLA") {
-      await navigateTo(`/agent/${agentId.value}/servers/${serverId}`, {
+      await navigateTo(`/servers/${serverId}`, {
         replace: true,
       });
       return;
@@ -235,9 +232,11 @@ async function handleToggle(filename: string) {
 }
 
 async function handleInstall(projectId: string, versionId: string) {
-  if (!agentId.value) return;
-  await modrinth.install(agentId.value, serverId, projectId, versionId);
-  await refresh();
+  const file = await modrinth.install(projectId, versionId);
+  if (file) {
+    await downloadFromURL(file.url, file.filename);
+    await refresh();
+  }
 }
 
 async function handleLoadVersions(projectId: string) {

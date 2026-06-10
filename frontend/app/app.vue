@@ -16,40 +16,8 @@
 
 <script setup lang="ts">
 const route = useRoute();
-const { show: showToast } = useToast();
 
 const hasSidebar = computed(() => route.path !== "/login");
-
-const { lastEvent } = useEventSource();
-
-watch(lastEvent, (evt) => {
-  if (!evt) return;
-  switch (evt.type) {
-    case "server.status":
-      showToast("info", `Server ${evt.newStatus}`, {
-        description: `${evt.serverId} changed from ${evt.oldStatus} to ${evt.newStatus}`,
-      });
-      break;
-    case "agent.status":
-      showToast(
-        "info",
-        `Agent ${evt.newStatus === "online" ? "online" : "offline"}`,
-        {
-          description: evt.message,
-        },
-      );
-      break;
-    case "action.success":
-      showToast("success", evt.message);
-      break;
-    case "action.error":
-      showToast("error", evt.message);
-      break;
-    default:
-      showToast("info", evt.message);
-      break;
-  }
-});
 </script>
 
 <style>

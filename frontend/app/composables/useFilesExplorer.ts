@@ -42,7 +42,6 @@ function getErrorMessage(err: unknown, fallback: string): string {
 
 export function useFilesExplorer() {
   const route = useRoute();
-  const { agentId } = useCurrentAgent();
   const { show: showToast } = useToast();
   const serverId = route.params.serverId as string;
 
@@ -151,7 +150,7 @@ export function useFilesExplorer() {
     listError.value = "";
     try {
       const res = await $fetch<{ path: string; entries: FileEntry[] }>(
-        `/agent/${agentId.value}/servers/${serverId}/files`,
+        `/servers/${serverId}/files`,
         {
           baseURL: useApiBase(),
           credentials: "include",
@@ -201,7 +200,7 @@ export function useFilesExplorer() {
     editorContent.value = "";
     try {
       const res = await $fetch<ReadFileResponse>(
-        `/agent/${agentId.value}/servers/${serverId}/file`,
+        `/servers/${serverId}/file`,
         {
           baseURL: useApiBase(),
           credentials: "include",
@@ -220,7 +219,7 @@ export function useFilesExplorer() {
   function downloadFile(path: string) {
     const qs = new URLSearchParams({ path }).toString();
     window.open(
-      `${useApiBase()}/agent/${agentId.value}/servers/${serverId}/files/download?${qs}`,
+      `${useApiBase()}/servers/${serverId}/files/download?${qs}`,
       "_blank",
     );
   }
@@ -397,7 +396,7 @@ export function useFilesExplorer() {
 
   async function hasNameConflict(destinationDir: string, destinationName: string) {
     const res = await $fetch<{ entries: FileEntry[] }>(
-      `/agent/${agentId.value}/servers/${serverId}/files`,
+      `/servers/${serverId}/files`,
       {
         baseURL: useApiBase(),
         credentials: "include",
@@ -449,7 +448,7 @@ export function useFilesExplorer() {
       buttonText: "Move",
       danger: false,
       action: async () => {
-        await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/move`, {
+        await $fetch(`/servers/${serverId}/files/move`, {
           baseURL: useApiBase(),
           credentials: "include",
           method: "POST",
@@ -478,7 +477,7 @@ export function useFilesExplorer() {
       action: async () => {
         const formData = new FormData();
         formData.append("file", file);
-        await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/upload`, {
+        await $fetch(`/servers/${serverId}/files/upload`, {
           baseURL: useApiBase(),
           credentials: "include",
           method: "POST",
@@ -502,7 +501,7 @@ export function useFilesExplorer() {
         const name = value.trim();
         if (!name) throw new Error("Folder name is required");
         const path = buildChildPath(currentPath.value, name);
-        await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/mkdir`, {
+        await $fetch(`/servers/${serverId}/files/mkdir`, {
           baseURL: useApiBase(),
           credentials: "include",
           method: "POST",
@@ -525,7 +524,7 @@ export function useFilesExplorer() {
         const name = value.trim();
         if (!name) throw new Error("File name is required");
         const path = buildChildPath(currentPath.value, name);
-        await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/create`, {
+        await $fetch(`/servers/${serverId}/files/create`, {
           baseURL: useApiBase(),
           credentials: "include",
           method: "POST",
@@ -548,7 +547,7 @@ export function useFilesExplorer() {
       action: async (value) => {
         const target = normalizePath(value);
         if (!target) throw new Error("Target path is required");
-        await $fetch(`/agent/${agentId.value}/servers/${serverId}/files/move`, {
+        await $fetch(`/servers/${serverId}/files/move`, {
           baseURL: useApiBase(),
           credentials: "include",
           method: "POST",
@@ -572,7 +571,7 @@ export function useFilesExplorer() {
       buttonText: "Delete",
       danger: true,
       action: async () => {
-        await $fetch(`/agent/${agentId.value}/servers/${serverId}/files`, {
+        await $fetch(`/servers/${serverId}/files`, {
           baseURL: useApiBase(),
           credentials: "include",
           method: "DELETE",
@@ -599,7 +598,7 @@ export function useFilesExplorer() {
       action: async () => {
         saveLoading.value = true;
         try {
-          await $fetch(`/agent/${agentId.value}/servers/${serverId}/file`, {
+          await $fetch(`/servers/${serverId}/file`, {
             baseURL: useApiBase(),
             credentials: "include",
             method: "PUT",

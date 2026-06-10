@@ -14,17 +14,11 @@ export interface Server {
   gameVersion: string;
 }
 
-export function useServers(agentId: Ref<string | undefined>) {
-  const id = computed(() => agentId.value);
-
-  const serversUrl = computed(() =>
-    id.value ? `/agent/${id.value}/servers` : null,
-  );
-
+export function useServers() {
   const { data: serversData, pending, error, refresh } = useApiFetch<
     Server[] | { body: Server[] }
-  >(serversUrl as any, {
-    key: `agent-servers-${agentId.value ?? 'none'}`,
+  >('/servers', {
+    key: 'servers-list',
   });
 
   const servers = computed<Server[]>(() => {

@@ -3,14 +3,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
-  const agentId = to.params.id
   const serverId = to.params.serverId
 
-  if (typeof agentId !== 'string' || typeof serverId !== 'string') {
+  if (typeof serverId !== 'string') {
     return
   }
 
-  const overviewPath = `/agent/${agentId}/servers/${serverId}`
+  const overviewPath = `/servers/${serverId}`
   const logsPath = `${overviewPath}/logs`
   if (to.path === overviewPath || to.path === `${overviewPath}/` || to.path === logsPath || to.path === `${logsPath}/`) {
     return
@@ -23,7 +22,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   try {
     const res = await $fetch<
       { initialized?: boolean } | { body?: { initialized?: boolean } }
-    >(`/agent/${agentId}/servers/${serverId}/config`, {
+    >(`/servers/${serverId}/config`, {
       baseURL: useApiBase(),
       credentials: 'include',
     })

@@ -12,7 +12,6 @@ import {
 } from "lucide-vue-next";
 
 const props = defineProps<{
-  agentId: string;
   serverId: string;
 }>();
 
@@ -294,7 +293,7 @@ async function loadConfig() {
   configUninitialized.value = false;
   try {
     const res = await $fetch<ConfigResponse | { body: ConfigResponse }>(
-      `/agent/${props.agentId}/servers/${props.serverId}/config`,
+      `/servers/${props.serverId}/config`,
       { baseURL: useApiBase(), credentials: "include" },
     );
     let content = "";
@@ -335,7 +334,7 @@ async function saveProperties() {
   if (saveLoading.value) return;
   saveLoading.value = true;
   try {
-    await $fetch(`/agent/${props.agentId}/servers/${props.serverId}/config`, {
+    await $fetch(`/servers/${props.serverId}/config`, {
       baseURL: useApiBase(),
       method: "PATCH",
       credentials: "include",

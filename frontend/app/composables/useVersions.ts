@@ -22,6 +22,14 @@ interface AllVersionsResponse {
 let cachedAll: AllVersionsResponse | null = null;
 let cachedPromise: Promise<AllVersionsResponse> | null = null;
 
+async function fetchAllVersions(): Promise<AllVersionsResponse> {
+  const data = await $fetch<AllVersionsResponse>("/versions", {
+    baseURL: useApiBase(),
+    credentials: "include",
+  });
+  return data;
+}
+
 export function useVersions() {
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -32,8 +40,6 @@ export function useVersions() {
   const fabricLoaderVersions = ref<LoaderVersion[]>([]);
   const forgeGameVersions = ref<GameVersion[]>([]);
   const forgeLoaderMap = ref<Record<string, string[]>>({});
-
-  const baseURL = useApiBase();
 
   async function loadAll() {
     if (cachedAll) {
@@ -48,10 +54,7 @@ export function useVersions() {
 
     loading.value = true;
     error.value = null;
-    cachedPromise = $fetch<AllVersionsResponse>("/versions/all", {
-      baseURL,
-      credentials: "include",
-    });
+    cachedPromise = fetchAllVersions();
 
     try {
       const data = await cachedPromise;
@@ -70,11 +73,8 @@ export function useVersions() {
     paperVersions.value = data.paper ?? [];
     fabricGameVersions.value = data.fabricGames ?? [];
     fabricLoaderVersions.value = data.fabricLoaders ?? [];
-    forgeGameVersions.value =
-      data.forge?.map((v) => ({ id: v.id, stable: v.stable })) ?? [];
-    forgeLoaderMap.value = Object.fromEntries(
-      data.forge?.map((v) => [v.id, v.loaders || []]) ?? []
-    );
+    forgeGameVersions.value = data.forge?.map((v) => ({ id: v.id, stable: v.stable })) ?? [];
+    forgeLoaderMap.value = Object.fromEntries(data.forge?.map((v) => [v.id, v.loaders || []]) ?? []);
   }
 
   async function loadForEngine(_engine: string) {

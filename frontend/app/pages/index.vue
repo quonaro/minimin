@@ -2,7 +2,7 @@
 const { isAuthenticated } = useAuth();
 
 if (isAuthenticated.value) {
-  await navigateTo("/agents", { replace: true });
+  await navigateTo("/servers", { replace: true });
 } else {
   await navigateTo("/login", { replace: true });
 }

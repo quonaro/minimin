@@ -146,12 +146,12 @@
                   <p
                     class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                   >
-                    Agent ID
+                    Server ID
                   </p>
                   <p
                     class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
                   >
-                    {{ agentId }}
+                    {{ serverId }}
                   </p>
                 </div>
               </div>
@@ -525,7 +525,7 @@
           v-show="propertiesExpanded"
           class="px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6"
         >
-          <server-properties :agent-id="agentId" :server-id="serverId" />
+          <server-properties :server-id="serverId" />
         </div>
       </div>
     </div>
@@ -582,13 +582,10 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { agentId } = useCurrentAgent();
 const { show: showToast } = useToast();
-const { lastEvent } = useEventSource();
-
 const serverId = route.params.serverId as string;
 const server = ref<Server | null>(null);
-const { refresh: refreshServers } = useServers(agentId);
+const { refresh: refreshServers } = useServers();
 const actionLoading = ref(false);
 const iconTimestamp = ref(Date.now());
 const iconError = ref(false);
@@ -615,7 +612,7 @@ const serverLogsRef = ref<{ scrollToBottom: () => void } | null>(null);
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
-  return `${useApiBase()}/agent/${agentId.value}/servers/${serverId}/icon?t=${iconTimestamp.value}`;
+  return `${useApiBase()}/servers/${serverId}/icon?t=${iconTimestamp.value}`;
 });
 
 const containerStartedAt = computed(() => {
@@ -669,7 +666,7 @@ async function uploadProcessedIcon(blob: Blob) {
   formData.append("icon", blob, "icon.png");
 
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}/icon`, {
+    await $fetch(`/servers/${serverId}/icon`, {
       baseURL: useApiBase(),
       method: "POST",
       body: formData,
@@ -685,7 +682,7 @@ async function uploadProcessedIcon(blob: Blob) {
 }
 
 const { data, refresh } = await useApiFetch<Server | { body: Server }>(
-  `/agent/${agentId.value}/servers/${serverId}`,
+  `/servers/${serverId}`,
 );
 
 if (data.value && typeof data.value === "object") {
@@ -704,25 +701,6 @@ watch(data, (val) => {
       server.value = val as Server;
     }
   }
-});
-
-watch(lastEvent, (evt) => {
-  if (!evt || evt.type !== "server.status") return;
-  if (evt.agentId !== agentId.value || evt.serverId !== serverId) return;
-  if (!server.value) return;
-  if (evt.newContainerStatus) {
-    server.value.containerStatus = evt.newContainerStatus;
-  }
-  if (evt.newServerStatus) {
-    server.value.serverStatus = evt.newServerStatus;
-  }
-  if (evt.containerStartedAt) {
-    server.value.containerStartedAt = evt.containerStartedAt;
-  }
-  if (evt.serverStartedAt) {
-    server.value.serverStartedAt = evt.serverStartedAt;
-  }
-  server.value.desiredStatus = evt.desiredStatus;
 });
 
 const isPending = computed(() => {
@@ -791,7 +769,7 @@ async function savePort() {
   }
   portLoading.value = true;
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+    await $fetch(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       method: "PATCH",
       credentials: "include",
@@ -825,7 +803,7 @@ async function saveRestartPolicy() {
   }
   restartPolicyLoading.value = true;
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+    await $fetch(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       method: "PATCH",
       credentials: "include",
@@ -868,7 +846,7 @@ async function savePublicRcon() {
   }
   rconLoading.value = true;
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+    await $fetch(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       method: "PATCH",
       credentials: "include",
@@ -901,7 +879,7 @@ async function doAction(action: "start" | "stop" | "restart") {
   if (actionLoading.value) return;
   actionLoading.value = true;
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}/${action}`, {
+    await $fetch(`/servers/${serverId}/${action}`, {
       baseURL: useApiBase(),
       method: "POST",
       credentials: "include",
@@ -931,7 +909,7 @@ function promptDelete() {
 async function onDeleteConfirmed(wipe: boolean) {
   deleteLoading.value = true;
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}`, {
+    await $fetch(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       method: "DELETE",
       credentials: "include",
@@ -941,7 +919,7 @@ async function onDeleteConfirmed(wipe: boolean) {
       description: `${serverId} has been removed.`,
     });
     await refreshServers();
-    await navigateTo(`/agent/${agentId.value}/servers`);
+    await navigateTo(`/servers`);
   } catch (err: any) {
     const msg = err?.data?.detail || err?.message || "Failed to delete server";
     showToast("error", "Delete failed", { description: msg });
@@ -957,7 +935,7 @@ function promptRecreate() {
 async function onRecreateConfirmed() {
   recreateLoading.value = true;
   try {
-    await $fetch(`/agent/${agentId.value}/servers/${serverId}/recreate-world`, {
+    await $fetch(`/servers/${serverId}/recreate-world`, {
       baseURL: useApiBase(),
       method: "POST",
       credentials: "include",

@@ -3,58 +3,29 @@ package middleware
 import (
 	"net/http"
 	"strings"
-
-	"orchestrator/internal/jwt"
 )
 
-// AuthMiddleware validates JWT token from cookie.
-func AuthMiddleware(jwtService *jwt.Service) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Get token from cookie
-			cookie, err := r.Cookie("auth_token")
-			if err != nil {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
+// WithAuth returns a handler that validates the static API key before calling next.
+func WithAuth(apiKey string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := ""
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			parts := strings.SplitN(auth, " ", 2)
+			if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+				token = parts[1]
 			}
+		} else if c, err := r.Cookie("auth_token"); err == nil {
+			token = c.Value
+		} else {
+			token = r.URL.Query().Get("token")
+		}
 
-			// Validate token
-			_, err = jwtService.ValidateToken(cookie.Value)
-			if err != nil {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// AuthMiddlewareFromHeader validates JWT token from Authorization header.
-func AuthMiddlewareFromHeader(jwtService *jwt.Service) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			// Extract Bearer token
-			parts := strings.Split(authHeader, " ")
-			if len(parts) != 2 || parts[0] != "Bearer" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			// Validate token
-			_, err := jwtService.ValidateToken(parts[1])
-			if err != nil {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
+		if token != apiKey {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
+			return
+		}
+		next(w, r)
 	}
 }

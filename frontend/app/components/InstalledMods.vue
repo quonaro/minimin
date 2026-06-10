@@ -39,7 +39,7 @@
           class="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-neutral-600"
         >
           <img
-            v-if="agentId && serverId"
+            v-if="serverId"
             v-show="iconLoaded[mod.filename]"
             :src="getIconUrl(mod.filename)"
             class="w-full h-full object-cover"
@@ -101,7 +101,6 @@ import type { ModInfo } from "~/composables/useMods";
 interface Props {
   mods: ModInfo[];
   loading: boolean;
-  agentId?: string;
   serverId?: string;
 }
 
@@ -115,8 +114,8 @@ const emit = defineEmits<{
 const iconLoaded = ref<Record<string, boolean>>({});
 
 function getIconUrl(filename: string): string {
-  if (!props.agentId || !props.serverId) return "";
-  return `${useApiBase()}/agent/${props.agentId}/servers/${props.serverId}/mods/${encodeURIComponent(filename)}/icon`;
+  if (!props.serverId) return "";
+  return `${useApiBase()}/servers/${props.serverId}/mods/${encodeURIComponent(filename)}/icon`;
 }
 
 function formatBytes(n: number): string {

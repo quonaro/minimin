@@ -19,102 +19,54 @@
 
     <nav class="flex-1 p-4 space-y-2 flex flex-col">
       <div class="space-y-1 flex-1">
-        <div class="flex items-stretch gap-1">
+        <NuxtLink
+          to="/servers"
+          class="group flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
+          :class="
+            route.path === '/servers' || route.path.startsWith('/servers/')
+              ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
+              : ''
+          "
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
+            />
+          </svg>
+          <span>Servers</span>
+        </NuxtLink>
+
+        <div v-if="servers.length > 0" class="ml-4 space-y-0.5">
           <NuxtLink
-            to="/agents"
-            class="group flex-1 flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
+            v-for="server in servers"
+            :key="server.serverId"
+            :to="`/servers/${server.serverId}`"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
             :class="
-              isAgentsActive()
+              route.params.serverId === server.serverId
                 ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
-                : ''
+                : 'text-gray-600 dark:text-neutral-400'
             "
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span>Agents</span>
-          </NuxtLink>
-          <button
-            @click="showForm = true"
-            class="group relative px-2 rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors text-gray-500 dark:text-neutral-400 shrink-0 flex items-center justify-center w-10"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-90"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
             <span
-              class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-500 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none"
-            >
-              Register Agent
-            </span>
-          </button>
-        </div>
-
-        <div v-if="agents.length > 0" class="ml-4 space-y-0.5">
-          <template v-for="agent in agents" :key="agent.id">
-            <NuxtLink
-              :to="`/agent/${agent.id}/servers`"
-              class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
-              :class="
-                route.params.id === agent.id
-                  ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
-                  : 'text-gray-600 dark:text-neutral-400'
-              "
-            >
-              <span
-                class="w-2 h-2 rounded-full flex-shrink-0"
-                :class="getAgentStatusColor(agent.id)"
-              ></span>
-              <span class="truncate">{{ agent.name }}</span>
-            </NuxtLink>
-            <div
-              v-if="agent.id === agentId && agentServers.length > 0"
-              class="ml-4 space-y-0.5"
-            >
-              <NuxtLink
-                v-for="server in agentServers"
-                :key="server.serverId"
-                :to="getServerLink(server.serverId)"
-                class="flex items-center gap-2 px-3 py-1 rounded-lg text-xs transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
-                :class="
-                  route.params.serverId === server.serverId
-                    ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
-                    : 'text-gray-500 dark:text-neutral-500'
-                "
-              >
-                <span
-                  class="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  :class="getServerStatusColor(server.serverStatus)"
-                ></span>
-                <span class="truncate">{{ server.serverId }}</span>
-              </NuxtLink>
-            </div>
-          </template>
+              class="w-2 h-2 rounded-full flex-shrink-0"
+              :class="getServerStatusColor(server.containerStatus)"
+            ></span>
+            <span class="truncate">{{ server.serverId }}</span>
+          </NuxtLink>
         </div>
       </div>
 
-      <div v-if="serverId && agentId" class="space-y-1 mt-4">
+      <div v-if="serverId" class="space-y-1 mt-4">
         <div
           class="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider"
         >
@@ -245,21 +197,17 @@
         </span>
       </button>
     </div>
-    <AgentFormModal v-model="showForm" />
   </aside>
 </template>
 
 <script setup lang="ts">
 import type { Server } from "~/composables/useServers";
 
-const showForm = ref(false);
-
 const colorMode = useColorMode();
 const route = useRoute();
 const { logout } = useAuth();
 
 const serverId = computed(() => route.params.serverId as string | undefined);
-const agentId = computed(() => route.params.id as string | undefined);
 
 interface ServerNavItem {
   label: string;
@@ -270,20 +218,20 @@ interface ServerNavItem {
   requiresFilesInitialized?: boolean;
 }
 
-const { servers: agentServers, refresh: refreshServers } = useServers(agentId);
+const { servers, refresh: refreshServers } = useServers();
 
 const currentServerStatus = ref("");
 const currentContainerStatus = ref("");
 const serverFilesInitialized = ref(true);
 
 watch(
-  [agentServers, serverId],
+  [servers, serverId],
   () => {
     if (!serverId.value) {
       currentServerStatus.value = "";
       return;
     }
-    const server = agentServers.value.find(
+    const server = servers.value.find(
       (s: Server) => s.serverId === serverId.value,
     );
     currentServerStatus.value = server?.serverStatus ?? "";
@@ -294,7 +242,7 @@ watch(
 
 const currentServerName = computed(() => {
   if (!serverId.value) return "";
-  const server = agentServers.value.find(
+  const server = servers.value.find(
     (s: Server) => s.serverId === serverId.value,
   );
   return server?.name || server?.serverId || "";
@@ -302,41 +250,16 @@ const currentServerName = computed(() => {
 
 const currentServerEngineType = computed(() => {
   if (!serverId.value) return "";
-  const server = agentServers.value.find(
+  const server = servers.value.find(
     (s: Server) => s.serverId === serverId.value,
   );
   return server?.engineType || "";
 });
 
-const { lastEvent } = useEventSource();
-
-watch(lastEvent, (evt) => {
-  if (!evt) return;
-
-  if (evt.type === "server.status") {
-    if (evt.agentId !== agentId.value) return;
-
-    if (evt.serverId === serverId.value) {
-      if (evt.newServerStatus) {
-        currentServerStatus.value = evt.newServerStatus;
-      }
-      if (evt.newContainerStatus) {
-        currentContainerStatus.value = evt.newContainerStatus;
-      }
-    }
-
-    const server = agentServers.value.find((s) => s.serverId === evt.serverId);
-    if (server) {
-      server.containerStatus = evt.newContainerStatus || server.containerStatus;
-      server.serverStatus = evt.newServerStatus || server.serverStatus;
-    }
-  }
-});
-
 watch(
-  [agentId, serverId],
-  async ([newAgentId, newServerId]) => {
-    if (!newAgentId || !newServerId) {
+  serverId,
+  async (newServerId) => {
+    if (!newServerId) {
       serverFilesInitialized.value = true;
       return;
     }
@@ -344,7 +267,7 @@ watch(
     try {
       const res = await $fetch<
         { initialized?: boolean } | { body?: { initialized?: boolean } }
-      >(`/agent/${newAgentId}/servers/${newServerId}/config`, {
+      >(`/servers/${newServerId}/config`, {
         baseURL: useApiBase(),
         credentials: "include",
       });
@@ -366,6 +289,8 @@ function getServerStatusColor(status: string) {
   switch (status) {
     case "running":
       return "bg-green-500";
+    case "starting":
+      return "bg-yellow-500";
     case "exited":
       return "bg-red-500";
     default:
@@ -374,18 +299,18 @@ function getServerStatusColor(status: string) {
 }
 
 function getServerLink(targetServerId: string) {
-  if (!agentId.value || !serverId.value) {
-    return `/agent/${agentId.value}/servers/${targetServerId}`;
+  if (!serverId.value) {
+    return `/servers/${targetServerId}`;
   }
   return route.path.replace(
-    `/agent/${agentId.value}/servers/${serverId.value}`,
-    `/agent/${agentId.value}/servers/${targetServerId}`,
+    `/servers/${serverId.value}`,
+    `/servers/${targetServerId}`,
   );
 }
 
 const serverNav = computed(() => {
-  if (!agentId.value || !serverId.value) return [];
-  const base = `/agent/${agentId.value}/servers/${serverId.value}`;
+  if (!serverId.value) return [];
+  const base = `/servers/${serverId.value}`;
   const engine = currentServerEngineType.value.toUpperCase();
   const items: ServerNavItem[] = [
     {
@@ -475,54 +400,10 @@ function toggleColorMode() {
   colorMode.preference = colorMode.value === "dark" ? "light" : "dark";
 }
 
-const { data: agentsData } = await useFetch("/agents", {
-  baseURL: useApiBase(),
-  credentials: "include",
-  key: "agents",
+onMounted(() => {
+  const interval = setInterval(() => {
+    refreshServers();
+  }, 5000);
+  onBeforeUnmount(() => clearInterval(interval));
 });
-
-const agents = computed(() => {
-  const val = agentsData.value;
-  if (Array.isArray(val)) return val as any[];
-  if (val && typeof val === "object" && "body" in val) {
-    return (val as any).body || [];
-  }
-  return [];
-});
-
-function isAgentsActive() {
-  return route.path === "/agents" || route.path.startsWith("/agents/");
-}
-
-// Agent statuses via SSE
-const agentStatuses = ref<Record<string, boolean>>({});
-
-onMounted(async () => {
-  try {
-    const statuses = await $fetch<Array<{ id: string; online: boolean }>>(
-      "/agents/status",
-      { baseURL: useApiBase(), credentials: "include" },
-    );
-    for (const s of statuses) {
-      agentStatuses.value[s.id] = s.online;
-    }
-  } catch (e) {
-    console.error("Failed to load initial agent statuses:", e);
-  }
-});
-
-watch(lastEvent, (evt) => {
-  if (!evt || evt.type !== "agent.status") return;
-  const isOnline = evt.newStatus === "online";
-  if (evt.agentId) {
-    agentStatuses.value[evt.agentId] = isOnline;
-  }
-});
-
-function getAgentStatusColor(agentId: string) {
-  const isOnline = agentStatuses.value[agentId];
-  if (isOnline === true) return "bg-green-500";
-  if (isOnline === false) return "bg-red-500";
-  return "bg-gray-400 dark:bg-neutral-600";
-}
 </script>

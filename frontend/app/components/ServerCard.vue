@@ -87,7 +87,7 @@
     </div>
 
     <NuxtLink
-      :to="`/agent/${agentId}/servers/${server.serverId}`"
+      :to="`/servers/${server.serverId}`"
       class="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-medium text-sm mt-auto"
     >
       View Details
@@ -104,7 +104,6 @@ import { Activity, Clock, Network, Tag, ChevronRight } from "lucide-vue-next";
 
 const props = defineProps<{
   server: Server;
-  agentId: string;
 }>();
 
 function getStatusColor(status: string) {

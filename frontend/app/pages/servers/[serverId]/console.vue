@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col h-[calc(100vh-4rem)]">
-    <div class="flex-1 min-h-0 px-6 pt-6 pb-6 flex flex-col">
+  <div class="flex flex-col min-w-0 h-[calc(100vh-4rem)]">
+    <div class="flex-1 min-h-0 min-w-0 px-6 pt-6 pb-6 flex flex-col">
       <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
         <div class="flex items-center gap-4">
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -58,7 +58,7 @@
       <div
         ref="msgContainer"
         :class="[
-          'flex-1 min-h-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
+          'flex-1 min-h-0 min-w-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto overflow-x-hidden shadow-inner',
           fontSize,
         ]"
         @scroll="onScroll"
@@ -73,7 +73,7 @@
           <div
             v-for="(msg, i) in messages"
             :key="i"
-            class="flex gap-2 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors"
+            class="flex gap-2 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors min-w-0"
           >
             <span
               class="text-gray-400 dark:text-neutral-600 select-none tabular-nums shrink-0"
@@ -82,19 +82,19 @@
             </span>
             <span
               v-if="msg.type === 'command'"
-              class="whitespace-pre-wrap break-words text-primary dark:text-primary-400"
+              class="whitespace-pre-wrap break-all text-primary dark:text-primary-400"
             >
               > {{ msg.text }}
             </span>
             <span
               v-else-if="msg.type === 'error'"
-              class="whitespace-pre-wrap break-words text-red-600 dark:text-red-400"
+              class="whitespace-pre-wrap break-all text-red-600 dark:text-red-400"
             >
               {{ msg.text }}
             </span>
             <span
               v-else
-              class="whitespace-pre-wrap break-words text-gray-700 dark:text-neutral-300"
+              class="whitespace-pre-wrap break-all text-gray-700 dark:text-neutral-300"
             >
               {{ msg.text }}
             </span>
@@ -164,7 +164,6 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { agentId } = useCurrentAgent();
 const serverId = route.params.serverId as string;
 
 interface ConsoleMessage {
@@ -312,14 +311,11 @@ function connect() {
     oldWs.onclose = null;
     oldWs.close();
   }
-  if (!agentId.value) {
-    return;
-  }
-
   const config = useRuntimeConfig();
   const base = (config.public.apiBase as string) || "http://localhost:8081";
   const wsBase = base.replace(/^http/, "ws");
-  const url = `${wsBase}/ws/agent/${agentId.value}/servers/${serverId}/rcon`;
+  const token = useCookie("auth_token").value || "";
+  const url = `${wsBase}/ws/servers/${serverId}/rcon?token=${encodeURIComponent(token)}`;
 
   const socketId = ++socketCounter;
   const socket = new WebSocket(url);
@@ -465,15 +461,6 @@ onMounted(() => {
 watch(fontSize, (value) => {
   localStorage.setItem("console-font-size", value);
 });
-
-watch(
-  () => agentId.value,
-  (newVal, oldVal) => {
-    if (newVal && newVal !== oldVal) {
-      reconnect();
-    }
-  },
-);
 
 onUnmounted(() => {
   unmounted = true;

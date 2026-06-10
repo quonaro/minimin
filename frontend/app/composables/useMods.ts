@@ -10,7 +10,7 @@ export interface ModInfo {
   enabled?: boolean;
 }
 
-export function useMods(agentId: Ref<string | undefined>, serverId: string) {
+export function useMods(serverId: string) {
   const { show } = useToast();
 
   const mods = ref<ModInfo[]>([]);
@@ -18,13 +18,9 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
   const uploadLoading = ref(false);
   const downloadLoading = ref(false);
 
-  const url = computed(() => {
-    if (!agentId.value) return "";
-    return `/agent/${agentId.value}/servers/${serverId}/mods`;
-  });
+  const url = computed(() => `/servers/${serverId}/mods`);
 
   async function refresh() {
-    if (!url.value) return;
     loading.value = true;
     try {
       const res = await $fetch<{ body?: { mods: ModInfo[] }; mods?: ModInfo[] }>(
@@ -43,10 +39,9 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
   }
 
   async function deleteMod(filename: string) {
-    if (!agentId.value) return;
     try {
       await $fetch(
-        `/agent/${agentId.value}/servers/${serverId}/mods/${encodeURIComponent(filename)}`,
+        `/servers/${serverId}/mods/${encodeURIComponent(filename)}`,
         {
           baseURL: useApiBase(),
           method: "DELETE",
@@ -63,12 +58,11 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
   }
 
   async function uploadFile(file: File) {
-    if (!agentId.value) return;
     uploadLoading.value = true;
     try {
       const formData = new FormData();
       formData.append("file", file);
-      await $fetch(`/agent/${agentId.value}/servers/${serverId}/mods/upload`, {
+      await $fetch(`/servers/${serverId}/mods/upload`, {
         baseURL: useApiBase(),
         method: "POST",
         body: formData,
@@ -86,24 +80,21 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
   }
 
   async function downloadFromURL(url: string, filename?: string) {
-    if (!agentId.value) return;
     downloadLoading.value = true;
     try {
-      const result = await $fetch<{ body?: { success: boolean; filename?: string } }>(
-        "/mods/download",
+      const result = await $fetch<{ body?: { success: boolean; filename?: string }; filename?: string }>(
+        `/servers/${serverId}/mods/download`,
         {
           baseURL: useApiBase(),
           method: "POST",
           credentials: "include",
           body: {
-            agentId: agentId.value,
-            serverId,
             url,
             filename,
           },
         },
       );
-      const fn = (result as any).body?.filename || filename || "file";
+      const fn = (result as any).body?.filename || result?.filename || filename || "file";
       show("success", "Download complete", { description: fn });
       await refresh();
     } catch (err: any) {
@@ -116,10 +107,9 @@ export function useMods(agentId: Ref<string | undefined>, serverId: string) {
   }
 
   async function toggleMod(filename: string) {
-    if (!agentId.value) return;
     try {
       const res = await $fetch<{ body?: { filename: string; enabled: boolean } }>(
-        `/agent/${agentId.value}/servers/${serverId}/mods/${encodeURIComponent(filename)}/toggle`,
+        `/servers/${serverId}/mods/${encodeURIComponent(filename)}/toggle`,
         {
           baseURL: useApiBase(),
           method: "POST",

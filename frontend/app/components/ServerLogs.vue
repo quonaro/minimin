@@ -165,7 +165,7 @@
       <div
         ref="logContainer"
         :class="[
-          'flex-1 min-h-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto shadow-inner',
+          'flex-1 min-h-0 min-w-0 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 font-mono rounded-xl p-4 overflow-y-auto overflow-x-hidden shadow-inner',
           fontSize,
         ]"
         @scroll="onScroll"
@@ -180,7 +180,7 @@
           <div
             v-for="(line, i) in lines"
             :key="i"
-            class="flex gap-3 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors"
+            class="flex gap-3 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors min-w-0"
           >
             <span
               class="text-gray-400 dark:text-neutral-600 select-none text-right tabular-nums min-w-[3ch] shrink-0"
@@ -189,7 +189,7 @@
             </span>
             <span
               :class="[
-                'whitespace-pre-wrap break-words',
+                'whitespace-pre-wrap break-all',
                 getLogLevelClass(parseLogLevel(line), colored),
               ]"
               >{{ line }}</span
@@ -212,7 +212,6 @@ const props = defineProps<{
 const colored = ref(true);
 
 const route = useRoute();
-const { agentId } = useCurrentAgent();
 const serverId = props.serverId || (route.params.serverId as string);
 
 const tail = ref(500);
@@ -250,15 +249,11 @@ function connect() {
     console.log("[WS] closing old socket readyState =", oldWs.readyState);
     oldWs.close();
   }
-  if (!agentId.value) {
-    console.log("[WS] connect() aborted: no agentId");
-    return;
-  }
-
   const config = useRuntimeConfig();
   const base = (config.public.apiBase as string) || "http://localhost:8081";
   const wsBase = base.replace(/^http/, "ws");
-  const url = `${wsBase}/ws/agent/${agentId.value}/servers/${serverId}/logs?tail=${tail.value}`;
+  const token = useCookie("auth_token").value || "";
+  const url = `${wsBase}/ws/servers/${serverId}/logs?tail=${tail.value}&token=${encodeURIComponent(token)}`;
 
   const socketId = ++socketCounter;
   const socket = new WebSocket(url);
@@ -444,16 +439,6 @@ watch(colored, (value) => {
 watch(tail, () => {
   reconnect();
 });
-
-watch(
-  () => agentId.value,
-  (newVal, oldVal) => {
-    console.log("[WS] watch agentId", oldVal, "->", newVal);
-    if (newVal && newVal !== oldVal) {
-      reconnect();
-    }
-  },
-);
 
 onUnmounted(() => {
   console.log("[WS] onUnmounted");

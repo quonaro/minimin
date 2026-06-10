@@ -6,7 +6,7 @@
           Servers
         </h1>
         <p class="text-gray-600 dark:text-neutral-400">
-          Servers for agent <span class="font-semibold">{{ agentName }}</span>
+          Manage your Minecraft servers
         </p>
       </div>
       <button
@@ -22,9 +22,7 @@
     </div>
 
     <div v-else-if="servers.length === 0" class="text-center py-12">
-      <p class="text-gray-500 dark:text-neutral-400">
-        No servers found for this agent
-      </p>
+      <p class="text-gray-500 dark:text-neutral-400">No servers found</p>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -32,13 +30,11 @@
         v-for="server in servers"
         :key="server.serverId"
         :server="server"
-        :agent-id="agentId"
       />
     </div>
 
     <CreateServerModal
       v-if="showModal"
-      :agent-id="agentId"
       @close="showModal = false"
       @created="onCreated"
     />
@@ -50,17 +46,15 @@ definePageMeta({
   middleware: "auth",
 });
 
-const { agentId, agent, pending } = useCurrentAgent();
-
-const agentName = computed(() => agent.value?.name ?? "");
+const { pending } = useServers();
 const showModal = ref(false);
 
-const { servers } = useServers(agentId);
+const { servers } = useServers();
 
 function onCreated(serverId: string) {
   showModal.value = false;
   if (serverId) {
-    navigateTo(`/agent/${agentId.value}/servers/${serverId}`);
+    navigateTo(`/servers/${serverId}`);
   }
 }
 </script>

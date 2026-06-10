@@ -1,8 +1,4 @@
 <script setup lang="ts">
-const props = defineProps<{
-  agentId: string;
-}>();
-
 const emit = defineEmits<{
   (e: "created", serverId: string): void;
   (e: "close"): void;
@@ -100,7 +96,7 @@ async function submit() {
     const res = await $fetch<{
       serverId?: string;
       body?: { serverId?: string };
-    }>(`/agent/${props.agentId}/servers`, {
+    }>(`/servers`, {
       baseURL: useApiBase(),
       method: "POST",
       credentials: "include",

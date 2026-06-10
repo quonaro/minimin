@@ -41,35 +41,38 @@ export function useModrinth() {
   const hasMore = ref(true);
 
   const installLoading = ref<Record<string, boolean>>({});
-  const bulkJobId = ref<string | null>(null);
-  const bulkJob = ref<BulkJob | null>(null);
-  const bulkPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
 
   async function search(loader: string, gameVersion: string) {
     searchLoading.value = true;
     searchOffset.value = 0;
     hasMore.value = true;
     try {
-      const res = await $fetch<{ body?: { results: ModrinthProject[] }; results?: ModrinthProject[] }>(
-        "/mods/search",
+      const facets = [`["categories:${loader.toLowerCase()}"]`, `["versions:${gameVersion}"]`];
+      const res = await $fetch<any>(
+        `https://api.modrinth.com/v2/search`,
         {
-          baseURL: useApiBase(),
-          credentials: "include",
           query: {
-            q: searchQuery.value,
-            loader: loader.toLowerCase(),
-            game_version: gameVersion,
+            query: searchQuery.value,
+            facets: `[${facets.join(",")}]`,
             offset: 0,
             limit: searchLimit,
           },
         },
       );
-      const results = (res as any).body?.results ?? (res as any).results ?? [];
-      searchResults.value = results;
-      hasMore.value = results.length === searchLimit;
+      const hits = res?.hits || [];
+      searchResults.value = hits.map((h: any) => ({
+        project_id: h.project_id,
+        slug: h.slug,
+        title: h.title,
+        description: h.description,
+        icon_url: h.icon_url,
+        author: h.author,
+        downloads: h.downloads,
+      }));
+      hasMore.value = hits.length === searchLimit;
     } catch (err: any) {
       show("error", "Search failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: err?.message || "Unknown error",
       });
       searchResults.value = [];
       hasMore.value = false;
@@ -83,27 +86,33 @@ export function useModrinth() {
     searchLoading.value = true;
     const nextOffset = searchOffset.value + searchLimit;
     try {
-      const res = await $fetch<{ body?: { results: ModrinthProject[] }; results?: ModrinthProject[] }>(
-        "/mods/search",
+      const facets = [`["categories:${loader.toLowerCase()}"]`, `["versions:${gameVersion}"]`];
+      const res = await $fetch<any>(
+        `https://api.modrinth.com/v2/search`,
         {
-          baseURL: useApiBase(),
-          credentials: "include",
           query: {
-            q: searchQuery.value,
-            loader: loader.toLowerCase(),
-            game_version: gameVersion,
+            query: searchQuery.value,
+            facets: `[${facets.join(",")}]`,
             offset: nextOffset,
             limit: searchLimit,
           },
         },
       );
-      const results = (res as any).body?.results ?? (res as any).results ?? [];
-      searchResults.value.push(...results);
+      const hits = res?.hits || [];
+      searchResults.value.push(...hits.map((h: any) => ({
+        project_id: h.project_id,
+        slug: h.slug,
+        title: h.title,
+        description: h.description,
+        icon_url: h.icon_url,
+        author: h.author,
+        downloads: h.downloads,
+      })));
       searchOffset.value = nextOffset;
-      hasMore.value = results.length === searchLimit;
+      hasMore.value = hits.length === searchLimit;
     } catch (err: any) {
       show("error", "Failed to load more", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: err?.message || "Unknown error",
       });
     } finally {
       searchLoading.value = false;
@@ -116,117 +125,65 @@ export function useModrinth() {
     gameVersion: string,
   ): Promise<ModrinthVersion[]> {
     try {
-      const res = await $fetch<{
-        body?: { versions: ModrinthVersion[] };
-        versions?: ModrinthVersion[];
-      }>(`/mods/versions/${projectId}`, {
-        baseURL: useApiBase(),
-        credentials: "include",
+      const res = await $fetch<any[]>(`https://api.modrinth.com/v2/project/${projectId}/version`, {
         query: {
-          loader: loader.toLowerCase(),
-          game_version: gameVersion,
+          loaders: `["${loader.toLowerCase()}"]`,
+          game_versions: `["${gameVersion}"]`,
         },
       });
-      return (
-        ((res as any).body?.versions ?? (res as any).versions ?? []) as ModrinthVersion[]
-      );
+      return (res || []).map((v: any) => ({
+        id: v.id,
+        project_id: v.project_id,
+        version_number: v.version_number,
+        game_versions: v.game_versions,
+        loaders: v.loaders,
+        files: v.files.map((f: any) => ({
+          url: f.url,
+          filename: f.filename,
+          primary: f.primary,
+        })),
+      }));
     } catch (err: any) {
       show("error", "Failed to load versions", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: err?.message || "Unknown error",
       });
       return [];
     }
   }
 
   async function install(
-    agentId: string,
-    serverId: string,
-    projectId: string,
+    _projectId: string,
     versionId: string,
-  ) {
-    const key = `${projectId}:${versionId}`;
+  ): Promise<{ url: string; filename: string } | null> {
+    const key = `${_projectId}:${versionId}`;
     installLoading.value[key] = true;
     try {
-      await $fetch("/mods/install", {
-        baseURL: useApiBase(),
-        method: "POST",
-        credentials: "include",
-        body: { agentId, serverId, projectId, versionId },
-      });
-      show("success", "Mod installed", { description: projectId });
+      const version = await $fetch<any>(`https://api.modrinth.com/v2/version/${versionId}`);
+      const primaryFile = version?.files?.find((f: any) => f.primary) || version?.files?.[0];
+      if (!primaryFile) {
+        throw new Error("No file found for version");
+      }
+      return { url: primaryFile.url, filename: primaryFile.filename };
     } catch (err: any) {
       show("error", "Install failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: err?.message || "Unknown error",
       });
+      return null;
     } finally {
       installLoading.value[key] = false;
     }
   }
 
   async function bulkInstall(
-    agentId: string,
-    serverId: string,
     items: Array<{ projectId: string; versionId: string }>,
-  ) {
-    try {
-      const res = await $fetch<{ body?: { jobId: string }; jobId?: string }>(
-        "/mods/bulk",
-        {
-          baseURL: useApiBase(),
-          method: "POST",
-          credentials: "include",
-          body: { agentId, serverId, items },
-        },
-      );
-      const jobId = (res as any).body?.jobId ?? (res as any).jobId;
-      if (jobId) {
-        bulkJobId.value = jobId;
-        startPolling(jobId);
-        show("info", "Bulk install started", { description: `Job ${jobId}` });
-      }
-    } catch (err: any) {
-      show("error", "Bulk install failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
-      });
+  ): Promise<Array<{ url: string; filename: string }>> {
+    const results: Array<{ url: string; filename: string }> = [];
+    for (const item of items) {
+      const res = await install(item.projectId, item.versionId);
+      if (res) results.push(res);
     }
+    return results;
   }
-
-  function startPolling(jobId: string) {
-    if (bulkPollInterval.value) {
-      clearInterval(bulkPollInterval.value);
-    }
-    bulkPollInterval.value = setInterval(async () => {
-      try {
-        const res = await $fetch<{ body?: BulkJob }>(`/mods/jobs/${jobId}`, {
-          baseURL: useApiBase(),
-          credentials: "include",
-        });
-        const job = (res as any).body ?? res;
-        bulkJob.value = job as BulkJob;
-        if (job.status === "done" || job.status === "failed") {
-          if (bulkPollInterval.value) {
-            clearInterval(bulkPollInterval.value);
-            bulkPollInterval.value = null;
-          }
-          if (job.status === "done") {
-            show("success", "Bulk install complete");
-          } else {
-            show("error", "Bulk install failed", {
-              description: job.errors?.join(", ") || "Unknown error",
-            });
-          }
-        }
-      } catch {
-        // ignore polling errors
-      }
-    }, 2000);
-  }
-
-  onBeforeUnmount(() => {
-    if (bulkPollInterval.value) {
-      clearInterval(bulkPollInterval.value);
-    }
-  });
 
   return {
     searchQuery,
@@ -234,8 +191,6 @@ export function useModrinth() {
     searchLoading,
     hasMore,
     installLoading,
-    bulkJobId,
-    bulkJob,
     search,
     searchMore,
     getVersions,
