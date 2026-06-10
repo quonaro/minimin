@@ -6,6 +6,14 @@ export interface ModrinthProject {
   icon_url: string;
   author: string;
   downloads: number;
+  server_side?: string;
+  client_side?: string;
+}
+
+export interface ModrinthDependency {
+  version_id: string | null;
+  project_id: string;
+  dependency_type: "required" | "optional" | "incompatible" | "embedded";
 }
 
 export interface ModrinthVersion {
@@ -19,6 +27,7 @@ export interface ModrinthVersion {
     filename: string;
     primary: boolean;
   }>;
+  dependencies?: ModrinthDependency[];
 }
 
 export interface BulkJob {
@@ -108,6 +117,8 @@ export function useModrinth() {
         icon_url: h.icon_url,
         author: h.author,
         downloads: h.downloads,
+        server_side: h.server_side,
+        client_side: h.client_side,
       }));
       searchResults.value = results;
       hasMore.value = hits.length === searchLimit;
@@ -160,6 +171,8 @@ export function useModrinth() {
         icon_url: h.icon_url,
         author: h.author,
         downloads: h.downloads,
+        server_side: h.server_side,
+        client_side: h.client_side,
       }));
       searchResults.value.push(...results);
       searchOffset.value = nextOffset;
@@ -214,19 +227,46 @@ export function useModrinth() {
     }
   }
 
+  async function getVersionDetails(versionId: string): Promise<ModrinthVersion | null> {
+    try {
+      const v = await $fetch<any>(`https://api.modrinth.com/v2/version/${versionId}`);
+      return {
+        id: v.id,
+        project_id: v.project_id,
+        version_number: v.version_number,
+        game_versions: v.game_versions,
+        loaders: v.loaders,
+        files: v.files.map((f: any) => ({
+          url: f.url,
+          filename: f.filename,
+          primary: f.primary,
+        })),
+        dependencies: v.dependencies || [],
+      };
+    } catch (err: any) {
+      show("error", "Failed to load version details", {
+        description: err?.message || "Unknown error",
+      });
+      return null;
+    }
+  }
+
   async function install(
     _projectId: string,
     versionId: string,
-  ): Promise<{ url: string; filename: string } | null> {
+  ): Promise<{ url: string; filename: string; dependencies: ModrinthDependency[] } | null> {
     const key = `${_projectId}:${versionId}`;
     installLoading.value[key] = true;
     try {
-      const version = await $fetch<any>(`https://api.modrinth.com/v2/version/${versionId}`);
-      const primaryFile = version?.files?.find((f: any) => f.primary) || version?.files?.[0];
+      const version = await getVersionDetails(versionId);
+      if (!version) {
+        throw new Error("Version not found");
+      }
+      const primaryFile = version.files.find((f) => f.primary) || version.files[0];
       if (!primaryFile) {
         throw new Error("No file found for version");
       }
-      return { url: primaryFile.url, filename: primaryFile.filename };
+      return { url: primaryFile.url, filename: primaryFile.filename, dependencies: version.dependencies || [] };
     } catch (err: any) {
       show("error", "Install failed", {
         description: err?.message || "Unknown error",
@@ -235,6 +275,21 @@ export function useModrinth() {
     } finally {
       installLoading.value[key] = false;
     }
+  }
+
+  async function resolveDependency(
+    projectId: string,
+    versionId: string | null,
+    loader: string,
+    gameVersion: string,
+  ): Promise<{ url: string; filename: string } | null> {
+    if (versionId) {
+      return install(projectId, versionId).then((r) => (r ? { url: r.url, filename: r.filename } : null));
+    }
+    const versions = await getVersions(projectId, loader, gameVersion);
+    if (versions.length === 0) return null;
+    const first = versions[0]!;
+    return install(projectId, first.id).then((r) => (r ? { url: r.url, filename: r.filename } : null));
   }
 
   async function bulkInstall(
@@ -257,7 +312,9 @@ export function useModrinth() {
     search,
     searchMore,
     getVersions,
+    getVersionDetails,
     install,
+    resolveDependency,
     bulkInstall,
   };
 }

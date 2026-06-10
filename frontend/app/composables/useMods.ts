@@ -8,6 +8,7 @@ export interface ModInfo {
   description?: string;
   icon?: string;
   enabled?: boolean;
+  environment?: string;
 }
 
 export function useMods(serverId: string) {
@@ -23,10 +24,10 @@ export function useMods(serverId: string) {
   async function refresh() {
     loading.value = true;
     try {
-      const res = await $fetch<{ body?: { mods: ModInfo[] }; mods?: ModInfo[] }>(
-        url.value,
-        { baseURL: useApiBase(), credentials: "include" },
-      );
+      const res = await $fetch<{
+        body?: { mods: ModInfo[] };
+        mods?: ModInfo[];
+      }>(url.value, { baseURL: useApiBase(), credentials: "include" });
       const list = (res as any).body?.mods ?? (res as any).mods ?? [];
       mods.value = list as ModInfo[];
     } catch (err: any) {
@@ -82,19 +83,23 @@ export function useMods(serverId: string) {
   async function downloadFromURL(url: string, filename?: string) {
     downloadLoading.value = true;
     try {
-      const result = await $fetch<{ body?: { success: boolean; filename?: string }; filename?: string }>(
-        `/servers/${serverId}/mods/download`,
-        {
-          baseURL: useApiBase(),
-          method: "POST",
-          credentials: "include",
-          body: {
-            url,
-            filename,
-          },
+      const result = await $fetch<{
+        body?: { success: boolean; filename?: string };
+        filename?: string;
+      }>(`/servers/${serverId}/mods/download`, {
+        baseURL: useApiBase(),
+        method: "POST",
+        credentials: "include",
+        body: {
+          url,
+          filename,
         },
-      );
-      const fn = (result as any).body?.filename || result?.filename || filename || "file";
+      });
+      const fn =
+        (result as any).body?.filename ||
+        result?.filename ||
+        filename ||
+        "file";
       show("success", "Download complete", { description: fn });
       await refresh();
     } catch (err: any) {
@@ -108,14 +113,13 @@ export function useMods(serverId: string) {
 
   async function toggleMod(filename: string) {
     try {
-      const res = await $fetch<{ body?: { filename: string; enabled: boolean } }>(
-        `/servers/${serverId}/mods/${encodeURIComponent(filename)}/toggle`,
-        {
-          baseURL: useApiBase(),
-          method: "POST",
-          credentials: "include",
-        },
-      );
+      const res = await $fetch<{
+        body?: { filename: string; enabled: boolean };
+      }>(`/servers/${serverId}/mods/${encodeURIComponent(filename)}/toggle`, {
+        baseURL: useApiBase(),
+        method: "POST",
+        credentials: "include",
+      });
       const data = (res as any).body ?? res;
       show("success", data.enabled ? "Mod enabled" : "Mod disabled", {
         description: data.filename,

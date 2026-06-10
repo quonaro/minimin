@@ -1,12 +1,40 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-        Installed Mods
-      </h2>
-      <span class="text-xs text-gray-500 dark:text-neutral-400">
-        {{ mods.length }} mods
-      </span>
+    <div class="mb-4 space-y-2">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+          Installed Mods
+        </h2>
+        <span class="text-xs text-gray-500 dark:text-neutral-400">
+          {{ filteredMods.length }} mods
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <input
+          :value="searchQuery"
+          type="text"
+          placeholder="Search installed mods..."
+          class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
+          @input="onSearchInput"
+        />
+        <div
+          class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
+        >
+          <button
+            v-for="opt in sideOptions"
+            :key="opt.value"
+            class="px-2 py-1.5 text-xs font-medium transition-colors"
+            :class="
+              sideFilter === opt.value
+                ? 'bg-primary text-white'
+                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
+            "
+            @click="emit('update:sideFilter', opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <div
@@ -15,7 +43,7 @@
       @drop.prevent="onDrop"
     >
       <div
-        v-if="mods.length === 0 && !loading"
+        v-if="filteredMods.length === 0 && !loading"
         class="text-center text-gray-500 dark:text-neutral-400 py-12 text-sm"
       >
         No mods installed.
@@ -26,7 +54,7 @@
       </div>
 
       <div
-        v-for="mod in mods"
+        v-for="mod in filteredMods"
         :key="mod.filename"
         class="flex items-start gap-3 p-3 rounded-xl border transition-colors"
         :class="
@@ -102,14 +130,50 @@ interface Props {
   mods: ModInfo[];
   loading: boolean;
   serverId?: string;
+  searchQuery?: string;
+  sideFilter?: "all" | "server" | "client";
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  searchQuery: "",
+  sideFilter: "all",
+});
 const emit = defineEmits<{
   delete: [filename: string];
   upload: [file: File];
   toggle: [filename: string];
+  "update:searchQuery": [value: string];
+  "update:sideFilter": [value: "all" | "server" | "client"];
 }>();
+
+const sideOptions = [
+  { label: "All", value: "all" as const },
+  { label: "Server", value: "server" as const },
+  { label: "Client", value: "client" as const },
+];
+
+const filteredMods = computed(() => {
+  let list = props.mods;
+  const q = props.searchQuery.trim().toLowerCase();
+  if (q) {
+    list = list.filter(
+      (m) =>
+        (m.name || "").toLowerCase().includes(q) ||
+        (m.filename || "").toLowerCase().includes(q) ||
+        (m.modid || "").toLowerCase().includes(q),
+    );
+  }
+  if (props.sideFilter === "server") {
+    list = list.filter((m) => m.environment === "server");
+  } else if (props.sideFilter === "client") {
+    list = list.filter((m) => m.environment === "client");
+  }
+  return list;
+});
+
+function onSearchInput(e: Event) {
+  emit("update:searchQuery", (e.target as HTMLInputElement).value);
+}
 
 const iconLoaded = ref<Record<string, boolean>>({});
 

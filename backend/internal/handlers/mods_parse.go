@@ -23,6 +23,7 @@ type ModInfo struct {
 	Description string `json:"description"`
 	Icon        string `json:"icon"`
 	Enabled     bool   `json:"enabled"`
+	Environment string `json:"environment"`
 }
 
 // ParseModInfo reads a .jar and extracts mod metadata.
@@ -72,6 +73,7 @@ func parseFabricModJSON(zf *zip.File, info *ModInfo) error {
 		Description string `json:"description"`
 		Authors     []any  `json:"authors"`
 		Icon        string `json:"icon"`
+		Environment string `json:"environment"`
 	}
 	if err := json.NewDecoder(rc).Decode(&data); err != nil {
 		return err
@@ -85,6 +87,7 @@ func parseFabricModJSON(zf *zip.File, info *ModInfo) error {
 	info.Description = data.Description
 	info.Authors = joinAuthors(data.Authors)
 	info.Icon = data.Icon
+	info.Environment = data.Environment
 	return nil
 }
 

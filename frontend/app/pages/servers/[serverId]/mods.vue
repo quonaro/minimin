@@ -97,6 +97,8 @@
             :mods="mods"
             :loading="loading"
             :server-id="serverId"
+            v-model:search-query="installedSearchQuery"
+            v-model:side-filter="installedSideFilter"
             @delete="deleteMod"
             @upload="handleUpload"
             @toggle="handleToggle"
@@ -117,11 +119,14 @@
             :install-loading="modrinth.installLoading.value"
             :versions="versionsMap"
             :has-more="modrinth.hasMore.value"
+            :version-details="versionDetailsMap"
+            v-model:side-filter="librarySideFilter"
             @update:search-query="onSearchInput"
             @search="modrinth.search(serverEngine, serverGameVersion)"
             @load-more="modrinth.searchMore(serverEngine, serverGameVersion)"
             @install="handleInstall"
             @load-versions="handleLoadVersions"
+            @load-version-details="handleLoadVersionDetails"
           />
         </div>
       </div>
@@ -155,6 +160,12 @@ const {
 const fileInput = ref<HTMLInputElement | null>(null);
 const showDownloadModal = ref(false);
 const modUrl = ref("");
+const installedSearchQuery = ref("");
+const installedSideFilter = ref<"all" | "server" | "client">("all");
+const librarySideFilter = ref<"all" | "server" | "client">("all");
+const versionDetailsMap = ref<
+  Record<string, import("~/composables/useModrinth").ModrinthVersion>
+>({});
 
 function onFileSelect(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -231,12 +242,44 @@ async function handleToggle(filename: string) {
   await toggleMod(filename);
 }
 
-async function handleInstall(projectId: string, versionId: string) {
+async function handleInstall(
+  projectId: string,
+  versionId: string,
+  depProjectIds?: string[],
+) {
   const file = await modrinth.install(projectId, versionId);
-  if (file) {
-    await downloadFromURL(file.url, file.filename);
-    await refresh();
+  if (!file) return;
+
+  const allDeps = file.dependencies.filter(
+    (d) => d.dependency_type !== "incompatible",
+  );
+  const selectedDeps = depProjectIds
+    ? allDeps.filter((d) => depProjectIds.includes(d.project_id))
+    : allDeps.filter((d) => d.dependency_type === "required");
+
+  if (selectedDeps.length > 0) {
+    useToast().show(
+      "info",
+      `Installing ${selectedDeps.length} dependencies...`,
+    );
+    for (const dep of selectedDeps) {
+      const depFile = await modrinth.resolveDependency(
+        dep.project_id,
+        dep.version_id,
+        serverEngine.value,
+        serverGameVersion.value,
+      );
+      if (depFile) {
+        await downloadFromURL(depFile.url, depFile.filename);
+      }
+    }
   }
+
+  await downloadFromURL(file.url, file.filename);
+  await refresh();
+  useToast().show("success", "Mod installed", {
+    description: file.filename,
+  });
 }
 
 async function handleLoadVersions(projectId: string) {
@@ -247,6 +290,16 @@ async function handleLoadVersions(projectId: string) {
   );
   if (list.length > 0) {
     versionsMap.value = { ...versionsMap.value, [projectId]: list };
+  }
+}
+
+async function handleLoadVersionDetails(versionId: string) {
+  const details = await modrinth.getVersionDetails(versionId);
+  if (details) {
+    versionDetailsMap.value = {
+      ...versionDetailsMap.value,
+      [versionId]: details,
+    };
   }
 }
 

@@ -18,25 +18,135 @@
           <Search class="w-4 h-4" />
         </button>
       </div>
+      <div class="flex items-center gap-2">
+        <div
+          class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
+        >
+          <button
+            v-for="opt in sideOptions"
+            :key="opt.value"
+            class="px-2 py-1 text-xs font-medium transition-colors"
+            :class="
+              sideFilter === opt.value
+                ? 'bg-primary text-white'
+                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
+            "
+            @click="emit('update:sideFilter', opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+        <div
+          class="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400 ml-auto"
+        >
+          <span>Loader: {{ loader }}</span>
+          <span>&middot;</span>
+          <span>Version: {{ gameVersion }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showConfirm"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="showConfirm = false"
+    >
       <div
-        class="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400"
+        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-md max-h-[80vh] flex flex-col"
       >
-        <span>Loader: {{ loader }}</span>
-        <span>&middot;</span>
-        <span>Version: {{ gameVersion }}</span>
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+          <div class="flex items-start gap-3">
+            <img
+              v-if="confirmProject?.icon_url"
+              :src="confirmProject.icon_url"
+              class="w-12 h-12 rounded-xl object-cover shrink-0 bg-gray-200 dark:bg-neutral-600"
+              alt=""
+            />
+            <div
+              v-else
+              class="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0"
+            >
+              <Box class="w-6 h-6" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <h2
+                class="text-lg font-bold text-gray-900 dark:text-white truncate"
+              >
+                {{ confirmProject?.title || "Install Mod" }}
+              </h2>
+              <p class="text-xs text-gray-500 dark:text-neutral-400">
+                {{ confirmProject?.author }} &middot; Review dependencies before
+                installing.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-3">
+          <div
+            v-for="dep in confirmDeps"
+            :key="dep.project_id"
+            class="flex items-start gap-3"
+          >
+            <input
+              :id="dep.project_id"
+              type="checkbox"
+              :checked="selectedDepIds.has(dep.project_id)"
+              :disabled="dep.dependency_type === 'required'"
+              class="mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
+              @change="toggleDep(dep.project_id)"
+            />
+            <label :for="dep.project_id" class="flex-1 text-sm">
+              <span class="font-medium text-gray-900 dark:text-white">
+                {{ dep.project_id }}
+              </span>
+              <span
+                class="ml-2 text-xs px-1.5 py-0.5 rounded capitalize"
+                :class="
+                  dep.dependency_type === 'required'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300'
+                "
+              >
+                {{ dep.dependency_type }}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div
+          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
+        >
+          <button
+            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
+            @click="showConfirm = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            :disabled="isInstalling(confirmProjectId, confirmVersionId)"
+            @click="confirmInstall"
+          >
+            <span v-if="isInstalling(confirmProjectId, confirmVersionId)"
+              >Installing...</span
+            >
+            <span v-else>Install</span>
+          </button>
+        </div>
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto space-y-3 pr-1" ref="scrollContainer">
       <div
-        v-if="searchResults.length === 0 && !searchLoading"
+        v-if="filteredResults.length === 0 && !searchLoading"
         class="text-center text-gray-500 dark:text-neutral-400 py-12 text-sm"
       >
         No results.
       </div>
 
       <div
-        v-for="project in searchResults"
+        v-for="project in filteredResults"
         :key="project.project_id"
         class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600 transition-colors"
       >
@@ -74,6 +184,7 @@
             v-model="selectedVersion[project.project_id]"
             class="flex-1 text-xs bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1.5 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
             @focus="loadVersions(project.project_id)"
+            @change="onVersionChange(project.project_id)"
           >
             <option value="" disabled>Select version</option>
             <option
@@ -93,12 +204,7 @@
                 selectedVersion[project.project_id] || '',
               )
             "
-            @click="
-              install(
-                project.project_id,
-                selectedVersion[project.project_id] || '',
-              )
-            "
+            @click="install(project, selectedVersion[project.project_id] || '')"
           >
             <span
               v-if="
@@ -111,6 +217,29 @@
             >
             <span v-else>Install</span>
           </button>
+        </div>
+        <div
+          v-if="activeDeps(project.project_id).length > 0"
+          class="mt-2 space-y-1"
+        >
+          <p class="text-[10px] text-gray-500 dark:text-neutral-400">
+            Dependencies:
+          </p>
+          <div
+            v-for="dep in activeDeps(project.project_id)"
+            :key="dep.project_id"
+            class="flex items-center gap-1 text-[10px]"
+            :class="
+              dep.dependency_type === 'required'
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-gray-400 dark:text-neutral-500'
+            "
+          >
+            <span class="font-medium capitalize">{{
+              dep.dependency_type
+            }}</span>
+            <span class="truncate">{{ dep.project_id }}</span>
+          </div>
         </div>
       </div>
 
@@ -144,22 +273,120 @@ interface Props {
   installLoading: Record<string, boolean>;
   versions?: Record<string, ModrinthVersion[]>;
   hasMore?: boolean;
+  sideFilter?: "all" | "server" | "client";
+  versionDetails?: Record<string, ModrinthVersion>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   versions: () => ({}),
+  sideFilter: "all",
 });
 const emit = defineEmits<{
   search: [];
   "update:searchQuery": [value: string];
-  install: [projectId: string, versionId: string];
+  install: [projectId: string, versionId: string, depProjectIds: string[]];
   "load-versions": [projectId: string];
   "load-more": [];
+  "update:sideFilter": [value: "all" | "server" | "client"];
+  "load-version-details": [versionId: string];
 }>();
+
+function activeDeps(projectId: string) {
+  const vid = selectedVersion.value[projectId];
+  if (!vid) return [];
+  const details = props.versionDetails?.[vid];
+  return (
+    details?.dependencies?.filter(
+      (d) => d.dependency_type !== "incompatible",
+    ) || []
+  );
+}
+
+function onVersionChange(projectId: string) {
+  const vid = selectedVersion.value[projectId];
+  if (vid && !props.versionDetails?.[vid]) {
+    emit("load-version-details", vid);
+  }
+}
+
+const sideOptions = [
+  { label: "All", value: "all" as const },
+  { label: "Server", value: "server" as const },
+  { label: "Client", value: "client" as const },
+];
+
+const filteredResults = computed(() => {
+  if (props.sideFilter === "all") return props.searchResults;
+  return props.searchResults.filter((p) => {
+    if (props.sideFilter === "server") {
+      // Works on server and is not a client-only mod
+      return p.server_side !== "unsupported" && p.client_side !== "required";
+    }
+    if (props.sideFilter === "client") {
+      // Works on client and is not a server-only mod
+      return p.client_side !== "unsupported" && p.server_side !== "required";
+    }
+    return true;
+  });
+});
 
 const selectedVersion = ref<Record<string, string>>({});
 const scrollContainer = ref<HTMLDivElement | null>(null);
 const sentinel = ref<HTMLDivElement | null>(null);
+
+const showConfirm = ref(false);
+const confirmProject = ref<ModrinthProject | null>(null);
+const confirmProjectId = ref("");
+const confirmVersionId = ref("");
+const selectedDepIds = ref<Set<string>>(new Set());
+
+const confirmDeps = computed(() => {
+  const details = props.versionDetails?.[confirmVersionId.value];
+  return (
+    details?.dependencies?.filter(
+      (d) => d.dependency_type !== "incompatible",
+    ) || []
+  );
+});
+
+function openConfirm(project: ModrinthProject, versionId: string) {
+  confirmProject.value = project;
+  confirmProjectId.value = project.project_id;
+  confirmVersionId.value = versionId;
+  const deps =
+    props.versionDetails?.[versionId]?.dependencies?.filter(
+      (d) => d.dependency_type !== "incompatible",
+    ) || [];
+  const ids = new Set<string>();
+  for (const d of deps) {
+    if (d.dependency_type === "required" || d.dependency_type === "embedded") {
+      ids.add(d.project_id);
+    }
+  }
+  selectedDepIds.value = ids;
+  showConfirm.value = true;
+}
+
+function toggleDep(projectId: string) {
+  const next = new Set(selectedDepIds.value);
+  if (next.has(projectId)) {
+    next.delete(projectId);
+  } else {
+    next.add(projectId);
+  }
+  selectedDepIds.value = next;
+}
+
+function confirmInstall() {
+  if (!confirmVersionId.value) return;
+  emit(
+    "install",
+    confirmProjectId.value,
+    confirmVersionId.value,
+    Array.from(selectedDepIds.value),
+  );
+  showConfirm.value = false;
+}
 
 let observer: IntersectionObserver | null = null;
 
@@ -207,9 +434,9 @@ function isInstalling(projectId: string, versionId: string): boolean {
   return !!props.installLoading[`${projectId}:${versionId}`];
 }
 
-function install(projectId: string, versionId: string) {
+function install(project: ModrinthProject, versionId: string) {
   if (!versionId) return;
-  emit("install", projectId, versionId);
+  openConfirm(project, versionId);
 }
 
 function formatDownloads(n: number): string {
