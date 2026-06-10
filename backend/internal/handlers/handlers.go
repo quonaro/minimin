@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"orchestrator/internal/modrinth"
 	"orchestrator/internal/state"
 
 	"github.com/docker/docker/client"
@@ -18,11 +19,17 @@ type Handler struct {
 	ServersDir     string
 	ServersHostDir string
 	ModUploadMaxMB int
+	ModrinthClient *modrinth.Client
 }
 
 // NewHandler creates a new Handler.
 func NewHandler(cli *client.Client, instance *state.InstanceFile, apiKey string) *Handler {
-	return &Handler{Cli: cli, Instance: instance, APIKey: apiKey}
+	return &Handler{
+		Cli:            cli,
+		Instance:       instance,
+		APIKey:         apiKey,
+		ModrinthClient: modrinth.NewClient(),
+	}
 }
 
 // Login validates the static API key and sets an httpOnly cookie.

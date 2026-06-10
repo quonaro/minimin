@@ -221,6 +221,7 @@ const wsStatus = ref("Connecting...");
 const logContainer = ref<HTMLElement | null>(null);
 const userScrolledUp = ref(false);
 const fontSize = ref<string>("text-sm");
+const skipIncoming = ref(false);
 const { show: showToast } = useToast();
 
 let ws: WebSocket | null = null;
@@ -282,6 +283,7 @@ function connect() {
     reconnectAttempts = 0;
     wsStatus.value = "Connected";
     buffer.value = "";
+    skipIncoming.value = false;
   };
 
   socket.onmessage = (e) => {
@@ -340,6 +342,10 @@ function scheduleFlush() {
 }
 
 function flushPending() {
+  if (skipIncoming.value) {
+    pendingLines = [];
+    return;
+  }
   if (pendingLines.length === 0) return;
   lines.value.push(...pendingLines);
   pendingLines = [];
@@ -354,6 +360,10 @@ function flushPending() {
 }
 
 function appendChunk(chunk: string) {
+  if (skipIncoming.value) {
+    buffer.value = "";
+    return;
+  }
   buffer.value += chunk;
   const parts = buffer.value.split("\n");
   buffer.value = parts.pop() || "";
@@ -371,6 +381,7 @@ function reconnect() {
   lines.value = [];
   buffer.value = "";
   pendingLines = [];
+  skipIncoming.value = false;
   if (flushTimer) {
     clearTimeout(flushTimer);
     flushTimer = null;
@@ -387,6 +398,7 @@ function clearLogs() {
   lines.value = [];
   buffer.value = "";
   pendingLines = [];
+  skipIncoming.value = true;
   if (flushTimer) {
     clearTimeout(flushTimer);
     flushTimer = null;

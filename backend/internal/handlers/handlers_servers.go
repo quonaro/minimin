@@ -202,13 +202,19 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "cannot change port while server is running", http.StatusConflict)
 		return
 	}
+	if s.ContainerStatus == "running" && ((req.RamBytes > 0 && req.RamBytes != s.RamBytes) || (req.CPUs > 0 && req.CPUs != s.CPUs)) {
+		jsonError(w, "cannot change resources while server is running", http.StatusConflict)
+		return
+	}
 
 	updated := h.Instance.UpdateMeta(id, func(st *state.ServerState) {
-		if req.RamBytes > 0 {
+		if req.RamBytes > 0 && req.RamBytes != st.RamBytes {
 			st.RamBytes = req.RamBytes
+			st.ContainerID = ""
 		}
-		if req.CPUs > 0 {
+		if req.CPUs > 0 && req.CPUs != st.CPUs {
 			st.CPUs = req.CPUs
+			st.ContainerID = ""
 		}
 		if req.GamePort > 0 && req.GamePort != st.GamePort {
 			if !runner.IsPortFree("", req.GamePort) {

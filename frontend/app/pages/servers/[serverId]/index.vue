@@ -402,6 +402,137 @@
                   </p>
                 </div>
               </div>
+
+              <!-- RAM -->
+              <div
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+              >
+                <div
+                  class="w-9 h-9 shrink-0 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400"
+                >
+                  <MemoryStick class="w-4 h-4" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  >
+                    RAM
+                  </p>
+                  <div v-if="!editingRam" class="flex items-center gap-2">
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    >
+                      {{
+                        server.ramBytes
+                          ? (server.ramBytes / (1024 * 1024 * 1024)).toFixed(
+                              0,
+                            ) + " GB"
+                          : "-"
+                      }}
+                    </p>
+                    <button
+                      v-if="server.containerStatus !== 'running'"
+                      class="text-gray-400 hover:text-primary transition-colors"
+                      :disabled="ramLoading"
+                      @click="
+                        tempRamGb = server.ramBytes
+                          ? Math.round(server.ramBytes / (1024 * 1024 * 1024))
+                          : 2;
+                        editingRam = true;
+                      "
+                    >
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div v-else class="flex items-center gap-2">
+                    <number-input
+                      v-model="tempRamGb"
+                      :min="1"
+                      :max="128"
+                      size="sm"
+                      class="w-24"
+                      @keyup.enter="saveRam"
+                    />
+                    <span class="text-sm text-gray-500 dark:text-neutral-400"
+                      >GB</span
+                    >
+                    <button
+                      class="text-green-500 hover:text-green-600 transition-colors"
+                      :disabled="ramLoading"
+                      @click="saveRam"
+                    >
+                      <Check class="w-4 h-4" />
+                    </button>
+                    <button
+                      class="text-red-500 hover:text-red-600 transition-colors"
+                      :disabled="ramLoading"
+                      @click="editingRam = false"
+                    >
+                      <XIcon class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CPUs -->
+              <div
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+              >
+                <div
+                  class="w-9 h-9 shrink-0 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400"
+                >
+                  <Cpu class="w-4 h-4" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  >
+                    CPUs
+                  </p>
+                  <div v-if="!editingCpu" class="flex items-center gap-2">
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    >
+                      {{ server.cpus ?? "-" }}
+                    </p>
+                    <button
+                      v-if="server.containerStatus !== 'running'"
+                      class="text-gray-400 hover:text-primary transition-colors"
+                      :disabled="cpuLoading"
+                      @click="
+                        tempCpu = server.cpus ?? 1;
+                        editingCpu = true;
+                      "
+                    >
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div v-else class="flex items-center gap-2">
+                    <number-input
+                      v-model="tempCpu"
+                      :min="0.5"
+                      :step="0.5"
+                      size="sm"
+                      class="w-24"
+                      @keyup.enter="saveCpu"
+                    />
+                    <button
+                      class="text-green-500 hover:text-green-600 transition-colors"
+                      :disabled="cpuLoading"
+                      @click="saveCpu"
+                    >
+                      <Check class="w-4 h-4" />
+                    </button>
+                    <button
+                      class="text-red-500 hover:text-red-600 transition-colors"
+                      :disabled="cpuLoading"
+                      @click="editingCpu = false"
+                    >
+                      <XIcon class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Actions -->
@@ -413,10 +544,14 @@
                     server?.containerStatus === 'running' ||
                     isPending
                   "
-                  class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
                   @click="doAction('start')"
                 >
-                  <Play class="w-4 h-4" />
+                  <Loader2
+                    v-if="currentAction === 'start'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <Play v-else class="w-4 h-4" />
                   Start
                 </button>
                 <button
@@ -425,10 +560,14 @@
                     server?.containerStatus !== 'running' ||
                     isPending
                   "
-                  class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
                   @click="doAction('stop')"
                 >
-                  <Square class="w-4 h-4" />
+                  <Loader2
+                    v-if="currentAction === 'stop'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <Square v-else class="w-4 h-4" />
                   Stop
                 </button>
                 <button
@@ -437,10 +576,30 @@
                     server?.containerStatus !== 'running' ||
                     isPending
                   "
-                  class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  class="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
+                  @click="doAction('force-stop')"
+                >
+                  <Loader2
+                    v-if="currentAction === 'force-stop'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <OctagonAlert v-else class="w-4 h-4" />
+                  Force Stop
+                </button>
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus !== 'running' ||
+                    isPending
+                  "
+                  class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
                   @click="doAction('restart')"
                 >
-                  <RotateCcw class="w-4 h-4" />
+                  <Loader2
+                    v-if="currentAction === 'restart'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <RotateCcw v-else class="w-4 h-4" />
                   Restart
                 </button>
               </div>
@@ -560,8 +719,11 @@ import {
   Activity,
   Check,
   Clock,
+  Cpu,
   Globe,
   Hash,
+  MemoryStick,
+  OctagonAlert,
   Pencil,
   Play,
   RefreshCw,
@@ -570,6 +732,7 @@ import {
   Square,
   Tag,
   ChevronDown,
+  Loader2,
   Terminal,
   Trash2,
   X as XIcon,
@@ -588,6 +751,9 @@ const server = ref<Server | null>(null);
 usePageTitle(() => server.value?.serverId || serverId);
 const { refresh: refreshServers } = useServers();
 const actionLoading = ref(false);
+const currentAction = ref<"start" | "stop" | "force-stop" | "restart" | null>(
+  null,
+);
 const iconTimestamp = ref(Date.now());
 const iconError = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -610,6 +776,12 @@ const selectedIconFile = ref<File | null>(null);
 const logsExpanded = ref(false);
 const propertiesExpanded = ref(false);
 const serverLogsRef = ref<{ scrollToBottom: () => void } | null>(null);
+const editingRam = ref(false);
+const tempRamGb = ref<number | null>(null);
+const ramLoading = ref(false);
+const editingCpu = ref(false);
+const tempCpu = ref<number | null>(null);
+const cpuLoading = ref(false);
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
@@ -876,9 +1048,95 @@ async function savePublicRcon() {
   }
 }
 
-async function doAction(action: "start" | "stop" | "restart") {
+async function saveRam() {
+  if (!server.value || tempRamGb.value == null) {
+    editingRam.value = false;
+    return;
+  }
+  const currentGb = server.value.ramBytes
+    ? Math.round(server.value.ramBytes / (1024 * 1024 * 1024))
+    : 0;
+  if (tempRamGb.value === currentGb) {
+    editingRam.value = false;
+    return;
+  }
+  if (tempRamGb.value < 1 || tempRamGb.value > 128) {
+    showToast("error", "Invalid RAM", {
+      description: "RAM must be between 1 and 128 GB.",
+    });
+    return;
+  }
+  ramLoading.value = true;
+  try {
+    await $fetch(`/servers/${serverId}`, {
+      baseURL: useApiBase(),
+      method: "PATCH",
+      credentials: "include",
+      body: { ramBytes: tempRamGb.value * 1024 * 1024 * 1024 },
+    });
+    showToast("success", "RAM updated", {
+      description: `RAM changed to ${tempRamGb.value} GB.`,
+    });
+    editingRam.value = false;
+    await refresh();
+  } catch (err: any) {
+    const status = err?.status || err?.statusCode;
+    const msg = err?.data?.detail || err?.message || "Failed to update RAM";
+    if (status === 409) {
+      showToast("error", "Server running", { description: msg });
+    } else {
+      showToast("error", "Update failed", { description: msg });
+    }
+  } finally {
+    ramLoading.value = false;
+  }
+}
+
+async function saveCpu() {
+  if (!server.value || tempCpu.value == null) {
+    editingCpu.value = false;
+    return;
+  }
+  if (tempCpu.value === server.value.cpus) {
+    editingCpu.value = false;
+    return;
+  }
+  if (tempCpu.value < 0.5 || tempCpu.value > 128) {
+    showToast("error", "Invalid CPUs", {
+      description: "CPUs must be between 0.5 and 128.",
+    });
+    return;
+  }
+  cpuLoading.value = true;
+  try {
+    await $fetch(`/servers/${serverId}`, {
+      baseURL: useApiBase(),
+      method: "PATCH",
+      credentials: "include",
+      body: { cpus: tempCpu.value },
+    });
+    showToast("success", "CPUs updated", {
+      description: `CPUs changed to ${tempCpu.value}.`,
+    });
+    editingCpu.value = false;
+    await refresh();
+  } catch (err: any) {
+    const status = err?.status || err?.statusCode;
+    const msg = err?.data?.detail || err?.message || "Failed to update CPUs";
+    if (status === 409) {
+      showToast("error", "Server running", { description: msg });
+    } else {
+      showToast("error", "Update failed", { description: msg });
+    }
+  } finally {
+    cpuLoading.value = false;
+  }
+}
+
+async function doAction(action: "start" | "stop" | "restart" | "force-stop") {
   if (actionLoading.value) return;
   actionLoading.value = true;
+  currentAction.value = action;
   try {
     await $fetch(`/servers/${serverId}/${action}`, {
       baseURL: useApiBase(),
@@ -900,6 +1158,7 @@ async function doAction(action: "start" | "stop" | "restart") {
     }
   } finally {
     actionLoading.value = false;
+    currentAction.value = null;
   }
 }
 

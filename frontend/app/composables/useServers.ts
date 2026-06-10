@@ -12,6 +12,8 @@ export interface Server {
   restartPolicy?: string;
   engineType: string;
   gameVersion: string;
+  ramBytes?: number;
+  cpus?: number;
 }
 
 export function useServers() {

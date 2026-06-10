@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -25,14 +26,14 @@ func (h *Handler) HandleModrinthSearch(w http.ResponseWriter, r *http.Request) {
 		limit = v
 	}
 
-	client := modrinth.NewClient()
-	result, err := client.Search(modrinth.SearchParams{
+	result, err := h.ModrinthClient.Search(modrinth.SearchParams{
 		Query:  q,
 		Facets: facetsRaw,
 		Offset: offset,
 		Limit:  limit,
 	})
 	if err != nil {
+		slog.Error("modrinth search failed", "error", err)
 		jsonError(w, fmt.Sprintf("search failed: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -44,9 +45,9 @@ func (h *Handler) HandleModrinthSearch(w http.ResponseWriter, r *http.Request) {
 // HandleModrinthGetProject proxies project info from Modrinth.
 func (h *Handler) HandleModrinthGetProject(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	client := modrinth.NewClient()
-	project, err := client.GetProject(id)
+	project, err := h.ModrinthClient.GetProject(id)
 	if err != nil {
+		slog.Error("modrinth project fetch failed", "error", err, "project_id", id)
 		jsonError(w, fmt.Sprintf("project fetch failed: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -59,12 +60,12 @@ func (h *Handler) HandleModrinthGetVersions(w http.ResponseWriter, r *http.Reque
 	loaders := r.URL.Query()["loaders"]
 	gameVersions := r.URL.Query()["game_versions"]
 
-	client := modrinth.NewClient()
-	versions, err := client.GetVersions(id, modrinth.VersionParams{
+	versions, err := h.ModrinthClient.GetVersions(id, modrinth.VersionParams{
 		Loaders:      loaders,
 		GameVersions: gameVersions,
 	})
 	if err != nil {
+		slog.Error("modrinth versions fetch failed", "error", err, "project_id", id)
 		jsonError(w, fmt.Sprintf("versions fetch failed: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -74,9 +75,9 @@ func (h *Handler) HandleModrinthGetVersions(w http.ResponseWriter, r *http.Reque
 // HandleModrinthGetVersion proxies a single version from Modrinth.
 func (h *Handler) HandleModrinthGetVersion(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	client := modrinth.NewClient()
-	version, err := client.GetVersion(id)
+	version, err := h.ModrinthClient.GetVersion(id)
 	if err != nil {
+		slog.Error("modrinth version fetch failed", "error", err, "version_id", id)
 		jsonError(w, fmt.Sprintf("version fetch failed: %v", err), http.StatusInternalServerError)
 		return
 	}

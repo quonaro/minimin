@@ -187,6 +187,61 @@ func (h *Handler) HandleStopServer(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, s)
 }
 
+func (h *Handler) doForceStop(id string) {
+	s, _ := h.Instance.Get(id)
+	prevStatus := s.Status
+
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("force-stop server panic", "server_id", id, "recover", r)
+			h.Instance.ClearDesired(id, prevStatus)
+			_ = h.Instance.Save()
+		}
+	}()
+
+	if s.ContainerID == "" {
+		slog.Warn("force-stop server: container not created", "server_id", id)
+		h.Instance.ClearDesired(id, prevStatus)
+		_ = h.Instance.Save()
+		return
+	}
+	if err := h.Cli.ContainerKill(context.Background(), s.ContainerID, "SIGKILL"); err != nil {
+		if client.IsErrNotFound(err) {
+			slog.Warn("container already removed", "server_id", id, "container_id", s.ContainerID)
+		} else {
+			slog.Error("failed to force-stop container", "server_id", id, "error", err)
+			h.Instance.ClearDesired(id, prevStatus)
+			_ = h.Instance.Save()
+			return
+		}
+	}
+
+	s.ContainerStatus = "exited"
+	s.ServerStatus = "stopped"
+	s.ServerStartedAt = time.Time{}
+	h.Instance.Set(s)
+	h.Instance.ClearDesired(id, "exited")
+	_ = h.Instance.Save()
+	slog.Info("server force-stopped", "server_id", id)
+}
+
+// HandleForceStopServer force-stops a running server container asynchronously.
+func (h *Handler) HandleForceStopServer(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if _, ok := h.Instance.Get(id); !ok {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	s, ok := h.Instance.TrySetDesired(id, "exited")
+	if !ok {
+		jsonError(w, "operation in progress", http.StatusConflict)
+		return
+	}
+	_ = h.Instance.Save()
+	go h.doForceStop(id)
+	jsonResponse(w, s)
+}
+
 func (h *Handler) doRestart(id string) {
 	s, _ := h.Instance.Get(id)
 	prevStatus := s.Status

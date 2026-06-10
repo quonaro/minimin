@@ -38,6 +38,7 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("POST /api/servers/{id}/start", middleware.WithAuth(apiKey, h.HandleStartServer))
 	mux.HandleFunc("POST /api/servers/{id}/stop", middleware.WithAuth(apiKey, h.HandleStopServer))
 	mux.HandleFunc("POST /api/servers/{id}/restart", middleware.WithAuth(apiKey, h.HandleRestartServer))
+	mux.HandleFunc("POST /api/servers/{id}/force-stop", middleware.WithAuth(apiKey, h.HandleForceStopServer))
 	mux.HandleFunc("DELETE /api/servers/{id}", middleware.WithAuth(apiKey, h.HandleDeleteServer))
 	mux.HandleFunc("POST /api/servers/{id}/recreate-world", middleware.WithAuth(apiKey, h.HandleRecreateWorld))
 
