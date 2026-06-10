@@ -192,7 +192,7 @@
             >
               Formats
             </label>
-            <div class="flex gap-3">
+            <div class="flex flex-wrap gap-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   v-model="archiveFormats"
@@ -215,6 +215,28 @@
                   >Mrpack</span
                 >
               </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="archiveFormats"
+                  type="checkbox"
+                  value="curseforge"
+                  class="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span class="text-sm text-gray-700 dark:text-neutral-300"
+                  >CurseForge</span
+                >
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="archiveFormats"
+                  type="checkbox"
+                  value="prism"
+                  class="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span class="text-sm text-gray-700 dark:text-neutral-300"
+                  >Prism / MultiMC</span
+                >
+              </label>
             </div>
           </div>
           <div>
@@ -233,48 +255,50 @@
               <option :value="168">7 days</option>
             </select>
           </div>
-          <div
-            v-if="archiveResult"
-            class="p-3 rounded-lg bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
-          >
-            <p class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-              Archive ready:
-            </p>
-            <div class="flex items-center gap-2">
-              <input
-                :value="archiveLink"
-                readonly
-                class="flex-1 px-2 py-1 rounded bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 text-xs text-gray-900 dark:text-white"
-              />
-              <button
-                class="px-2 py-1 rounded bg-primary text-white text-xs font-medium hover:bg-primary/90"
-                @click="copyLink"
-              >
-                Copy
-              </button>
-            </div>
-            <p class="text-[10px] text-gray-400 mt-1">
-              Expires: {{ new Date(archiveResult.expiresAt).toLocaleString() }}
-            </p>
+          <div v-if="archiveResult" class="flex items-center gap-3">
+            <a
+              :href="archiveLink"
+              target="_blank"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <ExternalLink class="w-4 h-4" />
+              Open
+            </a>
+            <button
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+              @click="copyLink"
+            >
+              <Copy class="w-4 h-4" />
+              Copy
+            </button>
           </div>
         </div>
         <div
-          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
+          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex items-center justify-between"
         >
-          <button
-            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
-            @click="showArchiveModal = false"
+          <p
+            v-if="archiveResult"
+            class="text-xs text-gray-500 dark:text-neutral-400"
           >
-            Close
-          </button>
-          <button
-            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-            :disabled="archiveLoading || archiveFormats.length === 0"
-            @click="generateArchive"
-          >
-            <Archive class="w-4 h-4" />
-            {{ archiveLoading ? "Generating..." : "Generate" }}
-          </button>
+            Expires: {{ new Date(archiveResult.expiresAt).toLocaleString() }}
+          </p>
+          <div v-else />
+          <div class="flex gap-3">
+            <button
+              class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
+              @click="showArchiveModal = false"
+            >
+              Close
+            </button>
+            <button
+              class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
+              :disabled="archiveLoading || archiveFormats.length === 0"
+              @click="generateArchive"
+            >
+              <Archive class="w-4 h-4" />
+              {{ archiveLoading ? "Generating..." : "Generate" }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -290,6 +314,7 @@ import {
   Server,
   Archive,
   Copy,
+  ExternalLink,
 } from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
 import type { ArchiveInfo } from "~/composables/useClientMods";

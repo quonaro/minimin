@@ -107,6 +107,72 @@
             </a>
           </div>
         </div>
+
+        <div
+          v-if="hasFormat('curseforge')"
+          class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
+        >
+          <div class="flex items-center gap-3">
+            <Flame class="w-8 h-8 text-orange-600 dark:text-orange-400" />
+            <div>
+              <p class="font-medium text-gray-900 dark:text-white">
+                CurseForge Pack
+              </p>
+              <p class="text-xs text-gray-500 dark:text-neutral-400">
+                Import into CurseForge or Prism Launcher
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+              @click="copyUrl('curseforge')"
+            >
+              <Link class="w-4 h-4" />
+              {{ copiedFormat === "curseforge" ? "Copied!" : "Copy link" }}
+            </button>
+            <a
+              :href="downloadUrl('curseforge')"
+              class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-600/90 transition-colors"
+            >
+              <Download class="w-4 h-4" />
+              Download
+            </a>
+          </div>
+        </div>
+
+        <div
+          v-if="hasFormat('prism')"
+          class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
+        >
+          <div class="flex items-center gap-3">
+            <Box class="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+            <div>
+              <p class="font-medium text-gray-900 dark:text-white">
+                Prism / MultiMC Instance
+              </p>
+              <p class="text-xs text-gray-500 dark:text-neutral-400">
+                Import into Prism Launcher or MultiMC
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+              @click="copyUrl('prism')"
+            >
+              <Link class="w-4 h-4" />
+              {{ copiedFormat === "prism" ? "Copied!" : "Copy link" }}
+            </button>
+            <a
+              :href="downloadUrl('prism')"
+              class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-600/90 transition-colors"
+            >
+              <Download class="w-4 h-4" />
+              Download
+            </a>
+          </div>
+        </div>
       </div>
 
       <div class="text-center text-xs text-gray-400 dark:text-neutral-500">
@@ -129,6 +195,8 @@ import {
   FileBox,
   Download,
   Link,
+  Flame,
+  Box,
 } from "lucide-vue-next";
 
 interface ArchiveInfoResponse {

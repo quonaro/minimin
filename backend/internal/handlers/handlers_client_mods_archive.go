@@ -17,14 +17,16 @@ import (
 
 // ArchiveToken represents a generated archive with expiration.
 type ArchiveToken struct {
-	Token      string    `json:"token"`
-	ServerID   string    `json:"serverId"`
-	ServerName string    `json:"serverName"`
-	ZipPath    string    `json:"zipPath"`
-	MrpackPath string    `json:"mrpackPath"`
-	ExpiresAt  time.Time `json:"expiresAt"`
-	CreatedAt  time.Time `json:"createdAt"`
-	Formats    []string  `json:"formats"`
+	Token          string    `json:"token"`
+	ServerID       string    `json:"serverId"`
+	ServerName     string    `json:"serverName"`
+	ZipPath        string    `json:"zipPath"`
+	MrpackPath     string    `json:"mrpackPath"`
+	CurseForgePath string    `json:"curseForgePath"`
+	PrismPath      string    `json:"prismPath"`
+	ExpiresAt      time.Time `json:"expiresAt"`
+	CreatedAt      time.Time `json:"createdAt"`
+	Formats        []string  `json:"formats"`
 }
 
 var (
@@ -46,6 +48,8 @@ func cleanupExpiredArchives() {
 			if now.After(entry.ExpiresAt) {
 				_ = os.Remove(entry.ZipPath)
 				_ = os.Remove(entry.MrpackPath)
+				_ = os.Remove(entry.CurseForgePath)
+				_ = os.Remove(entry.PrismPath)
 				delete(archiveTokens, token)
 			}
 		}
@@ -73,7 +77,7 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req struct {
-		Formats []string `json:"formats"` // "zip", "mrpack"
+		Formats []string `json:"formats"` // "zip", "mrpack", "curseforge", "prism"
 		TTL     int      `json:"ttl"`     // hours
 	}
 	if err := decodeJSON(r, &req); err != nil {
@@ -140,6 +144,20 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 				return
 			}
 			archive.MrpackPath = mrpackPath
+		case "curseforge":
+			cfPath := filepath.Join(tmpDir, token+"-curseforge.zip")
+			if err := createCurseForgeArchive(cfPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, jarFiles); err != nil {
+				jsonError(w, fmt.Sprintf("failed to create curseforge archive: %v", err), http.StatusInternalServerError)
+				return
+			}
+			archive.CurseForgePath = cfPath
+		case "prism":
+			prismPath := filepath.Join(tmpDir, token+"-prism.zip")
+			if err := createPrismArchive(prismPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, jarFiles); err != nil {
+				jsonError(w, fmt.Sprintf("failed to create prism archive: %v", err), http.StatusInternalServerError)
+				return
+			}
+			archive.PrismPath = prismPath
 		}
 	}
 
@@ -263,6 +281,149 @@ func createMrpackArchive(mrpackPath, packName string, files []string) error {
 	return nil
 }
 
+func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, files []string) error {
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = zf.Close() }()
+
+	zw := zip.NewWriter(zf)
+	defer func() { _ = zw.Close() }()
+
+	engine := strings.ToLower(engineType)
+	loaderID := engine
+	if loaderVersion != "" {
+		loaderID = engine + "-" + loaderVersion
+	}
+
+	manifest := map[string]any{
+		"minecraft": map[string]any{
+			"version": gameVersion,
+			"modLoaders": []map[string]any{
+				{"id": loaderID, "primary": true},
+			},
+		},
+		"manifestType":    "minecraftModpack",
+		"manifestVersion": 1,
+		"name":            packName,
+		"version":         "1.0.0",
+		"author":          "MiniMin",
+		"files":           []any{},
+		"overrides":       "overrides",
+	}
+
+	manifestData, _ := json.MarshalIndent(manifest, "", "  ")
+	w, err := zw.Create("manifest.json")
+	if err != nil {
+		return err
+	}
+	_, _ = w.Write(manifestData)
+
+	for _, path := range files {
+		name := filepath.Base(path)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		header := &zip.FileHeader{Name: "overrides/mods/" + name, Method: zip.Deflate, Modified: info.ModTime()}
+		w, err := zw.CreateHeader(header)
+		if err != nil {
+			continue
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		_, _ = io.Copy(w, f)
+		_ = f.Close()
+	}
+	return nil
+}
+
+func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, files []string) error {
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = zf.Close() }()
+
+	zw := zip.NewWriter(zf)
+	defer func() { _ = zw.Close() }()
+
+	// instance.cfg
+	cfg := fmt.Sprintf("name=%s\nInstanceType=OneSix\n", packName)
+	w, err := zw.Create("instance.cfg")
+	if err != nil {
+		return err
+	}
+	_, _ = w.Write([]byte(cfg))
+
+	// mmc-pack.json
+	engine := strings.ToLower(engineType)
+	components := []map[string]any{
+		{
+			"cachedName":    "Minecraft",
+			"cachedVersion": gameVersion,
+			"important":     true,
+			"uid":           "net.minecraft",
+		},
+	}
+	if engine != "vanilla" && loaderVersion != "" {
+		var uid, cachedName string
+		switch engine {
+		case "fabric":
+			uid = "net.fabricmc.fabric-loader"
+			cachedName = "Fabric Loader"
+		case "forge":
+			uid = "net.minecraftforge"
+			cachedName = "Forge"
+		case "neoforge":
+			uid = "net.neoforged"
+			cachedName = "NeoForge"
+		default:
+			uid = engine
+			cachedName = engine
+		}
+		components = append(components, map[string]any{
+			"cachedName":    cachedName,
+			"cachedVersion": loaderVersion,
+			"important":     true,
+			"uid":           uid,
+		})
+	}
+	mmcPack := map[string]any{
+		"components":    components,
+		"formatVersion": 1,
+	}
+	mmcData, _ := json.MarshalIndent(mmcPack, "", "  ")
+	w, err = zw.Create("mmc-pack.json")
+	if err != nil {
+		return err
+	}
+	_, _ = w.Write(mmcData)
+
+	for _, path := range files {
+		name := filepath.Base(path)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		header := &zip.FileHeader{Name: ".minecraft/mods/" + name, Method: zip.Deflate, Modified: info.ModTime()}
+		w, err := zw.CreateHeader(header)
+		if err != nil {
+			continue
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		_, _ = io.Copy(w, f)
+		_ = f.Close()
+	}
+	return nil
+}
+
 // HandleDownloadClientArchive serves a generated archive by token (public, no auth).
 func (h *Handler) HandleDownloadClientArchive(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
@@ -288,6 +449,12 @@ func (h *Handler) HandleDownloadClientArchive(w http.ResponseWriter, r *http.Req
 	case "mrpack":
 		filePath = archive.MrpackPath
 		contentType = "application/octet-stream"
+	case "curseforge":
+		filePath = archive.CurseForgePath
+		contentType = "application/zip"
+	case "prism":
+		filePath = archive.PrismPath
+		contentType = "application/zip"
 	default:
 		jsonError(w, "invalid format", http.StatusBadRequest)
 		return
@@ -332,6 +499,12 @@ func (h *Handler) HandleGetClientArchiveInfo(w http.ResponseWriter, r *http.Requ
 	}
 	if archive.MrpackPath != "" {
 		formats = append(formats, "mrpack")
+	}
+	if archive.CurseForgePath != "" {
+		formats = append(formats, "curseforge")
+	}
+	if archive.PrismPath != "" {
+		formats = append(formats, "prism")
 	}
 
 	jsonResponse(w, map[string]any{
