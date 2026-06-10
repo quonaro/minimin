@@ -8,12 +8,8 @@ services:
       - "8080:80"
     volumes:
       - ./servers:/app/servers
-      - instance:/app/instance.yml
+      - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - ORCHESTRATOR_API_KEY=changeme
     restart: unless-stopped
-
-
-volumes:
-  instance:

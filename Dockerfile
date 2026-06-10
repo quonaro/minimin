@@ -10,6 +10,7 @@ COPY frontend/package.json ./
 RUN npm install
 
 COPY frontend/ ./
+ENV API_BASE_URL=/
 RUN npm run generate
 
 # ------------------

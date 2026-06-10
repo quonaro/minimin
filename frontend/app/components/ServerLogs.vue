@@ -185,7 +185,7 @@
             <span
               class="text-gray-400 dark:text-neutral-600 select-none text-right tabular-nums min-w-[3ch] shrink-0"
             >
-              {{ i + 1 }}
+              {{ Number(i) + 1 }}
             </span>
             <span
               :class="[
@@ -251,7 +251,13 @@ function connect() {
   }
   const config = useRuntimeConfig();
   const base = (config.public.apiBase as string) || "http://localhost:8081";
-  const wsBase = base.replace(/^http/, "ws");
+  let wsBase: string;
+  if (base.startsWith("/")) {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    wsBase = `${proto}//${window.location.host}${base === "/" ? "" : base}`;
+  } else {
+    wsBase = base.replace(/^http/, "ws");
+  }
   const token = useCookie("auth_token").value || "";
   const url = `${wsBase}/ws/servers/${serverId}/logs?tail=${tail.value}&token=${encodeURIComponent(token)}`;
 

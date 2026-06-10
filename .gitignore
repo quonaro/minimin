@@ -24,6 +24,9 @@ frontend/.cache/
 .env.local
 .env.*.local
 
+# Data
+data/
+
 # IDE
 .vscode/
 .idea/

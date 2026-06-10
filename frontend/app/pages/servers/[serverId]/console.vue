@@ -425,7 +425,13 @@ function connect() {
   }
   const config = useRuntimeConfig();
   const base = (config.public.apiBase as string) || "http://localhost:8081";
-  const wsBase = base.replace(/^http/, "ws");
+  let wsBase: string;
+  if (base.startsWith("/")) {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    wsBase = `${proto}//${window.location.host}${base === "/" ? "" : base}`;
+  } else {
+    wsBase = base.replace(/^http/, "ws");
+  }
   const token = useCookie("auth_token").value || "";
   const url = `${wsBase}/ws/servers/${serverId}/rcon?token=${encodeURIComponent(token)}`;
 
