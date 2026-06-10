@@ -68,6 +68,22 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("DELETE /api/servers/{id}/mods/{filename}", middleware.WithAuth(apiKey, h.HandleDeleteServerMod))
 	mux.HandleFunc("POST /api/servers/{id}/mods/{filename}/toggle", middleware.WithAuth(apiKey, h.HandleToggleServerMod))
 
+	// Client mods (protected)
+	mux.HandleFunc("GET /api/servers/{id}/client-mods", middleware.WithAuth(apiKey, h.HandleListClientMods))
+	mux.HandleFunc("POST /api/servers/{id}/client-mods/upload", middleware.WithAuth(apiKey, h.HandleUploadClientMod))
+	mux.HandleFunc("POST /api/servers/{id}/client-mods/download", middleware.WithAuth(apiKey, h.HandleDownloadClientModFromURL))
+	mux.HandleFunc("DELETE /api/servers/{id}/client-mods/{filename}", middleware.WithAuth(apiKey, h.HandleDeleteClientMod))
+	mux.HandleFunc("POST /api/servers/{id}/client-mods/{filename}/toggle", middleware.WithAuth(apiKey, h.HandleToggleClientMod))
+	mux.HandleFunc("POST /api/servers/{id}/client-mods/move", middleware.WithAuth(apiKey, h.HandleMoveMod))
+	mux.HandleFunc("POST /api/servers/{id}/client-mods/archive", middleware.WithAuth(apiKey, h.HandleCreateClientArchive))
+	mux.HandleFunc("POST /api/servers/{id}/mods/copy", middleware.WithAuth(apiKey, h.HandleCopyMod))
+	mux.HandleFunc("POST /api/servers/{id}/mods/copy-all", middleware.WithAuth(apiKey, h.HandleCopyAllServerMods))
+	mux.HandleFunc("GET /api/servers/{id}/client-mods/{filename}/icon", middleware.WithAuth(apiKey, h.GetClientModIcon))
+
+	// Client archive (public)
+	mux.HandleFunc("GET /api/client-archive/{token}", h.HandleDownloadClientArchive)
+	mux.HandleFunc("GET /api/client-archive/{token}/info", h.HandleGetClientArchiveInfo)
+
 	// Modrinth proxy (protected)
 	mux.HandleFunc("GET /api/modrinth/search", middleware.WithAuth(apiKey, h.HandleModrinthSearch))
 	mux.HandleFunc("GET /api/modrinth/project/{id}", middleware.WithAuth(apiKey, h.HandleModrinthGetProject))

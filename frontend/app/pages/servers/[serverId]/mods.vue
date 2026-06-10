@@ -31,6 +31,14 @@
         <Link class="w-4 h-4" />
         {{ downloadLoading ? "Downloading..." : "Download from URL" }}
       </button>
+      <button
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors disabled:opacity-50"
+        :disabled="copyAllLoading || mods.length === 0"
+        @click="openCopyAllConfirm"
+      >
+        <Copy class="w-4 h-4" />
+        {{ copyAllLoading ? "Copying..." : "Copy all to client" }}
+      </button>
     </div>
 
     <div
@@ -88,7 +96,83 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+    <div
+      v-if="showCopyAllModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="showCopyAllModal = false"
+    >
+      <div
+        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg flex flex-col max-h-[80vh]"
+      >
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Copy all server mods to client
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
+            The following mods will be copied to the client mods folder. Already
+            existing mods will be skipped.
+          </p>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 space-y-3">
+          <div
+            v-if="modsToCopy.length === 0"
+            class="text-center text-gray-500 dark:text-neutral-400 text-sm"
+          >
+            No mods to copy.
+          </div>
+          <div
+            v-for="mod in modsToCopy"
+            :key="mod.filename"
+            class="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-neutral-700/50"
+          >
+            <div
+              class="w-8 h-8 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0"
+            >
+              <Box class="w-4 h-4" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p
+                class="text-sm font-medium text-gray-900 dark:text-white truncate"
+              >
+                {{ mod.name || mod.filename }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-neutral-400 truncate">
+                {{ mod.filename }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
+        >
+          <button
+            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
+            @click="showCopyAllModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            :disabled="copyAllLoading || modsToCopy.length === 0"
+            @click="handleCopyAll"
+          >
+            <Copy class="w-4 h-4" />
+            {{
+              copyAllLoading
+                ? "Copying..."
+                : "Copy " +
+                  modsToCopy.length +
+                  " mod" +
+                  (modsToCopy.length !== 1 ? "s" : "")
+            }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
       <div
         class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden flex flex-col"
       >
@@ -102,6 +186,29 @@
             @delete="deleteMod"
             @upload="handleUpload"
             @toggle="handleToggle"
+            @move="handleClientMove"
+            @copy="handleCopy"
+          />
+        </div>
+      </div>
+
+      <div
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden flex flex-col"
+      >
+        <div class="p-4 md:p-6 flex-1 min-h-0">
+          <client-mods
+            :mods="clientModList"
+            :loading="clientLoading"
+            :server-id="serverId"
+            :archive-loading="clientArchiveLoading"
+            :archive-result="archiveResult"
+            v-model:search-query="clientSearchQuery"
+            @delete="handleClientDelete"
+            @upload="handleClientUpload"
+            @toggle="handleClientToggle"
+            @move="handleClientMove"
+            @copy="handleCopy"
+            @generate-archive="handleGenerateArchive"
           />
         </div>
       </div>
@@ -138,7 +245,7 @@
 
 <script setup lang="ts">
 import { debounce } from "~/utils/debounce";
-import { Upload, Link, Download } from "lucide-vue-next";
+import { Upload, Link, Download, Copy, Box } from "lucide-vue-next";
 
 definePageMeta({
   middleware: "auth",
@@ -159,12 +266,72 @@ const {
   toggleMod,
 } = useMods(serverId);
 
+const {
+  mods: clientModList,
+  loading: clientLoading,
+  uploadLoading: clientUploadLoading,
+  downloadLoading: clientDownloadLoading,
+  archiveLoading: clientArchiveLoading,
+  refresh: refreshClient,
+  deleteMod: deleteClientMod,
+  uploadFile: uploadClientFile,
+  downloadFromURL: downloadClientFromURL,
+  toggleMod: toggleClientMod,
+  moveMod: moveClientMod,
+  copyMod: copyClientMod,
+  createArchive,
+} = useClientMods(serverId);
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const showDownloadModal = ref(false);
 const modUrl = ref("");
 const installedSearchQuery = ref("");
 const installedSideFilter = ref<"all" | "server" | "client">("all");
+const clientSearchQuery = ref("");
 const librarySideFilter = ref<"all" | "server" | "client">("all");
+
+const showCopyAllModal = ref(false);
+const copyAllLoading = ref(false);
+const modsToCopy = ref<typeof mods.value>([]);
+
+function openCopyAllConfirm() {
+  const clientFilenames = new Set(clientModList.value.map((m) => m.filename));
+  modsToCopy.value = mods.value.filter((m) => !clientFilenames.has(m.filename));
+  showCopyAllModal.value = true;
+}
+
+async function handleCopyAll() {
+  if (modsToCopy.value.length === 0) {
+    showCopyAllModal.value = false;
+    return;
+  }
+  copyAllLoading.value = true;
+  try {
+    const res: any = await $fetch(`/servers/${serverId}/mods/copy-all`, {
+      baseURL: useApiBase(),
+      method: "POST",
+      credentials: "include",
+    });
+    useToast().show(
+      "success",
+      `Copied ${res.copied?.length || 0} mod(s) to client`,
+      {
+        description: res.skipped?.length
+          ? `${res.skipped.length} skipped (already exist)`
+          : undefined,
+      },
+    );
+    await refresh();
+    await refreshClient();
+    showCopyAllModal.value = false;
+  } catch (err: any) {
+    useToast().show("error", "Failed to copy mods", {
+      description: err?.data?.detail || err?.message || "Unknown error",
+    });
+  } finally {
+    copyAllLoading.value = false;
+  }
+}
 const versionDetailsMap = ref<
   Record<string, import("~/composables/useModrinth").ModrinthVersion>
 >({});
@@ -247,11 +414,41 @@ async function handleToggle(filename: string) {
   await toggleMod(filename);
 }
 
+async function handleClientUpload(file: File) {
+  await uploadClientFile(file);
+}
+
+async function handleClientDelete(filename: string) {
+  await deleteClientMod(filename);
+}
+
+async function handleClientToggle(filename: string) {
+  await toggleClientMod(filename);
+}
+
+async function handleClientMove(filename: string, target: "server" | "client") {
+  await moveClientMod(filename, target);
+  await refresh();
+  await refreshClient();
+}
+
+async function handleCopy(
+  filename: string,
+  source: "server" | "client",
+  target: "server" | "client",
+) {
+  await copyClientMod(filename, source, target);
+  await refresh();
+  await refreshClient();
+}
+
 async function handleInstall(
   projectId: string,
   versionId: string,
   depProjectIds?: string[],
+  target?: "server" | "client" | "both",
 ) {
+  const installTarget = target || "server";
   const file = await modrinth.install(projectId, versionId);
   if (!file) return;
 
@@ -262,29 +459,47 @@ async function handleInstall(
     ? allDeps.filter((d) => depProjectIds.includes(d.project_id))
     : allDeps.filter((d) => d.dependency_type === "required");
 
-  if (selectedDeps.length > 0) {
-    useToast().show(
-      "info",
-      `Installing ${selectedDeps.length} dependencies...`,
-    );
-    for (const dep of selectedDeps) {
-      const depFile = await modrinth.resolveDependency(
-        dep.project_id,
-        dep.version_id,
-        serverEngine.value,
-        serverGameVersion.value,
+  async function installDepsAndMod(
+    modFile: NonNullable<typeof file>,
+    doDownload: (url: string, filename?: string) => Promise<void>,
+    doRefresh: () => Promise<void>,
+  ) {
+    if (selectedDeps.length > 0) {
+      useToast().show(
+        "info",
+        `Installing ${selectedDeps.length} dependencies...`,
       );
-      if (depFile) {
-        await downloadFromURL(depFile.url, depFile.filename);
+      for (const dep of selectedDeps) {
+        const depFile = await modrinth.resolveDependency(
+          dep.project_id,
+          dep.version_id,
+          serverEngine.value,
+          serverGameVersion.value,
+        );
+        if (depFile) {
+          await doDownload(depFile.url, depFile.filename);
+        }
       }
     }
+    await doDownload(modFile.url, modFile.filename);
+    await doRefresh();
   }
 
-  await downloadFromURL(file.url, file.filename);
-  await refresh();
-  useToast().show("success", "Mod installed", {
-    description: file.filename,
-  });
+  if (installTarget === "both") {
+    await installDepsAndMod(file, downloadFromURL, refresh);
+    await installDepsAndMod(file, downloadClientFromURL, refreshClient);
+    useToast().show("success", "Mod installed to server and client", {
+      description: file.filename,
+    });
+  } else {
+    const doDownload =
+      installTarget === "client" ? downloadClientFromURL : downloadFromURL;
+    const doRefresh = installTarget === "client" ? refreshClient : refresh;
+    await installDepsAndMod(file, doDownload, doRefresh);
+    useToast().show("success", "Mod installed", {
+      description: file.filename,
+    });
+  }
 }
 
 async function handleLoadVersions(projectId: string) {
@@ -315,10 +530,22 @@ async function handleLoadProject(projectId: string) {
   }
 }
 
+const archiveResult = ref<
+  import("~/composables/useClientMods").ArchiveInfo | null
+>(null);
+
+async function handleGenerateArchive(formats: string[], ttl: number) {
+  const result = await createArchive(formats, ttl);
+  if (result) {
+    archiveResult.value = result;
+  }
+}
+
 onMounted(async () => {
   await fetchServerInfo();
   if (!serverEngine.value) return;
   await refresh();
+  await refreshClient();
   await modrinth.search(serverEngine.value, serverGameVersion.value);
 });
 </script>

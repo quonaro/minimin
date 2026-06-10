@@ -1,0 +1,344 @@
+package handlers
+
+import (
+	"archive/zip"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+)
+
+// ArchiveToken represents a generated archive with expiration.
+type ArchiveToken struct {
+	Token      string    `json:"token"`
+	ServerID   string    `json:"serverId"`
+	ServerName string    `json:"serverName"`
+	ZipPath    string    `json:"zipPath"`
+	MrpackPath string    `json:"mrpackPath"`
+	ExpiresAt  time.Time `json:"expiresAt"`
+	CreatedAt  time.Time `json:"createdAt"`
+	Formats    []string  `json:"formats"`
+}
+
+var (
+	archiveTokens   = make(map[string]*ArchiveToken)
+	archiveTokensMu sync.RWMutex
+)
+
+func init() {
+	go cleanupExpiredArchives()
+}
+
+func cleanupExpiredArchives() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		archiveTokensMu.Lock()
+		now := time.Now()
+		for token, entry := range archiveTokens {
+			if now.After(entry.ExpiresAt) {
+				_ = os.Remove(entry.ZipPath)
+				_ = os.Remove(entry.MrpackPath)
+				delete(archiveTokens, token)
+			}
+		}
+		archiveTokensMu.Unlock()
+	}
+}
+
+func generateToken() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// HandleCreateClientArchive generates .zip and/or .mrpack from client mods.
+func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	s, ok := h.Instance.Get(id)
+	if !ok {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	if s.VolumePath == "" {
+		jsonError(w, "server volume not initialized", http.StatusConflict)
+		return
+	}
+
+	var req struct {
+		Formats []string `json:"formats"` // "zip", "mrpack"
+		TTL     int      `json:"ttl"`     // hours
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if len(req.Formats) == 0 {
+		req.Formats = []string{"zip"}
+	}
+	if req.TTL <= 0 {
+		req.TTL = 24
+	}
+
+	clientDir := filepath.Join(s.VolumePath, "mods-client")
+	entries, err := os.ReadDir(clientDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			jsonError(w, "no client mods found", http.StatusNotFound)
+			return
+		}
+		jsonError(w, "failed to read client mods directory", http.StatusInternalServerError)
+		return
+	}
+
+	var jarFiles []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := strings.ToLower(e.Name())
+		if strings.HasSuffix(name, ".jar") {
+			jarFiles = append(jarFiles, filepath.Join(clientDir, e.Name()))
+		}
+	}
+
+	tmpDir := filepath.Join(os.TempDir(), "webui-archives")
+	_ = os.MkdirAll(tmpDir, 0o755)
+
+	token := generateToken()
+	expiresAt := time.Now().Add(time.Duration(req.TTL) * time.Hour)
+
+	archive := &ArchiveToken{
+		Token:      token,
+		ServerID:   id,
+		ServerName: s.ServerID,
+		ExpiresAt:  expiresAt,
+		CreatedAt:  time.Now(),
+		Formats:    req.Formats,
+	}
+
+	for _, format := range req.Formats {
+		switch format {
+		case "zip":
+			zipPath := filepath.Join(tmpDir, token+".zip")
+			if err := createZipArchive(zipPath, jarFiles); err != nil {
+				jsonError(w, fmt.Sprintf("failed to create zip: %v", err), http.StatusInternalServerError)
+				return
+			}
+			archive.ZipPath = zipPath
+		case "mrpack":
+			mrpackPath := filepath.Join(tmpDir, token+".mrpack")
+			if err := createMrpackArchive(mrpackPath, s.ServerID, jarFiles); err != nil {
+				jsonError(w, fmt.Sprintf("failed to create mrpack: %v", err), http.StatusInternalServerError)
+				return
+			}
+			archive.MrpackPath = mrpackPath
+		}
+	}
+
+	archiveTokensMu.Lock()
+	archiveTokens[token] = archive
+	archiveTokensMu.Unlock()
+
+	jsonResponse(w, map[string]any{
+		"token":      token,
+		"expiresAt":  expiresAt.Format(time.RFC3339),
+		"serverName": s.ServerID,
+		"formats":    req.Formats,
+	})
+}
+
+func createZipArchive(zipPath string, files []string) error {
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = zf.Close() }()
+
+	zw := zip.NewWriter(zf)
+	defer func() { _ = zw.Close() }()
+
+	for _, path := range files {
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			continue
+		}
+		header.Name = filepath.Base(path)
+		header.Method = zip.Deflate
+
+		w, err := zw.CreateHeader(header)
+		if err != nil {
+			continue
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		_, _ = io.Copy(w, f)
+		_ = f.Close()
+	}
+	return nil
+}
+
+func createMrpackArchive(mrpackPath, packName string, files []string) error {
+	zf, err := os.Create(mrpackPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = zf.Close() }()
+
+	zw := zip.NewWriter(zf)
+	defer func() { _ = zw.Close() }()
+
+	type mrpackFile struct {
+		Path   string            `json:"path"`
+		Hashes map[string]string `json:"hashes"`
+		Size   int64             `json:"size"`
+	}
+	type mrpackIndex struct {
+		FormatVersion int          `json:"formatVersion"`
+		Game          string       `json:"game"`
+		VersionID     string       `json:"versionId"`
+		Name          string       `json:"name"`
+		Files         []mrpackFile `json:"files"`
+	}
+
+	index := mrpackIndex{
+		FormatVersion: 1,
+		Game:          "minecraft",
+		VersionID:     "1.0.0",
+		Name:          packName,
+		Files:         []mrpackFile{},
+	}
+
+	for _, path := range files {
+		name := filepath.Base(path)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		_ = f.Close()
+
+		index.Files = append(index.Files, mrpackFile{
+			Path:   "overrides/mods/" + name,
+			Hashes: map[string]string{},
+			Size:   info.Size(),
+		})
+
+		// Write file into overrides/mods/
+		header := &zip.FileHeader{Name: "overrides/mods/" + name, Method: zip.Deflate, Modified: info.ModTime()}
+		w, err := zw.CreateHeader(header)
+		if err != nil {
+			continue
+		}
+		f2, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		_, _ = io.Copy(w, f2)
+		_ = f2.Close()
+	}
+
+	indexData, _ := json.MarshalIndent(index, "", "  ")
+	w, err := zw.Create("modrinth.index.json")
+	if err != nil {
+		return err
+	}
+	_, _ = w.Write(indexData)
+	return nil
+}
+
+// HandleDownloadClientArchive serves a generated archive by token (public, no auth).
+func (h *Handler) HandleDownloadClientArchive(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "zip"
+	}
+
+	archiveTokensMu.RLock()
+	archive, ok := archiveTokens[token]
+	archiveTokensMu.RUnlock()
+
+	if !ok || time.Now().After(archive.ExpiresAt) {
+		jsonError(w, "archive not found or expired", http.StatusNotFound)
+		return
+	}
+
+	var filePath, contentType string
+	switch format {
+	case "zip":
+		filePath = archive.ZipPath
+		contentType = "application/zip"
+	case "mrpack":
+		filePath = archive.MrpackPath
+		contentType = "application/octet-stream"
+	default:
+		jsonError(w, "invalid format", http.StatusBadRequest)
+		return
+	}
+
+	if filePath == "" {
+		jsonError(w, "requested format not available", http.StatusNotFound)
+		return
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		jsonError(w, "failed to open archive", http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = f.Close() }()
+
+	stat, _ := f.Stat()
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s-%s.%s\"", archive.ServerName, archive.CreatedAt.Format("20060102"), format))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", stat.Size()))
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.Copy(w, f)
+}
+
+// HandleGetClientArchiveInfo returns metadata about an archive (public, no auth).
+func (h *Handler) HandleGetClientArchiveInfo(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+
+	archiveTokensMu.RLock()
+	archive, ok := archiveTokens[token]
+	archiveTokensMu.RUnlock()
+
+	if !ok || time.Now().After(archive.ExpiresAt) {
+		jsonError(w, "archive not found or expired", http.StatusNotFound)
+		return
+	}
+
+	var formats []string
+	if archive.ZipPath != "" {
+		formats = append(formats, "zip")
+	}
+	if archive.MrpackPath != "" {
+		formats = append(formats, "mrpack")
+	}
+
+	jsonResponse(w, map[string]any{
+		"token":      token,
+		"serverName": archive.ServerName,
+		"expiresAt":  archive.ExpiresAt.Format(time.RFC3339),
+		"createdAt":  archive.CreatedAt.Format(time.RFC3339),
+		"formats":    formats,
+	})
+}

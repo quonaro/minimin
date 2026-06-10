@@ -412,14 +412,28 @@ func StartServerContainer(
 		}
 	}
 
+	uid := os.Getuid()
+	gid := os.Getgid()
+	if uid == 0 {
+		slog.Warn("backend running as root; falling back to uid/gid 1000 for minecraft container")
+		uid = 1000
+		gid = 1000
+	}
+	if err := os.Chown(hostPath, uid, gid); err != nil {
+		slog.Warn("failed to chown server data directory", "path", hostPath, "uid", uid, "gid", gid, "error", err)
+	}
+	if err := os.Chmod(hostPath, 0o775); err != nil {
+		slog.Warn("failed to chmod server data directory", "path", hostPath, "error", err)
+	}
+
 	b := NewContainerBuilder(ImageName).
 		WithResources(ramBytes, cpus).
 		WithPort(25565, gamePort, "0.0.0.0").
 		WithNetwork(NetworkName).
 		WithEnv("TYPE", engineType).
 		WithEnv("VERSION", gameVersion).
-		WithEnv("UID", "1000").
-		WithEnv("GID", "1000").
+		WithEnv("UID", strconv.Itoa(uid)).
+		WithEnv("GID", strconv.Itoa(gid)).
 		WithVolume(hostPath, "/data").
 		WithRcon(rconPassword, rconHostPort, publicRcon).
 		WithLabel(LabelManaged, "mc-agent").
@@ -592,6 +606,48 @@ func SplitEnv(s string) (key, value string, ok bool) {
 		}
 	}
 	return "", "", false
+}
+
+// FixVolumeOwnership runs an ephemeral alpine container to recursively chown a host path
+// to the given uid/gid and chmod it to 0o775. This works around permission issues when
+// the backend process cannot chown the directory directly.
+func FixVolumeOwnership(ctx context.Context, cli *client.Client, hostPath string, uid, gid int) error {
+	img := "alpine:latest"
+	if _, _, err := cli.ImageInspectWithRaw(ctx, img); err != nil {
+		if reader, err := cli.ImagePull(ctx, img, image.PullOptions{}); err != nil {
+			slog.Warn("failed to pull ownership-fix image", "image", img, "error", err)
+		} else {
+			_, _ = io.Copy(io.Discard, reader)
+			_ = reader.Close()
+		}
+	}
+	config := &container.Config{
+		Image: img,
+		Cmd:   []string{"sh", "-c", fmt.Sprintf("chown -R %d:%d /data && chmod 775 /data", uid, gid)},
+	}
+	hostConfig := &container.HostConfig{
+		Binds: []string{fmt.Sprintf("%s:/data", hostPath)},
+	}
+	resp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
+	if err != nil {
+		return fmt.Errorf("failed to create ownership-fix container: %w", err)
+	}
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		_ = cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+		return fmt.Errorf("failed to start ownership-fix container: %w", err)
+	}
+	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			slog.Warn("ownership-fix container wait error", "error", err)
+		}
+	case <-statusCh:
+	}
+	if err := cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true}); err != nil {
+		slog.Warn("failed to remove ownership-fix container", "error", err)
+	}
+	return nil
 }
 
 // StreamContainerLogs streams stdout and stderr from a container to the provided writers.

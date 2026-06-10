@@ -17,7 +17,9 @@
 <script setup lang="ts">
 const route = useRoute();
 
-const hasSidebar = computed(() => route.path !== "/login");
+const hasSidebar = computed(() => {
+  return route.path !== "/login" && !route.path.startsWith("/client-archive");
+});
 </script>
 
 <style>

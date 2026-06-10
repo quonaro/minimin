@@ -135,6 +135,29 @@
           </div>
         </div>
 
+        <div class="px-6 pb-3 space-y-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              v-model="installToServer"
+              type="checkbox"
+              class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
+            />
+            <span class="text-sm text-gray-700 dark:text-neutral-300"
+              >Install to server mods</span
+            >
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              v-model="installToClient"
+              type="checkbox"
+              class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
+            />
+            <span class="text-sm text-gray-700 dark:text-neutral-300"
+              >Install to client mods</span
+            >
+          </label>
+        </div>
+
         <div
           class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
         >
@@ -306,7 +329,12 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   search: [];
   "update:searchQuery": [value: string];
-  install: [projectId: string, versionId: string, depProjectIds: string[]];
+  install: [
+    projectId: string,
+    versionId: string,
+    depProjectIds: string[],
+    target: "server" | "client" | "both",
+  ];
   "load-versions": [projectId: string];
   "load-more": [];
   "update:sideFilter": [value: "all" | "server" | "client"];
@@ -362,6 +390,8 @@ const confirmProject = ref<ModrinthProject | null>(null);
 const confirmProjectId = ref("");
 const confirmVersionId = ref("");
 const selectedDepIds = ref<Set<string>>(new Set());
+const installToServer = ref(true);
+const installToClient = ref(false);
 
 const confirmDeps = computed(() => {
   const details = props.versionDetails?.[confirmVersionId.value];
@@ -390,6 +420,8 @@ function openConfirm(project: ModrinthProject, versionId: string) {
     }
   }
   selectedDepIds.value = ids;
+  installToServer.value = true;
+  installToClient.value = false;
   showConfirm.value = true;
 }
 
@@ -403,6 +435,12 @@ function toggleDep(projectId: string) {
   selectedDepIds.value = next;
 }
 
+function getInstallTarget(): "server" | "client" | "both" {
+  if (installToServer.value && installToClient.value) return "both";
+  if (installToClient.value) return "client";
+  return "server";
+}
+
 function confirmInstall() {
   if (!confirmVersionId.value) return;
   emit(
@@ -410,6 +448,7 @@ function confirmInstall() {
     confirmProjectId.value,
     confirmVersionId.value,
     Array.from(selectedDepIds.value),
+    getInstallTarget(),
   );
   showConfirm.value = false;
 }

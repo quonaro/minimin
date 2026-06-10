@@ -3,7 +3,7 @@
     <div class="mb-4 space-y-2">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-          Installed Mods
+          Client Mods
         </h2>
         <span class="text-xs text-gray-500 dark:text-neutral-400">
           {{ filteredMods.length }} mods
@@ -13,27 +13,17 @@
         <input
           :value="searchQuery"
           type="text"
-          placeholder="Search installed mods..."
+          placeholder="Search client mods..."
           class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
           @input="onSearchInput"
         />
-        <div
-          class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
+        <button
+          class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
+          @click="showArchiveModal = true"
         >
-          <button
-            v-for="opt in sideOptions"
-            :key="opt.value"
-            class="px-2 py-1.5 text-xs font-medium transition-colors"
-            :class="
-              sideFilter === opt.value
-                ? 'bg-primary text-white'
-                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-            "
-            @click="emit('update:sideFilter', opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
+          <Archive class="w-3.5 h-3.5" />
+          Export
+        </button>
       </div>
     </div>
 
@@ -44,7 +34,6 @@
           ? 'border-2 border-dashed border-primary rounded-xl bg-primary/5'
           : ''
       "
-      @dragenter.prevent="isDragOver = true"
       @dragover.prevent="isDragOver = true"
       @dragleave="isDragOver = false"
       @drop.prevent="onDrop"
@@ -53,11 +42,10 @@
         v-if="filteredMods.length === 0 && !loading"
         class="text-center text-gray-500 dark:text-neutral-400 py-12 text-sm"
       >
-        No mods installed.
-        <br />
-        <span class="text-xs"
-          >Drag & drop .jar or .zip here, or use the button below.</span
-        >
+        <p>No client mods.</p>
+        <p class="text-xs mt-1">
+          Drag server mods here, or drop .jar files to upload.
+        </p>
       </div>
 
       <div
@@ -120,9 +108,9 @@
             <EyeOff v-else class="w-4 h-4" />
           </button>
           <button
-            class="text-gray-400 hover:text-primary transition-colors p-1"
-            title="Move to client mods"
-            @click="emit('move', mod.filename, 'client')"
+            class="text-gray-400 hover:text-amber-500 transition-colors p-1"
+            title="Move to server mods"
+            @click="emit('move', mod.filename, 'server')"
           >
             <Server class="w-4 h-4" />
           </button>
@@ -163,14 +151,14 @@
             @click="contextMove"
           >
             <Server class="w-4 h-4" />
-            Move to client mods
+            Move to server mods
           </button>
           <button
             class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
             @click="contextCopy"
           >
             <Copy class="w-4 h-4" />
-            Copy to client mods
+            Copy to server mods
           </button>
           <button
             class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
@@ -182,24 +170,143 @@
         </div>
       </div>
     </div>
+
+    <!-- Archive Modal -->
+    <div
+      v-if="showArchiveModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="showArchiveModal = false"
+    >
+      <div
+        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-md"
+      >
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Export Client Mods
+          </h2>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
+            >
+              Formats
+            </label>
+            <div class="flex gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="archiveFormats"
+                  type="checkbox"
+                  value="zip"
+                  class="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span class="text-sm text-gray-700 dark:text-neutral-300"
+                  >ZIP</span
+                >
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="archiveFormats"
+                  type="checkbox"
+                  value="mrpack"
+                  class="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span class="text-sm text-gray-700 dark:text-neutral-300"
+                  >Mrpack</span
+                >
+              </label>
+            </div>
+          </div>
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
+            >
+              Link Expiration
+            </label>
+            <select
+              v-model="archiveTTL"
+              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+            >
+              <option :value="1">1 hour</option>
+              <option :value="6">6 hours</option>
+              <option :value="24">24 hours</option>
+              <option :value="168">7 days</option>
+            </select>
+          </div>
+          <div
+            v-if="archiveResult"
+            class="p-3 rounded-lg bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
+          >
+            <p class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+              Archive ready:
+            </p>
+            <div class="flex items-center gap-2">
+              <input
+                :value="archiveLink"
+                readonly
+                class="flex-1 px-2 py-1 rounded bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 text-xs text-gray-900 dark:text-white"
+              />
+              <button
+                class="px-2 py-1 rounded bg-primary text-white text-xs font-medium hover:bg-primary/90"
+                @click="copyLink"
+              >
+                Copy
+              </button>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-1">
+              Expires: {{ new Date(archiveResult.expiresAt).toLocaleString() }}
+            </p>
+          </div>
+        </div>
+        <div
+          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
+        >
+          <button
+            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
+            @click="showArchiveModal = false"
+          >
+            Close
+          </button>
+          <button
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            :disabled="archiveLoading || archiveFormats.length === 0"
+            @click="generateArchive"
+          >
+            <Archive class="w-4 h-4" />
+            {{ archiveLoading ? "Generating..." : "Generate" }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Box, Trash2, Eye, EyeOff, Server, Copy } from "lucide-vue-next";
+import {
+  Box,
+  Trash2,
+  Eye,
+  EyeOff,
+  Server,
+  Archive,
+  Copy,
+} from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
+import type { ArchiveInfo } from "~/composables/useClientMods";
 
 interface Props {
   mods: ModInfo[];
   loading: boolean;
   serverId?: string;
   searchQuery?: string;
-  sideFilter?: "all" | "server" | "client";
+  archiveLoading?: boolean;
+  archiveResult?: ArchiveInfo | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
-  sideFilter: "all",
+  archiveLoading: false,
+  archiveResult: null,
 });
 const emit = defineEmits<{
   delete: [filename: string];
@@ -212,10 +319,14 @@ const emit = defineEmits<{
     target: "server" | "client",
   ];
   "update:searchQuery": [value: string];
-  "update:sideFilter": [value: "all" | "server" | "client"];
+  "generate-archive": [formats: string[], ttl: number];
 }>();
 
 const isDragOver = ref(false);
+const showArchiveModal = ref(false);
+const archiveFormats = ref<string[]>(["zip"]);
+const archiveTTL = ref(24);
+const archiveResult = ref<ArchiveInfo | null>(null);
 
 const contextMenuOpen = ref(false);
 const contextMenuX = ref(0);
@@ -243,14 +354,14 @@ function contextToggle() {
 
 function contextMove() {
   if (contextTarget.value) {
-    emit("move", contextTarget.value.filename, "client");
+    emit("move", contextTarget.value.filename, "server");
   }
   closeContextMenu();
 }
 
 function contextCopy() {
   if (contextTarget.value) {
-    emit("copy", contextTarget.value.filename, "server", "client");
+    emit("copy", contextTarget.value.filename, "client", "server");
   }
   closeContextMenu();
 }
@@ -262,11 +373,12 @@ function contextDelete() {
   closeContextMenu();
 }
 
-const sideOptions = [
-  { label: "All", value: "all" as const },
-  { label: "Server", value: "server" as const },
-  { label: "Client", value: "client" as const },
-];
+const iconLoaded = ref<Record<string, boolean>>({});
+
+function getIconUrl(filename: string): string {
+  if (!props.serverId) return "";
+  return `${useApiBase()}/servers/${props.serverId}/client-mods/${encodeURIComponent(filename)}/icon`;
+}
 
 const filteredMods = computed(() => {
   let list = props.mods;
@@ -279,23 +391,11 @@ const filteredMods = computed(() => {
         (m.modid || "").toLowerCase().includes(q),
     );
   }
-  if (props.sideFilter === "server") {
-    list = list.filter((m) => m.environment === "server");
-  } else if (props.sideFilter === "client") {
-    list = list.filter((m) => m.environment === "client");
-  }
   return list;
 });
 
 function onSearchInput(e: Event) {
   emit("update:searchQuery", (e.target as HTMLInputElement).value);
-}
-
-const iconLoaded = ref<Record<string, boolean>>({});
-
-function getIconUrl(filename: string): string {
-  if (!props.serverId) return "";
-  return `${useApiBase()}/servers/${props.serverId}/mods/${encodeURIComponent(filename)}/icon`;
 }
 
 function formatBytes(n: number): string {
@@ -306,11 +406,6 @@ function formatBytes(n: number): string {
   return n + " B";
 }
 
-function onDragStart(e: DragEvent, mod: ModInfo) {
-  e.dataTransfer?.setData("application/x-mod-filename", mod.filename);
-  e.dataTransfer?.setData("application/x-mod-source", "server");
-}
-
 function onDrop(e: DragEvent) {
   isDragOver.value = false;
   const dt = e.dataTransfer;
@@ -318,11 +413,11 @@ function onDrop(e: DragEvent) {
 
   const internalFilename = dt.getData("application/x-mod-filename");
   const internalSource = dt.getData("application/x-mod-source");
-  if (internalFilename && internalSource === "client") {
+  if (internalFilename && internalSource === "server") {
     if (e.ctrlKey) {
-      emit("copy", internalFilename, "client", "server");
+      emit("copy", internalFilename, "server", "client");
     } else {
-      emit("move", internalFilename, "server");
+      emit("move", internalFilename, "client");
     }
     return;
   }
@@ -330,12 +425,43 @@ function onDrop(e: DragEvent) {
   const file = dt.files[0];
   if (!file) return;
   const ext = file.name.split(".").pop()?.toLowerCase();
-  if (ext !== "jar" && ext !== "zip") {
+  if (ext !== "jar") {
     useToast().show("error", "Invalid file type", {
-      description: "Only .jar and .zip files are allowed.",
+      description: "Only .jar files are allowed for client mods.",
     });
     return;
   }
   emit("upload", file);
 }
+
+function onDragStart(e: DragEvent, mod: ModInfo) {
+  e.dataTransfer?.setData("application/x-mod-filename", mod.filename);
+  e.dataTransfer?.setData("application/x-mod-source", "client");
+}
+
+function generateArchive() {
+  archiveResult.value = null;
+  emit("generate-archive", archiveFormats.value, archiveTTL.value);
+}
+
+const archiveLink = computed(() => {
+  if (!archiveResult.value) return "";
+  const base = window.location.origin;
+  return `${base}/client-archive/${archiveResult.value.token}`;
+});
+
+function copyLink() {
+  if (!archiveLink.value) return;
+  navigator.clipboard.writeText(archiveLink.value);
+  useToast().show("success", "Link copied");
+}
+
+watch(
+  () => props.archiveResult,
+  (result) => {
+    if (result) {
+      archiveResult.value = result;
+    }
+  },
+);
 </script>

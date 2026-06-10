@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"orchestrator/internal/runner"
 	"os"
 	"path/filepath"
 	"strings"
@@ -263,7 +264,10 @@ func (h *Handler) UploadServerMod(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = file.Close() }()
 
 	modsDir := filepath.Join(s.VolumePath, "mods")
-	if err := os.MkdirAll(modsDir, 0o755); err != nil {
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
+	}
+	if err := os.MkdirAll(modsDir, 0o775); err != nil {
 		jsonError(w, "failed to create mods directory", http.StatusInternalServerError)
 		return
 	}
@@ -448,7 +452,10 @@ func (h *Handler) HandleDownloadModFromURL(w http.ResponseWriter, r *http.Reques
 	}
 
 	modsDir := filepath.Join(s.VolumePath, "mods")
-	if err := os.MkdirAll(modsDir, 0o755); err != nil {
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
+	}
+	if err := os.MkdirAll(modsDir, 0o775); err != nil {
 		jsonError(w, "failed to create mods directory", http.StatusInternalServerError)
 		return
 	}
@@ -475,4 +482,84 @@ func (h *Handler) HandleDownloadModFromURL(w http.ResponseWriter, r *http.Reques
 	}
 
 	jsonResponse(w, map[string]string{"success": "true", "filename": filename})
+}
+
+// HandleCopyAllServerMods copies all .jar files from the server mods directory to the client mods directory.
+func (h *Handler) HandleCopyAllServerMods(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	s, ok := h.Instance.Get(id)
+	if !ok {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	if s.VolumePath == "" {
+		jsonError(w, "server volume not initialized", http.StatusConflict)
+		return
+	}
+
+	serverDir := filepath.Join(s.VolumePath, "mods")
+	clientDir := filepath.Join(s.VolumePath, "mods-client")
+
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
+	}
+	if err := os.MkdirAll(clientDir, 0o775); err != nil {
+		jsonError(w, "failed to create client mods directory", http.StatusInternalServerError)
+		return
+	}
+
+	entries, err := os.ReadDir(serverDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			jsonResponse(w, map[string]any{"copied": []string{}, "skipped": []string{}, "errors": []string{}})
+			return
+		}
+		jsonError(w, "failed to read server mods directory", http.StatusInternalServerError)
+		return
+	}
+
+	var copied []string
+	var skipped []string
+	var errs []string
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		lower := strings.ToLower(name)
+		if !strings.HasSuffix(lower, ".jar") && !strings.HasSuffix(lower, ".jar.deactivated") {
+			continue
+		}
+
+		srcPath := filepath.Join(serverDir, name)
+		dstPath := filepath.Join(clientDir, name)
+
+		if _, statErr := os.Stat(dstPath); statErr == nil {
+			skipped = append(skipped, name)
+			continue
+		}
+
+		src, err := os.Open(srcPath)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("open %s: %v", name, err))
+			continue
+		}
+		dst, err := os.Create(dstPath)
+		if err != nil {
+			src.Close()
+			errs = append(errs, fmt.Sprintf("create %s: %v", name, err))
+			continue
+		}
+		_, cpyErr := io.Copy(dst, src)
+		src.Close()
+		dst.Close()
+		if cpyErr != nil {
+			errs = append(errs, fmt.Sprintf("copy %s: %v", name, cpyErr))
+			continue
+		}
+		copied = append(copied, name)
+	}
+
+	jsonResponse(w, map[string]any{"copied": copied, "skipped": skipped, "errors": errs})
 }

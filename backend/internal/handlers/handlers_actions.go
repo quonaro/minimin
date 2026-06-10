@@ -77,6 +77,11 @@ func (h *Handler) doStart(id string) {
 			pw, _ := runner.GenerateRconPassword()
 			s.RconPassword = pw
 		}
+		if s.VolumePath != "" {
+			if err := runner.FixVolumeOwnership(context.Background(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+				slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
+			}
+		}
 		containerID, volumeID, volumePath, err := runner.StartServerContainer(
 			context.Background(), h.Cli, s.ServerID,
 			s.RamBytes, s.CPUs, s.GamePort,
