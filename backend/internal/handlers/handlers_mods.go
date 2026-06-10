@@ -264,7 +264,8 @@ func (h *Handler) UploadServerMod(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = file.Close() }()
 
 	modsDir := filepath.Join(s.VolumePath, "mods")
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 	if err := os.MkdirAll(modsDir, 0o775); err != nil {
@@ -452,7 +453,8 @@ func (h *Handler) HandleDownloadModFromURL(w http.ResponseWriter, r *http.Reques
 	}
 
 	modsDir := filepath.Join(s.VolumePath, "mods")
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 	if err := os.MkdirAll(modsDir, 0o775); err != nil {
@@ -500,7 +502,8 @@ func (h *Handler) HandleCopyAllServerMods(w http.ResponseWriter, r *http.Request
 	serverDir := filepath.Join(s.VolumePath, "mods")
 	clientDir := filepath.Join(s.VolumePath, "mods-client")
 
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 	if err := os.MkdirAll(clientDir, 0o775); err != nil {

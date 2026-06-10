@@ -63,7 +63,8 @@ func (h *Handler) HandleDownloadClientModFromURL(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 
@@ -297,7 +298,8 @@ func (h *Handler) HandleMoveMod(w http.ResponseWriter, r *http.Request) {
 	serverDir := filepath.Join(s.VolumePath, "mods")
 	clientDir := filepath.Join(s.VolumePath, "mods-client")
 
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 
@@ -381,7 +383,8 @@ func (h *Handler) HandleCopyMod(w http.ResponseWriter, r *http.Request) {
 	serverDir := filepath.Join(s.VolumePath, "mods")
 	clientDir := filepath.Join(s.VolumePath, "mods-client")
 
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 
@@ -504,7 +507,8 @@ func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 

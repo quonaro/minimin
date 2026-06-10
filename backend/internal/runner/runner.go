@@ -34,6 +34,19 @@ const (
 	LabelServerID = "mc-agent.server-id"  // Unique server ID from the central database mapping
 )
 
+// ContainerUIDGID returns the host uid/gid that the Minecraft container should run as.
+// When the backend is root we fall back to 1000:1000 so the container does not run as root.
+func ContainerUIDGID() (int, int) {
+	uid := os.Getuid()
+	gid := os.Getgid()
+	if uid == 0 {
+		slog.Warn("backend running as root; falling back to uid/gid 1000 for minecraft container")
+		uid = 1000
+		gid = 1000
+	}
+	return uid, gid
+}
+
 // ContainerConfigBuilder assembles Docker container configuration via a fluent API.
 type ContainerConfigBuilder struct {
 	image         string
@@ -412,13 +425,7 @@ func StartServerContainer(
 		}
 	}
 
-	uid := os.Getuid()
-	gid := os.Getgid()
-	if uid == 0 {
-		slog.Warn("backend running as root; falling back to uid/gid 1000 for minecraft container")
-		uid = 1000
-		gid = 1000
-	}
+	uid, gid := ContainerUIDGID()
 	if err := os.Chown(hostPath, uid, gid); err != nil {
 		slog.Warn("failed to chown server data directory", "path", hostPath, "uid", uid, "gid", gid, "error", err)
 	}

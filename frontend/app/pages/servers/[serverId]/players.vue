@@ -578,7 +578,7 @@ function addEvent(ev: Omit<PlayerEvent, "id">) {
 }
 
 function stripMC(s: string): string {
-  return s.replace(/§./g, "").trim();
+  return s.replace(/§./g, "").replace(/\]$/g, "").trim();
 }
 
 function parseLogTimestamp(line: string): number {
@@ -657,7 +657,7 @@ function handleLogLine(line: string) {
     return;
   }
 
-  const banMatch = line.match(/Banned player ([^:\s]+)(?::\s*(.*))?/);
+  const banMatch = line.match(/Banned(?: player)? ([^:\]\s]+)(?::\s*(.*))?/);
   if (banMatch && banMatch[1]) {
     const name = stripMC(banMatch[1] as string);
     const reason = banMatch[2]?.trim() || undefined;
@@ -672,7 +672,7 @@ function handleLogLine(line: string) {
     return;
   }
 
-  const unbanMatch = line.match(/Unbanned player (\S+)/);
+  const unbanMatch = line.match(/Unbanned(?: player)? ([^\]\s]+)/);
   if (unbanMatch && unbanMatch[1]) {
     const name = stripMC(unbanMatch[1] as string);
     addEvent({ ts, type: "unban", player: name });
@@ -698,7 +698,7 @@ function handleLogLine(line: string) {
     return;
   }
 
-  const kickMatch = line.match(/Kicked ([^:\s]+)(?::\s*(.*))?/);
+  const kickMatch = line.match(/Kicked ([^:\]\s]+)(?::\s*(.*))?/);
   if (kickMatch && kickMatch[1]) {
     const name = stripMC(kickMatch[1] as string);
     onlinePlayers.value = onlinePlayers.value.filter((n) => n !== name);
@@ -944,7 +944,9 @@ async function sendRcon(command: string) {
       body: { command },
     });
     showToast("success", "Command sent", { description: command });
-    setTimeout(() => refreshAll(), 500);
+    if (wsStatus.value !== "Connected") {
+      setTimeout(() => refreshAll(), 500);
+    }
   } catch (err: any) {
     const msg = err?.data?.detail || err?.message || "Command failed";
     showToast("error", "RCON failed", { description: msg });

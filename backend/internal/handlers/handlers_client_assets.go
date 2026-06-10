@@ -133,7 +133,8 @@ func (h *Handler) HandleUploadClientAsset(w http.ResponseWriter, r *http.Request
 		jsonError(w, "only .zip files are allowed", http.StatusBadRequest)
 		return
 	}
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, os.Getuid(), os.Getgid()); err != nil {
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
 		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 	}
 	if err := os.MkdirAll(dir, 0o775); err != nil {
