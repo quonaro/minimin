@@ -17,7 +17,7 @@
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
             <span class="text-xs text-gray-500 dark:text-neutral-400"
-              >{{ lines.length }} lines</span
+              >{{ logLines.length }} lines</span
             >
           </div>
 
@@ -39,6 +39,38 @@
           <div class="flex items-center gap-2 self-stretch">
             <svg
               xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-gray-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+              />
+            </svg>
+            <input
+              :value="searchQueryRaw"
+              type="text"
+              placeholder="Search logs..."
+              @input="onSearchInput"
+              class="text-sm bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary w-40"
+            />
+            <span
+              v-if="searchQuery"
+              class="text-xs text-gray-500 dark:text-neutral-400"
+            >
+              {{ filteredLines.length }} matches
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2 self-stretch">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
               class="w-4 h-4 text-purple-500"
               fill="none"
               viewBox="0 0 24 24"
@@ -55,6 +87,7 @@
               id="tail"
               v-model="tail"
               class="text-sm bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              @change="reconnect"
             >
               <option :value="100">100</option>
               <option :value="500">500</option>
@@ -171,29 +204,26 @@
         @scroll="onScroll"
       >
         <div
-          v-if="lines.length === 0"
+          v-if="logLines.length === 0"
           class="text-gray-500 dark:text-neutral-400 italic"
         >
           Waiting for logs...
         </div>
         <template v-else>
           <div
-            v-for="(line, i) in lines"
-            :key="i"
+            v-for="(line, i) in filteredLines"
+            :key="line.id"
             class="flex gap-3 py-0.5 border-b border-gray-200 dark:border-neutral-800/40 hover:bg-gray-100 dark:hover:bg-neutral-800/60 transition-colors min-w-0"
           >
             <span
               class="text-gray-400 dark:text-neutral-600 select-none text-right tabular-nums min-w-[3ch] shrink-0"
             >
-              {{ Number(i) + 1 }}
+              {{ i + 1 }}
             </span>
             <span
-              :class="[
-                'whitespace-pre-wrap break-all',
-                getLogLevelClass(parseLogLevel(line), colored),
-              ]"
-              >{{ line }}</span
-            >
+              :class="['whitespace-pre-wrap break-all', line.levelClass]"
+              v-html="line.html"
+            />
           </div>
         </template>
       </div>
@@ -202,7 +232,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  watch,
+  computed,
+  type Ref,
+} from "vue";
 import { parseLogLevel, getLogLevelClass } from "~/utils/logLevel";
 
 const props = defineProps<{
@@ -215,7 +253,8 @@ const route = useRoute();
 const serverId = props.serverId || (route.params.serverId as string);
 
 const tail = ref(500);
-const lines = ref<string[]>([]);
+const searchQueryRaw = ref("");
+const searchQuery = ref("");
 const buffer = ref("");
 const wsStatus = ref("Connecting...");
 const logContainer = ref<HTMLElement | null>(null);
@@ -224,22 +263,107 @@ const fontSize = ref<string>("text-sm");
 const skipIncoming = ref(false);
 const { show: showToast } = useToast();
 
+interface LogLine {
+  id: number;
+  text: string;
+  level: string;
+  levelClass: string;
+  html: string;
+}
+
+let lineIdCounter = 0;
+const logLines = ref<LogLine[]>([]);
+
+const filteredLines = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  if (!q) return logLines.value;
+  return logLines.value.filter((line) => line.text.toLowerCase().includes(q));
+});
+
+const estimatedLineHeight = computed(() => {
+  switch (fontSize.value) {
+    case "text-xs":
+      return 24;
+    case "text-base":
+      return 32;
+    case "text-lg":
+      return 36;
+    default:
+      return 28;
+  }
+});
+
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let unmounted = false;
 let reconnectAttempts = 0;
 let socketCounter = 0;
 
-const MAX_LINES = 50000;
 const FLUSH_INTERVAL_MS = 50;
 const RECONNECT_BASE_MS = 5000;
 const RECONNECT_MAX_MS = 60000;
 
-let pendingLines: string[] = [];
+let pendingRawLines: string[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function buildLogLine(text: string): LogLine {
+  const level = parseLogLevel(text);
+  const levelClass = getLogLevelClass(level, colored.value);
+  return {
+    id: ++lineIdCounter,
+    text,
+    level: level ?? "",
+    levelClass,
+    html: escapeHtml(text),
+  };
+}
+
+function recomputeHighlight(lines: LogLine[], query: string) {
+  const q = query.trim();
+  if (!q) {
+    for (const l of lines) {
+      l.html = escapeHtml(l.text);
+    }
+    return;
+  }
+  const escapedQuery = escapeHtml(q);
+  const safeQuery = escapedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(${safeQuery})`, "gi");
+  const markOpen =
+    '<mark class="bg-yellow-300 dark:bg-yellow-700 text-gray-900 dark:text-white rounded px-0.5">';
+  for (const l of lines) {
+    l.html = escapeHtml(l.text).replace(re, `${markOpen}$1</mark>`);
+  }
+}
+
+watch(colored, () => {
+  for (const l of logLines.value) {
+    l.levelClass = getLogLevelClass(
+      l.level as import("~/utils/logLevel").LogLevel,
+      colored.value,
+    );
+  }
+});
+
+watch(searchQuery, (q) => {
+  recomputeHighlight(filteredLines.value, q);
+});
+
+function onSearchInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value;
+  searchQueryRaw.value = val;
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    searchQuery.value = val;
+  }, 150);
+}
 
 function connect() {
-  console.log("[WS] connect() called, current ws =", ws?.readyState ?? null);
   if (ws) {
     const oldWs = ws;
     ws = null;
@@ -247,7 +371,6 @@ function connect() {
     oldWs.onmessage = null;
     oldWs.onerror = null;
     oldWs.onclose = null;
-    console.log("[WS] closing old socket readyState =", oldWs.readyState);
     oldWs.close();
   }
   const config = useRuntimeConfig();
@@ -265,20 +388,8 @@ function connect() {
   const socketId = ++socketCounter;
   const socket = new WebSocket(url);
   ws = socket;
-  console.log(
-    "[WS] new socket #",
-    socketId,
-    "created, readyState =",
-    socket.readyState,
-  );
 
   socket.onopen = () => {
-    console.log(
-      "[WS] socket #",
-      socketId,
-      "onopen, ws === socket?",
-      ws === socket,
-    );
     if (ws !== socket) return;
     reconnectAttempts = 0;
     wsStatus.value = "Connected";
@@ -292,25 +403,11 @@ function connect() {
   };
 
   socket.onerror = () => {
-    console.log(
-      "[WS] socket #",
-      socketId,
-      "onerror, ws === socket?",
-      ws === socket,
-    );
     if (ws !== socket) return;
     wsStatus.value = "Error";
   };
 
   socket.onclose = () => {
-    console.log(
-      "[WS] socket #",
-      socketId,
-      "onclose, ws === socket?",
-      ws === socket,
-      "unmounted =",
-      unmounted,
-    );
     if (ws !== socket) return;
     ws = null;
     if (!unmounted) {
@@ -318,14 +415,6 @@ function connect() {
       const delay = Math.min(
         RECONNECT_BASE_MS * 2 ** reconnectAttempts,
         RECONNECT_MAX_MS,
-      );
-      console.log(
-        "[WS] socket #",
-        socketId,
-        "scheduling reconnect in",
-        delay,
-        "ms, attempt",
-        reconnectAttempts,
       );
       reconnectAttempts++;
       reconnectTimer = setTimeout(connect, delay);
@@ -343,15 +432,17 @@ function scheduleFlush() {
 
 function flushPending() {
   if (skipIncoming.value) {
-    pendingLines = [];
+    pendingRawLines = [];
     return;
   }
-  if (pendingLines.length === 0) return;
-  lines.value.push(...pendingLines);
-  pendingLines = [];
-  if (lines.value.length > MAX_LINES) {
-    lines.value = lines.value.slice(lines.value.length - MAX_LINES);
+  if (pendingRawLines.length === 0) return;
+  const built = pendingRawLines.map((t) => buildLogLine(t));
+  pendingRawLines = [];
+  logLines.value.push(...built);
+  if (logLines.value.length > tail.value) {
+    logLines.value = logLines.value.slice(logLines.value.length - tail.value);
   }
+  recomputeHighlight(logLines.value, searchQuery.value);
   nextTick(() => {
     if (!userScrolledUp.value) {
       scrollToBottom();
@@ -368,23 +459,29 @@ function appendChunk(chunk: string) {
   const parts = buffer.value.split("\n");
   buffer.value = parts.pop() || "";
   if (parts.length > 0) {
-    pendingLines.push(...parts);
-    if (pendingLines.length > MAX_LINES) {
-      pendingLines = pendingLines.slice(pendingLines.length - MAX_LINES);
+    pendingRawLines.push(...parts);
+    if (pendingRawLines.length > tail.value) {
+      pendingRawLines = pendingRawLines.slice(
+        pendingRawLines.length - tail.value,
+      );
     }
     scheduleFlush();
   }
 }
 
 function reconnect() {
-  console.log("[WS] reconnect() called");
-  lines.value = [];
+  logLines.value = [];
+  lineIdCounter = 0;
   buffer.value = "";
-  pendingLines = [];
+  pendingRawLines = [];
   skipIncoming.value = false;
   if (flushTimer) {
     clearTimeout(flushTimer);
     flushTimer = null;
+  }
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
   }
   reconnectAttempts = 0;
   if (reconnectTimer) {
@@ -395,22 +492,31 @@ function reconnect() {
 }
 
 function clearLogs() {
-  lines.value = [];
+  logLines.value = [];
+  lineIdCounter = 0;
   buffer.value = "";
-  pendingLines = [];
+  pendingRawLines = [];
+  searchQueryRaw.value = "";
+  searchQuery.value = "";
   skipIncoming.value = true;
   if (flushTimer) {
     clearTimeout(flushTimer);
     flushTimer = null;
+  }
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
   }
   showToast("success", "Logs cleared");
 }
 
 async function copyLogs() {
   try {
-    await navigator.clipboard.writeText(lines.value.join("\n"));
+    await navigator.clipboard.writeText(
+      logLines.value.map((l) => l.text).join("\n"),
+    );
     showToast("success", "Copied to clipboard", {
-      description: `${lines.value.length} lines`,
+      description: `${logLines.value.length} lines`,
     });
   } catch {
     showToast("error", "Failed to copy");
@@ -434,7 +540,6 @@ function onScroll() {
 }
 
 onMounted(() => {
-  console.log("[WS] onMounted");
   const savedFont = localStorage.getItem("logs-font-size");
   if (savedFont) {
     fontSize.value = savedFont;
@@ -442,6 +547,13 @@ onMounted(() => {
   const savedColor = localStorage.getItem("logs-colored");
   if (savedColor !== null) {
     colored.value = savedColor === "true";
+  }
+  const savedTail = localStorage.getItem("logs-tail");
+  if (savedTail) {
+    const parsed = parseInt(savedTail, 10);
+    if (!isNaN(parsed)) {
+      tail.value = parsed;
+    }
   }
   connect();
 });
@@ -454,16 +566,21 @@ watch(colored, (value) => {
   localStorage.setItem("logs-colored", String(value));
 });
 
-watch(tail, () => {
-  reconnect();
+watch(tail, (value) => {
+  localStorage.setItem("logs-tail", String(value));
 });
 
+watch(filteredLines, () => {});
+
 onUnmounted(() => {
-  console.log("[WS] onUnmounted");
   unmounted = true;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
+  }
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
   }
   if (ws) {
     const oldWs = ws;

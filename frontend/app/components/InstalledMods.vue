@@ -11,7 +11,7 @@
       </div>
       <div class="flex items-center gap-2">
         <input
-          :value="searchQuery"
+          :value="rawQuery"
           type="text"
           placeholder="Search server mods..."
           class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
@@ -217,6 +217,22 @@ const emit = defineEmits<{
 
 const isDragOver = ref(false);
 
+const rawQuery = ref(props.searchQuery);
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onSearchInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value;
+  rawQuery.value = val;
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    emit("update:searchQuery", val);
+  }, 150);
+}
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+});
+
 const contextMenuOpen = ref(false);
 const contextMenuX = ref(0);
 const contextMenuY = ref(0);
@@ -286,10 +302,6 @@ const filteredMods = computed(() => {
   }
   return list;
 });
-
-function onSearchInput(e: Event) {
-  emit("update:searchQuery", (e.target as HTMLInputElement).value);
-}
 
 const iconLoaded = ref<Record<string, boolean>>({});
 

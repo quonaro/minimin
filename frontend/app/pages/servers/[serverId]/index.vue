@@ -28,9 +28,9 @@
                 :class="[
                   'absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-neutral-800',
                   server.serverStatus === 'running'
-                    ? 'bg-green-500 animate-pulse'
+                    ? 'bg-green-500'
                     : server.serverStatus === 'starting'
-                      ? 'bg-yellow-500 animate-pulse'
+                      ? 'bg-yellow-500'
                       : server.containerStatus === 'exited'
                         ? 'bg-red-500'
                         : 'bg-gray-400',
@@ -737,7 +737,7 @@ import {
   Trash2,
   X as XIcon,
 } from "lucide-vue-next";
-import { nextTick } from "vue";
+import { nextTick, onMounted, onBeforeUnmount } from "vue";
 import type { Server } from "~/composables/useServers";
 
 definePageMeta({
@@ -747,9 +747,11 @@ definePageMeta({
 const route = useRoute();
 const { show: showToast } = useToast();
 const serverId = route.params.serverId as string;
-const server = ref<Server | null>(null);
+const { servers, refresh: refreshServers } = useServers();
+const server = computed<Server | null>(
+  () => servers.value.find((s: Server) => s.serverId === serverId) ?? null,
+);
 usePageTitle(() => server.value?.serverId || serverId);
-const { refresh: refreshServers } = useServers();
 const actionLoading = ref(false);
 const currentAction = ref<"start" | "stop" | "force-stop" | "restart" | null>(
   null,
@@ -782,6 +784,7 @@ const ramLoading = ref(false);
 const editingCpu = ref(false);
 const tempCpu = ref<number | null>(null);
 const cpuLoading = ref(false);
+let statusPollInterval: ReturnType<typeof setInterval> | null = null;
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
@@ -853,28 +856,6 @@ async function uploadProcessedIcon(blob: Blob) {
     showToast("error", "Upload failed", { description: msg });
   }
 }
-
-const { data, refresh } = await useApiFetch<Server | { body: Server }>(
-  `/servers/${serverId}`,
-);
-
-if (data.value && typeof data.value === "object") {
-  if ("body" in data.value) {
-    server.value = (data.value as any).body as Server;
-  } else if ("serverId" in data.value) {
-    server.value = data.value as Server;
-  }
-}
-
-watch(data, (val) => {
-  if (val && typeof val === "object") {
-    if ("body" in val) {
-      server.value = (val as any).body as Server;
-    } else if ("serverId" in val) {
-      server.value = val as Server;
-    }
-  }
-});
 
 const isPending = computed(() => {
   if (!server.value) return false;
@@ -952,7 +933,7 @@ async function savePort() {
       description: `Game port changed to ${tempPort.value}.`,
     });
     editingPort.value = false;
-    await refresh();
+    await refreshServers();
   } catch (err: any) {
     const status = err?.status || err?.statusCode;
     const msg = err?.data?.detail || err?.message || "Failed to update port";
@@ -986,7 +967,7 @@ async function saveRestartPolicy() {
       description: `Policy changed to ${tempRestartPolicy.value}.`,
     });
     editingRestartPolicy.value = false;
-    await refresh();
+    await refreshServers();
   } catch (err: any) {
     const msg =
       err?.data?.detail || err?.message || "Failed to update restart policy";
@@ -1034,7 +1015,7 @@ async function savePublicRcon() {
         : "RCON disabled.",
     });
     editingPublicRcon.value = false;
-    await refresh();
+    await refreshServers();
   } catch (err: any) {
     const status = err?.status || err?.statusCode;
     const msg = err?.data?.detail || err?.message || "Failed to update RCON";
@@ -1078,7 +1059,7 @@ async function saveRam() {
       description: `RAM changed to ${tempRamGb.value} GB.`,
     });
     editingRam.value = false;
-    await refresh();
+    await refreshServers();
   } catch (err: any) {
     const status = err?.status || err?.statusCode;
     const msg = err?.data?.detail || err?.message || "Failed to update RAM";
@@ -1119,7 +1100,7 @@ async function saveCpu() {
       description: `CPUs changed to ${tempCpu.value}.`,
     });
     editingCpu.value = false;
-    await refresh();
+    await refreshServers();
   } catch (err: any) {
     const status = err?.status || err?.statusCode;
     const msg = err?.data?.detail || err?.message || "Failed to update CPUs";
@@ -1146,7 +1127,7 @@ async function doAction(action: "start" | "stop" | "restart" | "force-stop") {
     showToast("info", `Server ${action} requested`, {
       description: `${serverId} — operation in progress.`,
     });
-    await refresh();
+    await refreshServers();
   } catch (err: any) {
     const status = err?.status || err?.statusCode;
     const msg =
@@ -1203,7 +1184,7 @@ async function onRecreateConfirmed() {
     showToast("info", "World recreate requested", {
       description: `${serverId} — world will be reset.`,
     });
-    await refresh();
+    await refreshServers();
   } catch (err: any) {
     const msg = err?.data?.detail || err?.message || "Failed to recreate world";
     showToast("error", "Recreate failed", { description: msg });
@@ -1211,4 +1192,26 @@ async function onRecreateConfirmed() {
     recreateLoading.value = false;
   }
 }
+
+function startStatusPolling() {
+  if (statusPollInterval) return;
+  statusPollInterval = setInterval(() => {
+    refreshServers();
+  }, 2000);
+}
+
+function stopStatusPolling() {
+  if (statusPollInterval) {
+    clearInterval(statusPollInterval);
+    statusPollInterval = null;
+  }
+}
+
+onMounted(() => {
+  startStatusPolling();
+});
+
+onBeforeUnmount(() => {
+  stopStatusPolling();
+});
 </script>

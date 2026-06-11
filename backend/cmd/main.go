@@ -145,26 +145,47 @@ func main() {
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
+		failures := make(map[string]int)
 		for {
 			select {
 			case <-ticker.C:
+				active := make(map[string]bool, len(instance.All()))
 				for _, s := range instance.All() {
+					active[s.ServerID] = true
 					if s.ContainerStatus != "running" {
 						continue
 					}
-					ok, _ := runner.PingServer(fmt.Sprintf("mc-srv-%s", s.ServerID), 25565, 5*time.Second)
-					if ok && s.ServerStatus != "running" {
-						s.ServerStatus = "running"
-						s.ServerStartedAt = time.Now().UTC()
-						instance.Set(s)
-						_ = instance.Save()
-						slog.Info("server ready", "server_id", s.ServerID, "status", s.ServerStatus)
-					} else if !ok && s.ServerStatus == "running" {
-						s.ServerStatus = "starting"
-						s.ServerStartedAt = time.Time{}
-						instance.Set(s)
-						_ = instance.Save()
-						slog.Info("server not ready", "server_id", s.ServerID, "status", s.ServerStatus)
+					port := s.GamePort
+					if port == 0 {
+						port = 25565
+					}
+					ok, pingErr := runner.TryPingServer(s.ServerID, port, 5*time.Second)
+					if ok {
+						failures[s.ServerID] = 0
+						if s.ServerStatus != "running" {
+							s.ServerStatus = "running"
+							s.ServerStartedAt = time.Now().UTC()
+							instance.Set(s)
+							_ = instance.Save()
+							slog.Info("server ready", "server_id", s.ServerID, "status", s.ServerStatus)
+						}
+					} else {
+						failures[s.ServerID]++
+						if pingErr != nil {
+							slog.Debug("server ping failed", "server_id", s.ServerID, "error", pingErr, "consecutive_failures", failures[s.ServerID])
+						}
+						if s.ServerStatus == "running" && failures[s.ServerID] >= 3 {
+							s.ServerStatus = "starting"
+							s.ServerStartedAt = time.Time{}
+							instance.Set(s)
+							_ = instance.Save()
+							slog.Info("server not ready", "server_id", s.ServerID, "status", s.ServerStatus, "consecutive_failures", failures[s.ServerID])
+						}
+					}
+				}
+				for id := range failures {
+					if !active[id] {
+						delete(failures, id)
 					}
 				}
 			case <-ctx.Done():

@@ -551,7 +551,11 @@ func ScanManagedContainers(ctx context.Context, cli *client.Client, serversDir s
 			s.ContainerStartedAt = t
 		}
 		if s.ContainerStatus == "running" {
-			if ok, _ := PingServer(fmt.Sprintf("mc-srv-%s", s.ServerID), 25565, 2*time.Second); ok {
+			port := s.GamePort
+			if port == 0 {
+				port = 25565
+			}
+			if ok, _ := TryPingServer(s.ServerID, port, 2*time.Second); ok {
 				s.ServerStatus = "running"
 			} else {
 				s.ServerStatus = "starting"
@@ -693,8 +697,8 @@ func StreamContainerLogs(ctx context.Context, cli *client.Client, containerID st
 		ShowStderr: true,
 		Follow:     follow,
 	}
-	if tailLines > 0 {
-		opts.Tail = fmt.Sprintf("%d", tailLines)
+	if tailLines >= 0 {
+		opts.Tail = strconv.Itoa(tailLines)
 	}
 	out, err := cli.ContainerLogs(ctx, containerID, opts)
 	if err != nil {

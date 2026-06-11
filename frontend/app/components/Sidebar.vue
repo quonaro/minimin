@@ -59,7 +59,7 @@
           >
             <span
               class="w-2 h-2 rounded-full flex-shrink-0"
-              :class="getServerStatusColor(server.containerStatus)"
+              :class="getServerStatusColor(server.serverStatus)"
             ></span>
             <span class="truncate">{{ server.serverId }}</span>
           </NuxtLink>

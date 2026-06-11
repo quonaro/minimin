@@ -6,38 +6,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"time"
 )
 
 // PingServer performs a lightweight Minecraft Server List Ping on the given host:port.
 // It returns true if the server responds with a valid status JSON containing a version object.
+// TryPingServer attempts to ping a Minecraft server from either the host (dev mode)
+// or from inside the minimin Docker container. It first tries 127.0.0.1:hostPort,
+// then mc-srv-<serverID>:25565 (internal Docker network port).
+func TryPingServer(serverID string, hostPort uint16, timeout time.Duration) (bool, error) {
+	candidates := []struct {
+		host string
+		port uint16
+	}{
+		{"127.0.0.1", hostPort},
+		{fmt.Sprintf("mc-srv-%s", serverID), 25565},
+	}
+	var lastErr error
+	for _, c := range candidates {
+		ok, err := PingServer(c.host, c.port, timeout)
+		if ok {
+			slog.Debug("ping succeeded", "server_id", serverID, "host", c.host, "port", c.port)
+			return true, nil
+		}
+		lastErr = err
+		slog.Debug("ping failed", "server_id", serverID, "host", c.host, "port", c.port, "error", err)
+	}
+	return false, lastErr
+}
+
 func PingServer(host string, port uint16, timeout time.Duration) (bool, error) {
 	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		return false, nil // unreachable means not running yet
+		return false, fmt.Errorf("dial %s: %w", addr, err)
 	}
 	defer func() { _ = conn.Close() }()
 
 	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return false, err
+		return false, fmt.Errorf("set deadline: %w", err)
 	}
 
 	// Handshake packet (nextState = 1 for status)
 	if err := sendHandshake(conn, host, port); err != nil {
-		return false, err
+		return false, fmt.Errorf("send handshake: %w", err)
 	}
 
 	// Status request packet (empty payload, ID 0x00)
 	if err := sendPacket(conn, 0x00, nil); err != nil {
-		return false, err
+		return false, fmt.Errorf("send status request: %w", err)
 	}
 
 	// Read response length
 	length, err := readVarint(conn)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("read response length: %w", err)
 	}
 	if length <= 0 {
 		return false, fmt.Errorf("invalid response length %d", length)
@@ -45,15 +70,15 @@ func PingServer(host string, port uint16, timeout time.Duration) (bool, error) {
 
 	// Read full payload
 	payload := make([]byte, length)
-	if _, err := conn.Read(payload); err != nil {
-		return false, err
+	if _, err := io.ReadFull(conn, payload); err != nil {
+		return false, fmt.Errorf("read payload (%d bytes): %w", length, err)
 	}
 
 	// Parse packet ID and JSON string
 	buf := bytes.NewBuffer(payload)
 	packetID, err := readVarintBuf(buf)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("read packet id: %w", err)
 	}
 	if packetID != 0x00 {
 		return false, fmt.Errorf("unexpected packet ID %d", packetID)
@@ -61,7 +86,7 @@ func PingServer(host string, port uint16, timeout time.Duration) (bool, error) {
 
 	jsonStr, err := readString(buf)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("read json string: %w", err)
 	}
 
 	// Quick validation: must be valid JSON and contain version info
@@ -69,10 +94,10 @@ func PingServer(host string, port uint16, timeout time.Duration) (bool, error) {
 		Version json.RawMessage `json:"version"`
 	}
 	if err := json.Unmarshal([]byte(jsonStr), &status); err != nil {
-		return false, nil // not a valid status response
+		return false, fmt.Errorf("invalid status json: %w", err)
 	}
 	if status.Version == nil {
-		return false, nil
+		return false, fmt.Errorf("status json missing version field")
 	}
 	return true, nil
 }

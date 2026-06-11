@@ -3,7 +3,7 @@
     <div class="mb-4 space-y-2">
       <div class="flex items-center gap-2">
         <input
-          :value="searchQuery"
+          :value="rawQuery"
           type="text"
           placeholder="Search Modrinth..."
           @input="onInput"
@@ -55,143 +55,17 @@
       </div>
     </div>
 
-    <div
-      v-if="showConfirm"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      @click.self="showConfirm = false"
-    >
-      <div
-        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-md max-h-[80vh] flex flex-col"
-      >
-        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
-          <div class="flex items-start gap-3">
-            <img
-              v-if="confirmProject?.icon_url"
-              :src="confirmProject.icon_url"
-              class="w-12 h-12 rounded-xl object-cover shrink-0 bg-gray-200 dark:bg-neutral-600"
-              alt=""
-            />
-            <div
-              v-else
-              class="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0"
-            >
-              <Box class="w-6 h-6" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <h2
-                class="text-lg font-bold text-gray-900 dark:text-white truncate"
-              >
-                {{ confirmProject?.title || "Install Mod" }}
-              </h2>
-              <p class="text-xs text-gray-500 dark:text-neutral-400">
-                {{ confirmProject?.author }} &middot; Review dependencies before
-                installing.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="p-6 overflow-y-auto space-y-3">
-          <div
-            v-for="dep in confirmDeps"
-            :key="dep.project_id"
-            class="flex items-start gap-3"
-          >
-            <input
-              :id="dep.project_id"
-              type="checkbox"
-              :checked="selectedDepIds.has(dep.project_id)"
-              :disabled="dep.dependency_type === 'required'"
-              class="mt-2 w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
-              @change="toggleDep(dep.project_id)"
-            />
-            <label :for="dep.project_id" class="flex-1 flex items-start gap-2">
-              <img
-                v-if="props.depProjects?.[dep.project_id]?.icon_url"
-                :src="props.depProjects?.[dep.project_id]?.icon_url"
-                class="w-8 h-8 rounded-lg object-cover shrink-0 bg-gray-200 dark:bg-neutral-600"
-                alt=""
-              />
-              <div
-                v-else
-                class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0"
-              >
-                <Box class="w-4 h-4" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <span
-                  class="font-medium text-sm text-gray-900 dark:text-white block truncate"
-                >
-                  {{
-                    props.depProjects?.[dep.project_id]?.title || dep.project_id
-                  }}
-                </span>
-                <span class="text-[10px] text-gray-400 dark:text-neutral-500">
-                  {{ props.depProjects?.[dep.project_id]?.author || "" }}
-                </span>
-                <span
-                  class="ml-1 text-[10px] px-1 py-0.5 rounded capitalize"
-                  :class="
-                    dep.dependency_type === 'required'
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                      : 'bg-gray-100 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300'
-                  "
-                >
-                  {{ dep.dependency_type }}
-                </span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <div class="px-6 pb-3 space-y-2">
-          <label
-            v-if="projectType === 'mod'"
-            class="flex items-center gap-2 cursor-pointer"
-          >
-            <input
-              v-model="installToServer"
-              type="checkbox"
-              class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
-            />
-            <span class="text-sm text-gray-700 dark:text-neutral-300"
-              >Install to server mods</span
-            >
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              v-model="installToClient"
-              type="checkbox"
-              class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
-            />
-            <span class="text-sm text-gray-700 dark:text-neutral-300"
-              >Install to client mods</span
-            >
-          </label>
-        </div>
-
-        <div
-          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
-        >
-          <button
-            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
-            @click="showConfirm = false"
-          >
-            Cancel
-          </button>
-          <button
-            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
-            :disabled="isInstalling(confirmProjectId, confirmVersionId)"
-            @click="confirmInstall"
-          >
-            <span v-if="isInstalling(confirmProjectId, confirmVersionId)"
-              >Installing...</span
-            >
-            <span v-else>Install</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <mod-install-modal
+      v-model:show="showConfirm"
+      :project="confirmProject"
+      :version-id="confirmVersionId"
+      :version-details="props.versionDetails"
+      :dep-projects="props.depProjects"
+      :project-type="props.projectType"
+      :install-loading="isInstalling(confirmProjectId, confirmVersionId)"
+      @install="onModalInstall"
+      @load-project="emit('load-project', $event)"
+    />
 
     <div
       class="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1"
@@ -360,6 +234,22 @@ const emit = defineEmits<{
   "load-project": [projectId: string];
 }>();
 
+const rawQuery = ref(props.searchQuery);
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value;
+  rawQuery.value = val;
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    emit("update:searchQuery", val);
+  }, 150);
+}
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+});
+
 function activeDeps(projectId: string) {
   const vid = selectedVersion.value[projectId];
   if (!vid) return [];
@@ -407,68 +297,20 @@ const showConfirm = ref(false);
 const confirmProject = ref<ModrinthProject | null>(null);
 const confirmProjectId = ref("");
 const confirmVersionId = ref("");
-const selectedDepIds = ref<Set<string>>(new Set());
-const installToServer = ref(true);
-const installToClient = ref(false);
-
-const confirmDeps = computed(() => {
-  const details = props.versionDetails?.[confirmVersionId.value];
-  return (
-    details?.dependencies?.filter(
-      (d) => d.dependency_type !== "incompatible",
-    ) || []
-  );
-});
-
 function openConfirm(project: ModrinthProject, versionId: string) {
   confirmProject.value = project;
   confirmProjectId.value = project.project_id;
   confirmVersionId.value = versionId;
-  const deps =
-    props.versionDetails?.[versionId]?.dependencies?.filter(
-      (d) => d.dependency_type !== "incompatible",
-    ) || [];
-  const ids = new Set<string>();
-  for (const d of deps) {
-    if (d.dependency_type === "required" || d.dependency_type === "embedded") {
-      ids.add(d.project_id);
-    }
-    if (!props.depProjects?.[d.project_id]) {
-      emit("load-project", d.project_id);
-    }
-  }
-  selectedDepIds.value = ids;
-  installToServer.value = true;
-  installToClient.value = false;
   showConfirm.value = true;
 }
 
-function toggleDep(projectId: string) {
-  const next = new Set(selectedDepIds.value);
-  if (next.has(projectId)) {
-    next.delete(projectId);
-  } else {
-    next.add(projectId);
-  }
-  selectedDepIds.value = next;
-}
-
-function getInstallTarget(): "server" | "client" | "both" {
-  if (installToServer.value && installToClient.value) return "both";
-  if (installToClient.value) return "client";
-  return "server";
-}
-
-function confirmInstall() {
-  if (!confirmVersionId.value) return;
-  emit(
-    "install",
-    confirmProjectId.value,
-    confirmVersionId.value,
-    Array.from(selectedDepIds.value),
-    getInstallTarget(),
-  );
-  showConfirm.value = false;
+function onModalInstall(
+  projectId: string,
+  versionId: string,
+  depProjectIds: string[],
+  target: "server" | "client" | "both",
+) {
+  emit("install", projectId, versionId, depProjectIds, target);
 }
 
 let observer: IntersectionObserver | null = null;
@@ -501,10 +343,6 @@ onUnmounted(() => {
 
 function onSearch() {
   emit("search");
-}
-
-function onInput(e: Event) {
-  emit("update:searchQuery", (e.target as HTMLInputElement).value);
 }
 
 function onProjectTypeChange(e: Event) {

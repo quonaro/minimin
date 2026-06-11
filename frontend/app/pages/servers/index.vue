@@ -33,7 +33,7 @@
       />
     </div>
 
-    <CreateServerModal
+    <LazyCreateServerModal
       v-if="showModal"
       @close="showModal = false"
       @created="onCreated"

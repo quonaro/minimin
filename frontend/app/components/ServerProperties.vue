@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import {
-  ChevronRight,
   Globe,
   Swords,
   Mountain,
@@ -10,6 +9,14 @@ import {
   ShieldAlert,
   MoreHorizontal,
 } from "lucide-vue-next";
+import {
+  knownProperties,
+  parseProperties,
+  selectOptions,
+  knownKeys,
+  groupOrder,
+  type PropType,
+} from "~/utils/serverProperties";
 
 const props = defineProps<{
   serverId: string;
@@ -31,17 +38,6 @@ interface ConfigResponse {
   pendingProperties?: Record<string, string>;
 }
 
-type PropType = "text" | "number" | "boolean" | "select";
-
-interface KnownProperty {
-  key: string;
-  label: string;
-  type: PropType;
-  options?: string[];
-  group: string;
-  dangerous?: boolean;
-}
-
 const configLoading = ref(true);
 const configError = ref<string | null>(null);
 const configUninitialized = ref(false);
@@ -54,165 +50,6 @@ const pendingProperties = ref<Record<string, string>>({});
 function unlockDangerous(key: string) {
   unlockedDangerous.add(key);
 }
-
-const knownProperties: KnownProperty[] = [
-  {
-    key: "level-name",
-    label: "Level Name",
-    type: "text",
-    group: "DANGEROUS",
-  },
-  {
-    key: "level-seed",
-    label: "Level Seed",
-    type: "text",
-    group: "DANGEROUS",
-  },
-  {
-    key: "level-type",
-    label: "Level Type",
-    type: "select",
-    options: [
-      "minecraft:normal",
-      "minecraft:flat",
-      "minecraft:large_biomes",
-      "minecraft:amplified",
-      "minecraft:single_biome_surface",
-    ],
-    group: "DANGEROUS",
-  },
-
-  { key: "motd", label: "MOTD", type: "text", group: "Network" },
-  {
-    key: "max-players",
-    label: "Max Players",
-    type: "number",
-    group: "Network",
-  },
-  {
-    key: "server-port",
-    label: "Server Port",
-    type: "number",
-    group: "Network",
-    dangerous: true,
-  },
-  {
-    key: "online-mode",
-    label: "Online Mode",
-    type: "boolean",
-    group: "Network",
-    dangerous: true,
-  },
-  {
-    key: "white-list",
-    label: "White List",
-    type: "boolean",
-    group: "Network",
-    dangerous: true,
-  },
-  {
-    key: "enforce-secure-profile",
-    label: "Enforce Secure Profile",
-    type: "boolean",
-    group: "Network",
-    dangerous: true,
-  },
-
-  {
-    key: "difficulty",
-    label: "Difficulty",
-    type: "select",
-    options: ["peaceful", "easy", "normal", "hard"],
-    group: "Gameplay",
-  },
-  {
-    key: "gamemode",
-    label: "Game Mode",
-    type: "select",
-    options: ["survival", "creative", "adventure", "spectator"],
-    group: "Gameplay",
-  },
-  { key: "pvp", label: "PvP", type: "boolean", group: "Gameplay" },
-  {
-    key: "hardcore",
-    label: "Hardcore",
-    type: "boolean",
-    group: "Gameplay",
-    dangerous: true,
-  },
-  {
-    key: "allow-flight",
-    label: "Allow Flight",
-    type: "boolean",
-    group: "Gameplay",
-  },
-  {
-    key: "spawn-protection",
-    label: "Spawn Protection",
-    type: "number",
-    group: "Gameplay",
-  },
-
-  {
-    key: "generate-structures",
-    label: "Generate Structures",
-    type: "boolean",
-    group: "World",
-  },
-  {
-    key: "allow-nether",
-    label: "Allow Nether",
-    type: "boolean",
-    group: "World",
-  },
-
-  {
-    key: "view-distance",
-    label: "View Distance",
-    type: "number",
-    group: "Performance",
-  },
-  {
-    key: "simulation-distance",
-    label: "Simulation Distance",
-    type: "number",
-    group: "Performance",
-  },
-
-  {
-    key: "enable-command-block",
-    label: "Enable Command Block",
-    type: "boolean",
-    group: "Advanced",
-  },
-];
-
-const selectOptions: Record<string, string[]> = {};
-for (const kp of knownProperties) {
-  if (kp.type === "select" && kp.options) {
-    selectOptions[kp.key] = kp.options;
-  } else if (kp.type === "boolean") {
-    selectOptions[kp.key] = ["true", "false"];
-  }
-}
-
-function parseProperties(content: string): Record<string, string> {
-  const props: Record<string, string> = {};
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("#") || trimmed === "") continue;
-    const idx = trimmed.indexOf("=");
-    if (idx === -1) continue;
-    const key = trimmed.slice(0, idx).trim();
-    const val = trimmed.slice(idx + 1);
-    if (key) props[key] = val;
-  }
-  return props;
-}
-
-const knownKeys = new Set(knownProperties.map((k) => k.key));
-
-const groupOrder = ["Network", "Gameplay", "World", "Performance", "Advanced"];
 
 const collapsedGroups = ref<Set<string>>(new Set(["dangerous", "unknown"]));
 
@@ -383,233 +220,69 @@ await loadConfig();
     </div>
     <div v-else class="space-y-8">
       <template v-for="group in groupOrder" :key="group">
-        <div v-if="groupedItems.groups[group]?.length" class="space-y-4">
-          <button
-            class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
-            @click="toggleGroup(group)"
-          >
-            <component
-              :is="groupIcons[group]"
-              class="w-4 h-4 shrink-0 text-gray-500 dark:text-neutral-400"
-            />
-            <span
-              class="text-sm font-semibold text-gray-700 dark:text-neutral-300 uppercase tracking-wider"
-            >
-              {{ group }}
-            </span>
-            <ChevronRight
-              class="w-4 h-4 transition-transform shrink-0 ml-auto text-gray-500 dark:text-neutral-400"
-              :class="collapsedGroups.has(group) ? '' : 'rotate-90'"
-            />
-          </button>
-          <div v-show="!collapsedGroups.has(group)" class="space-y-4">
-            <div
-              v-for="item in groupedItems.groups[group]"
-              :key="item.key"
-              class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"
-            >
-              <div class="md:col-span-1 pt-2">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <label
-                    class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
-                  >
-                    {{ item.label }}
-                  </label>
-                  <span
-                    v-if="getPropertyBadgeStatus(item.key) === 'modified'"
-                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                  >
-                    Modified
-                  </span>
-                  <span
-                    v-if="
-                      getPropertyBadgeStatus(item.key) === 'restart-required'
-                    "
-                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                  >
-                    Restart Required
-                  </span>
-                  <button
-                    v-if="item.dangerous && !unlockedDangerous.has(item.key)"
-                    class="text-xs text-primary hover:underline font-medium"
-                    @click="unlockDangerous(item.key)"
-                  >
-                    Unlock
-                  </button>
-                </div>
-                <p
-                  v-if="item.dangerous && unlockedDangerous.has(item.key)"
-                  class="mt-1 text-xs text-red-500 dark:text-red-400"
-                >
-                  This setting can break your server. Change with caution.
-                </p>
-              </div>
-              <div class="md:col-span-2">
-                <select
-                  v-if="item.type === 'select' || item.type === 'boolean'"
-                  v-model="editedProperties[item.key]"
-                  :disabled="item.dangerous && !unlockedDangerous.has(item.key)"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option
-                    v-for="opt in selectOptions[item.key]"
-                    :key="opt"
-                    :value="opt"
-                  >
-                    {{ opt }}
-                  </option>
-                </select>
-                <number-input
-                  v-else-if="item.type === 'number'"
-                  v-model="editedProperties[item.key]"
-                  :min="0"
-                  :disabled="item.dangerous && !unlockedDangerous.has(item.key)"
-                  class="w-full"
-                />
-                <input
-                  v-else
-                  v-model="editedProperties[item.key]"
-                  type="text"
-                  :disabled="item.dangerous && !unlockedDangerous.has(item.key)"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <server-property-group
+          v-if="groupedItems.groups[group]?.length"
+          :name="group"
+          :icon="groupIcons[group]"
+          :collapsed="collapsedGroups.has(group)"
+          @toggle="toggleGroup(group)"
+        >
+          <server-property-field
+            v-for="item in groupedItems.groups[group]"
+            :key="item.key"
+            :item-key="item.key"
+            :label="item.label"
+            :type="item.type"
+            :dangerous="item.dangerous"
+            :model-value="editedProperties[item.key] ?? ''"
+            :badge-status="getPropertyBadgeStatus(item.key)"
+            :unlocked="unlockedDangerous.has(item.key)"
+            :options="selectOptions[item.key]"
+            @update:model-value="editedProperties[item.key] = $event"
+            @unlock="unlockDangerous(item.key)"
+          />
+        </server-property-group>
       </template>
 
-      <div v-if="groupedItems.unknown.length > 0">
-        <button
-          class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors mb-3"
-          @click="toggleGroup('unknown')"
-        >
-          <MoreHorizontal
-            class="w-4 h-4 shrink-0 text-gray-500 dark:text-neutral-400"
-          />
-          <span
-            class="text-sm font-semibold text-gray-700 dark:text-neutral-300 uppercase tracking-wider"
-          >
-            Other Properties
-          </span>
-          <ChevronRight
-            class="w-4 h-4 transition-transform shrink-0 ml-auto text-gray-500 dark:text-neutral-400"
-            :class="collapsedGroups.has('unknown') ? '' : 'rotate-90'"
-          />
-        </button>
-        <div v-show="!collapsedGroups.has('unknown')" class="space-y-4">
-          <div
-            v-for="item in groupedItems.unknown"
-            :key="item.key"
-            class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"
-          >
-            <div class="md:col-span-1 pt-2">
-              <div class="flex items-center gap-2 flex-wrap">
-                <label
-                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
-                >
-                  {{ item.label }}
-                </label>
-                <span
-                  v-if="getPropertyBadgeStatus(item.key) === 'modified'"
-                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                >
-                  Modified
-                </span>
-                <span
-                  v-if="getPropertyBadgeStatus(item.key) === 'restart-required'"
-                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                >
-                  Restart Required
-                </span>
-              </div>
-            </div>
-            <div class="md:col-span-2">
-              <input
-                v-model="editedProperties[item.key]"
-                type="text"
-                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <server-property-group
+        v-if="groupedItems.unknown.length > 0"
+        name="Other Properties"
+        :icon="MoreHorizontal"
+        :collapsed="collapsedGroups.has('unknown')"
+        @toggle="toggleGroup('unknown')"
+      >
+        <server-property-field
+          v-for="item in groupedItems.unknown"
+          :key="item.key"
+          :item-key="item.key"
+          :label="item.label"
+          :type="item.type"
+          :model-value="editedProperties[item.key] ?? ''"
+          :badge-status="getPropertyBadgeStatus(item.key)"
+          @update:model-value="editedProperties[item.key] = $event"
+        />
+      </server-property-group>
 
-      <div v-if="groupedItems.dangerous.length > 0">
-        <button
-          class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/20 hover:bg-red-200 dark:hover:bg-red-900/30 transition-colors mb-3"
-          @click="toggleGroup('dangerous')"
-        >
-          <ShieldAlert
-            class="w-4 h-4 shrink-0 text-red-600 dark:text-red-400"
-          />
-          <span
-            class="text-sm font-semibold text-red-700 dark:text-red-300 uppercase tracking-wider"
-          >
-            World Generation (DANGEROUS)
-          </span>
-          <ChevronRight
-            class="w-4 h-4 transition-transform shrink-0 ml-auto text-red-600 dark:text-red-400"
-            :class="collapsedGroups.has('dangerous') ? '' : 'rotate-90'"
-          />
-        </button>
-        <div v-show="!collapsedGroups.has('dangerous')" class="space-y-4">
-          <div
-            v-for="item in groupedItems.dangerous"
-            :key="item.key"
-            class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start"
-          >
-            <div class="md:col-span-1 pt-2">
-              <div class="flex items-center gap-2 flex-wrap">
-                <label
-                  class="block text-sm font-medium text-gray-700 dark:text-neutral-300"
-                >
-                  {{ item.label }}
-                </label>
-                <span
-                  v-if="getPropertyBadgeStatus(item.key) === 'modified'"
-                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                >
-                  Modified
-                </span>
-                <span
-                  v-if="getPropertyBadgeStatus(item.key) === 'restart-required'"
-                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                >
-                  Restart Required
-                </span>
-              </div>
-            </div>
-            <div class="md:col-span-2">
-              <select
-                v-if="item.type === 'select' || item.type === 'boolean'"
-                v-model="editedProperties[item.key]"
-                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-              >
-                <option
-                  v-for="opt in selectOptions[item.key]"
-                  :key="opt"
-                  :value="opt"
-                >
-                  {{ opt }}
-                </option>
-              </select>
-              <number-input
-                v-else-if="item.type === 'number'"
-                v-model="editedProperties[item.key]"
-                :min="0"
-                class="w-full"
-              />
-              <input
-                v-else
-                v-model="editedProperties[item.key]"
-                type="text"
-                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <server-property-group
+        v-if="groupedItems.dangerous.length > 0"
+        name="World Generation (DANGEROUS)"
+        :icon="ShieldAlert"
+        :collapsed="collapsedGroups.has('dangerous')"
+        dangerous
+        @toggle="toggleGroup('dangerous')"
+      >
+        <server-property-field
+          v-for="item in groupedItems.dangerous"
+          :key="item.key"
+          :item-key="item.key"
+          :label="item.label"
+          :type="item.type"
+          :model-value="editedProperties[item.key] ?? ''"
+          :badge-status="getPropertyBadgeStatus(item.key)"
+          :options="selectOptions[item.key]"
+          @update:model-value="editedProperties[item.key] = $event"
+        />
+      </server-property-group>
 
       <div
         v-if="Object.keys(pendingProperties).length > 0"
