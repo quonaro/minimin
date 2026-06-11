@@ -1,4 +1,4 @@
-import { defineEventHandler, getCookie, getRequestHeaders, send, setHeader, setResponseStatus } from 'h3'
+import { defineEventHandler, getCookie, getRequestHeaders, send, sendStream, setHeader, setResponseStatus } from 'h3'
 
 export default defineEventHandler(async (event) => {
   const path = event.path
@@ -40,6 +40,15 @@ export default defineEventHandler(async (event) => {
       if (key === 'content-encoding' || key === 'transfer-encoding') return
       setHeader(event, key, value)
     })
+
+    const ct = response.headers.get('content-type') || ''
+    // Stream SSE and other long-running responses instead of buffering
+    if (ct.includes('text/event-stream') || ct.includes('application/octet-stream')) {
+      if (response.body) {
+        return sendStream(event, response.body as ReadableStream)
+      }
+      return send(event, '')
+    }
 
     const data = await response.arrayBuffer()
     return send(event, Buffer.from(data))
