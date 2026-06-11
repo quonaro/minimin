@@ -262,30 +262,15 @@ func (h *Handler) doRestart(id string) {
 	}
 	timeout := 30
 	_ = h.Cli.ContainerStop(context.Background(), s.ContainerID, container.StopOptions{Timeout: &timeout})
-	if err := h.Cli.ContainerStart(context.Background(), s.ContainerID, container.StartOptions{}); err != nil {
-		if client.IsErrNotFound(err) {
-			slog.Warn("container missing on restart, recreating", "server_id", id, "container_id", s.ContainerID)
-			s.ContainerID = ""
-			h.Instance.Set(s)
-			h.Instance.ClearDesired(id, prevStatus)
-			_ = h.Instance.Save()
-			h.doStart(id)
-			return
-		}
-		slog.Error("failed to restart container", "server_id", id, "error", err)
-		h.Instance.ClearDesired(id, prevStatus)
-		_ = h.Instance.Save()
-		return
+	if err := h.Cli.ContainerRemove(context.Background(), s.ContainerID, container.RemoveOptions{Force: true}); err != nil {
+		slog.Warn("failed to remove container on restart", "server_id", id, "container_id", s.ContainerID, "error", err)
 	}
-
-	s.ContainerStatus = "running"
-	s.ContainerStartedAt = time.Now().UTC()
-	s.ServerStatus = "starting"
-	s.PendingProperties = nil
+	s.ContainerID = ""
+	s.ContainerStatus = ""
 	h.Instance.Set(s)
-	h.Instance.ClearDesired(id, "running")
+	h.Instance.ClearDesired(id, prevStatus)
 	_ = h.Instance.Save()
-	slog.Info("server restarted", "server_id", id)
+	h.doStart(id)
 }
 
 // handleRestartServer restarts a server container asynchronously.

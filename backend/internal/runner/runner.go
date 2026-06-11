@@ -190,6 +190,13 @@ func (b *ContainerConfigBuilder) Build() (*container.Config, *container.HostConf
 			Memory:   b.ramLimit,
 			NanoCPUs: b.cpuCount,
 		},
+		LogConfig: container.LogConfig{
+			Type: "json-file",
+			Config: map[string]string{
+				"max-size": "10m",
+				"max-file": "3",
+			},
+		},
 	}
 	if b.restartPolicy != "" {
 		hostConfig.RestartPolicy = container.RestartPolicy{Name: container.RestartPolicyMode(b.restartPolicy)}
