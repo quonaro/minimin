@@ -55,7 +55,7 @@ const emit = defineEmits<{
         ]"
       />
     </button>
-    <div v-show="!collapsed" class="space-y-4">
+    <div v-show="!collapsed" class="mt-4 space-y-4">
       <slot />
     </div>
   </div>

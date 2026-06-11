@@ -1,8 +1,14 @@
 <template>
   <div
-    class="border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden flex flex-col flex-1 min-h-0"
+    class="flex flex-col flex-1 min-h-0"
+    :class="
+      props.embedded
+        ? ''
+        : 'border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden'
+    "
   >
     <button
+      v-if="!props.embedded"
       class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-neutral-700/50 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors shrink-0"
       @click="isOpen = !isOpen"
     >
@@ -23,7 +29,10 @@
         :class="isOpen ? 'rotate-180' : ''"
       />
     </button>
-    <div v-if="isOpen" class="p-4 space-y-2 flex-1 min-h-0 overflow-y-auto">
+    <div
+      v-show="props.embedded || isOpen"
+      class="space-y-2 flex-1 min-h-0 overflow-y-auto p-4"
+    >
       <div class="flex items-center gap-2">
         <input
           ref="fileInput"
@@ -105,10 +114,12 @@ interface Props {
   title: string;
   icon: Component;
   searchQuery?: string;
+  embedded?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
+  embedded: false,
 });
 
 const filteredAssets = computed(() => {

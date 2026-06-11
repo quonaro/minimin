@@ -11,7 +11,7 @@ services:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - ORCHESTRATOR_API_KEY=changeme
+      - ORCHESTRATOR_API_KEY=REDACTED
       - MC_SERVERS_HOST_DIR=/srv/projects/my/minecraft/minimin/servers
       - MC_MOD_UPLOAD_MAX_MB=1024
     networks:

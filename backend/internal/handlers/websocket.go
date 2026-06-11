@@ -38,7 +38,7 @@ func (h *Handler) WSLogs(w http.ResponseWriter, r *http.Request) {
 
 	tailLines := 100
 	if t := r.URL.Query().Get("tail"); t != "" {
-		if v, err := strconv.Atoi(t); err == nil && v > 0 {
+		if v, err := strconv.Atoi(t); err == nil && v >= 0 {
 			tailLines = v
 		}
 	}

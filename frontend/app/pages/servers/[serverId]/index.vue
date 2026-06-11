@@ -777,7 +777,10 @@ const showIconEditor = ref(false);
 const selectedIconFile = ref<File | null>(null);
 const logsExpanded = ref(false);
 const propertiesExpanded = ref(false);
-const serverLogsRef = ref<{ scrollToBottom: () => void } | null>(null);
+const serverLogsRef = ref<{
+  scrollToBottom: () => void;
+  reconnect: (tail?: number) => void;
+} | null>(null);
 const editingRam = ref(false);
 const tempRamGb = ref<number | null>(null);
 const ramLoading = ref(false);
@@ -1118,6 +1121,9 @@ async function doAction(action: "start" | "stop" | "restart" | "force-stop") {
   if (actionLoading.value) return;
   actionLoading.value = true;
   currentAction.value = action;
+  if (action === "start" || action === "restart") {
+    serverLogsRef.value?.reconnect(0);
+  }
   try {
     await $fetch(`/servers/${serverId}/${action}`, {
       baseURL: useApiBase(),

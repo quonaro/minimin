@@ -3,12 +3,7 @@
     <div class="flex items-center justify-between mb-2">
       <h2 class="text-lg font-bold text-gray-900 dark:text-white">Client</h2>
       <span class="text-xs text-gray-500 dark:text-neutral-400">
-        {{
-          filteredMods.length +
-          assetCounts.resourcepacks +
-          assetCounts.shaderpacks
-        }}
-        items
+        {{ filteredMods.length }} items
       </span>
     </div>
     <div class="mb-4 flex items-center gap-2">
@@ -28,33 +23,31 @@
       </button>
     </div>
 
-    <div class="flex flex-col flex-1 min-h-0 gap-4 overflow-hidden">
-      <div
-        class="border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden flex flex-col flex-1 min-h-0"
+    <div
+      class="mb-4 flex items-center gap-1 border-b border-gray-200 dark:border-neutral-700"
+    >
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] inline-flex items-center gap-1.5"
+        :class="
+          activeTab === tab.key
+            ? 'border-primary text-primary'
+            : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300'
+        "
+        @click="activeTab = tab.key"
       >
-        <button
-          class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-neutral-700/50 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors shrink-0"
-          @click="modsOpen = !modsOpen"
-        >
-          <div class="flex items-center gap-2">
-            <Box class="w-5 h-5 text-gray-500 dark:text-neutral-400" />
-            <span
-              class="text-sm font-medium text-gray-700 dark:text-neutral-300"
-              >Mods</span
-            >
-            <span class="text-xs text-gray-400 dark:text-neutral-500"
-              >({{ filteredMods.length }})</span
-            >
-          </div>
-          <ChevronDown
-            class="w-4 h-4 text-gray-400 transition-transform"
-            :class="modsOpen ? 'rotate-180' : ''"
-          />
-        </button>
-        <div
-          v-if="modsOpen"
-          class="p-4 space-y-4 flex-1 min-h-0 overflow-y-auto"
-        >
+        <component :is="tab.icon" class="w-4 h-4" />
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-hidden">
+      <div
+        v-if="activeTab === 'mods'"
+        class="flex flex-col h-full overflow-hidden"
+      >
+        <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
           <div
             class="space-y-2 pr-1"
             :class="
@@ -210,24 +203,35 @@
         </div>
       </div>
 
-      <client-assets
-        v-if="serverId"
-        class="flex flex-col flex-1 min-h-0"
-        :server-id="serverId"
-        type="resourcepacks"
-        title="Resource Packs"
-        :icon="Image"
-        :search-query="searchQuery"
-      />
-      <client-assets
-        v-if="serverId"
-        class="flex flex-col flex-1 min-h-0"
-        :server-id="serverId"
-        type="shaderpacks"
-        title="Shader Packs"
-        :icon="Sparkles"
-        :search-query="searchQuery"
-      />
+      <div
+        v-else-if="activeTab === 'resourcepacks'"
+        class="flex flex-col h-full overflow-hidden"
+      >
+        <client-assets
+          v-if="serverId"
+          embedded
+          :server-id="serverId"
+          type="resourcepacks"
+          title="Resource Packs"
+          :icon="Image"
+          :search-query="searchQuery"
+        />
+      </div>
+
+      <div
+        v-else-if="activeTab === 'shaderpacks'"
+        class="flex flex-col h-full overflow-hidden"
+      >
+        <client-assets
+          v-if="serverId"
+          embedded
+          :server-id="serverId"
+          type="shaderpacks"
+          title="Shader Packs"
+          :icon="Sparkles"
+          :search-query="searchQuery"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -244,7 +248,6 @@ import {
   ExternalLink,
   Image,
   Sparkles,
-  ChevronDown,
 } from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
 import type { ArchiveInfo } from "~/composables/useClientMods";
@@ -277,7 +280,13 @@ const emit = defineEmits<{
   "generate-archive": [formats: string[], ttl: number, include: string[]];
 }>();
 
-const modsOpen = ref(true);
+const activeTab = ref<"mods" | "resourcepacks" | "shaderpacks">("mods");
+
+const tabs = [
+  { key: "mods" as const, label: "Mods", icon: Box },
+  { key: "resourcepacks" as const, label: "Resource Packs", icon: Image },
+  { key: "shaderpacks" as const, label: "Shader Packs", icon: Sparkles },
+];
 
 const rawQuery = ref(props.searchQuery);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -296,8 +305,6 @@ onUnmounted(() => {
 });
 const isDragOver = ref(false);
 const showArchiveModal = ref(false);
-
-const assetCounts = ref({ resourcepacks: 0, shaderpacks: 0 });
 
 const contextMenuOpen = ref(false);
 const contextMenuX = ref(0);

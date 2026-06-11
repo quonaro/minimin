@@ -87,7 +87,7 @@
               id="tail"
               v-model="tail"
               class="text-sm bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-              @change="reconnect"
+              @change="reconnect()"
             >
               <option :value="100">100</option>
               <option :value="500">500</option>
@@ -188,7 +188,7 @@
           </span>
           <button
             class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
-            @click="reconnect"
+            @click="reconnect()"
           >
             Reconnect
           </button>
@@ -298,6 +298,7 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let unmounted = false;
 let reconnectAttempts = 0;
 let socketCounter = 0;
+let nextTail: number | undefined = undefined;
 
 const FLUSH_INTERVAL_MS = 50;
 const RECONNECT_BASE_MS = 5000;
@@ -383,7 +384,9 @@ function connect() {
     wsBase = base.replace(/^http/, "ws");
   }
   const token = useCookie("auth_token").value || "";
-  const url = `${wsBase}/ws/servers/${serverId}/logs?tail=${tail.value}&token=${encodeURIComponent(token)}`;
+  const tailVal = nextTail !== undefined ? nextTail : tail.value;
+  nextTail = undefined;
+  const url = `${wsBase}/ws/servers/${serverId}/logs?tail=${tailVal}&token=${encodeURIComponent(token)}`;
 
   const socketId = ++socketCounter;
   const socket = new WebSocket(url);
@@ -469,7 +472,7 @@ function appendChunk(chunk: string) {
   }
 }
 
-function reconnect() {
+function reconnect(withTail?: number) {
   logLines.value = [];
   lineIdCounter = 0;
   buffer.value = "";
@@ -488,6 +491,7 @@ function reconnect() {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  nextTail = withTail;
   connect();
 }
 
@@ -590,5 +594,5 @@ onUnmounted(() => {
   }
 });
 
-defineExpose({ scrollToBottom });
+defineExpose({ scrollToBottom, reconnect });
 </script>
