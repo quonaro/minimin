@@ -787,7 +787,6 @@ const ramLoading = ref(false);
 const editingCpu = ref(false);
 const tempCpu = ref<number | null>(null);
 const cpuLoading = ref(false);
-let statusPollInterval: ReturnType<typeof setInterval> | null = null;
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
@@ -1198,26 +1197,4 @@ async function onRecreateConfirmed() {
     recreateLoading.value = false;
   }
 }
-
-function startStatusPolling() {
-  if (statusPollInterval) return;
-  statusPollInterval = setInterval(() => {
-    refreshServers();
-  }, 2000);
-}
-
-function stopStatusPolling() {
-  if (statusPollInterval) {
-    clearInterval(statusPollInterval);
-    statusPollInterval = null;
-  }
-}
-
-onMounted(() => {
-  startStatusPolling();
-});
-
-onBeforeUnmount(() => {
-  stopStatusPolling();
-});
 </script>

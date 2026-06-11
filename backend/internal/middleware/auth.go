@@ -1,9 +1,39 @@
 package middleware
 
 import (
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 	"strings"
 )
+
+// responseWriter wraps http.ResponseWriter and optionally preserves http.Flusher.
+type responseWriter struct {
+	http.ResponseWriter
+	flusher http.Flusher
+}
+
+func newResponseWriter(w http.ResponseWriter) http.ResponseWriter {
+	rw := &responseWriter{ResponseWriter: w}
+	if f, ok := w.(http.Flusher); ok {
+		rw.flusher = f
+	}
+	return rw
+}
+
+func (w *responseWriter) Flush() {
+	if w.flusher != nil {
+		w.flusher.Flush()
+	}
+}
+
+func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("response writer: underlying ResponseWriter does not implement http.Hijacker")
+}
 
 // WithAuth returns a handler that validates the static API key before calling next.
 func WithAuth(apiKey string, next http.HandlerFunc) http.HandlerFunc {
@@ -26,6 +56,6 @@ func WithAuth(apiKey string, next http.HandlerFunc) http.HandlerFunc {
 			_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
 			return
 		}
-		next(w, r)
+		next(newResponseWriter(w), r)
 	}
 }

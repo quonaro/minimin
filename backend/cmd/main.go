@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/routes"
 	"orchestrator/internal/runner"
@@ -135,10 +136,17 @@ func main() {
 		slog.Warn("failed to save state after reconciliation", "error", err)
 	}
 
+	hub := events.NewHub()
+
+	instance.Broadcast = func(serverID string, s state.ServerState) {
+		hub.BroadcastJSON("server", s)
+	}
+
 	h := handlers.NewHandler(cli, instance, apiKey)
 	h.ServersDir = serversDir
 	h.ServersHostDir = serversHostDir
 	h.ModUploadMaxMB = modUploadMaxMB
+	h.EventsHub = hub
 	router := routes.SetupRoutes(h, apiKey)
 
 	// Background health-checker
@@ -146,9 +154,11 @@ func main() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 		failures := make(map[string]int)
+		broadcastTick := 0
 		for {
 			select {
 			case <-ticker.C:
+				broadcastTick++
 				active := make(map[string]bool, len(instance.All()))
 				for _, s := range instance.All() {
 					active[s.ServerID] = true
@@ -181,6 +191,10 @@ func main() {
 							_ = instance.Save()
 							slog.Info("server not ready", "server_id", s.ServerID, "status", s.ServerStatus, "consecutive_failures", failures[s.ServerID])
 						}
+					}
+					// Push player data every 30 seconds.
+					if broadcastTick%3 == 0 && h.EventsHub.HasClients() {
+						h.BroadcastPlayerDataAsync(s.ServerID)
 					}
 				}
 				for id := range failures {

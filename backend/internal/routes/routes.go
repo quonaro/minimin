@@ -18,6 +18,9 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	// Versions (no auth required — read-only public data)
 	mux.HandleFunc("GET /api/versions", h.HandleGetVersions)
 
+	// SSE events endpoint (protected)
+	mux.HandleFunc("GET /api/events", middleware.WithAuth(apiKey, h.SSEEvents))
+
 	// WebSocket endpoints (protected)
 	mux.HandleFunc("GET /ws/servers/{id}/logs", middleware.WithAuth(apiKey, h.WSLogs))
 	mux.HandleFunc("GET /ws/servers/{id}/rcon", middleware.WithAuth(apiKey, h.WSRcon))

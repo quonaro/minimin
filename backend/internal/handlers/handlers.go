@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"orchestrator/internal/events"
 	"orchestrator/internal/modrinth"
 	"orchestrator/internal/state"
 
@@ -20,6 +21,7 @@ type Handler struct {
 	ServersHostDir string
 	ModUploadMaxMB int
 	ModrinthClient *modrinth.Client
+	EventsHub      *events.Hub
 }
 
 // NewHandler creates a new Handler.

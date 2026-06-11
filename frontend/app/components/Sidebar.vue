@@ -218,11 +218,10 @@ interface ServerNavItem {
   requiresFilesInitialized?: boolean;
 }
 
-const { servers, refresh: refreshServers } = useServers();
+const { servers } = useServers();
 
 const currentServerStatus = ref("");
 const currentContainerStatus = ref("");
-const serverFilesInitialized = ref(true);
 
 watch(
   [servers, serverId],
@@ -256,34 +255,7 @@ const currentServerEngineType = computed(() => {
   return server?.engineType || "";
 });
 
-watch(
-  serverId,
-  async (newServerId) => {
-    if (!newServerId) {
-      serverFilesInitialized.value = true;
-      return;
-    }
-
-    try {
-      const res = await $fetch<
-        { initialized?: boolean } | { body?: { initialized?: boolean } }
-      >(`/servers/${newServerId}/config`, {
-        baseURL: useApiBase(),
-        credentials: "include",
-      });
-
-      const initializedRoot = (res as { initialized?: boolean })?.initialized;
-      const initializedBody = (res as { body?: { initialized?: boolean } })
-        ?.body?.initialized;
-      const initialized: boolean = initializedRoot ?? initializedBody ?? true;
-
-      serverFilesInitialized.value = initialized;
-    } catch (err: any) {
-      serverFilesInitialized.value = true;
-    }
-  },
-  { immediate: true },
-);
+const { initialized: serverFilesInitialized } = useServerConfig(serverId.value);
 
 function getServerStatusColor(status: string) {
   switch (status) {
@@ -399,11 +371,4 @@ function getDisabledReason(item: ServerNavItem) {
 function toggleColorMode() {
   colorMode.preference = colorMode.value === "dark" ? "light" : "dark";
 }
-
-onMounted(() => {
-  const interval = setInterval(() => {
-    refreshServers();
-  }, 5000);
-  onBeforeUnmount(() => clearInterval(interval));
-});
 </script>

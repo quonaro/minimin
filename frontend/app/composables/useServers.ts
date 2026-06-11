@@ -17,20 +17,28 @@ export interface Server {
 }
 
 export function useServers() {
-  const { data: serversData, pending, error, refresh } = useApiFetch<
-    Server[] | { body: Server[] }
-  >('/servers', {
-    key: 'servers-list',
-  });
+  const { servers, initialized, serverMap } = useServerEvents();
+  const pending = computed(() => !initialized.value);
+  const error = ref<Error | null>(null);
 
-  const servers = computed<Server[]>(() => {
-    const val = serversData.value;
-    if (Array.isArray(val)) return val as Server[];
-    if (val && typeof val === 'object' && 'body' in val) {
-      return (val as any).body || [];
+  async function refresh() {
+    try {
+      const res = await $fetch<Server[] | { body: Server[] }>("/servers", {
+        baseURL: useApiBase(),
+        credentials: "include",
+      });
+      const list = Array.isArray(res)
+        ? res
+        : ((res as any).body || []);
+      const next: Record<string, Server> = {};
+      for (const s of list) {
+        if (s.serverId) next[s.serverId] = s;
+      }
+      serverMap.value = next;
+    } catch (e: any) {
+      error.value = e;
     }
-    return [];
-  });
+  }
 
   return {
     servers,

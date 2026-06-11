@@ -139,6 +139,9 @@ func (h *Handler) HandleSendRconCommand(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	jsonResponse(w, map[string]string{"response": resp})
+
+	// Push updated player lists to SSE subscribers.
+	h.BroadcastPlayerDataAsync(id)
 }
 
 // handleGetServerLogs returns the latest container log lines.

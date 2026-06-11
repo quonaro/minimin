@@ -469,13 +469,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import PlayerEventLog, {
   type PlayerEvent,
 } from "~/components/PlayerEventLog.vue";
 import PlayerAllTimeList, {
   type AllTimePlayer,
 } from "~/components/PlayerAllTimeList.vue";
+import { useServerEvents } from "~/composables/useServerEvents";
 
 usePageTitle("Players");
 
@@ -488,6 +489,7 @@ const { show: showToast } = useToast();
 const serverId = route.params.serverId as string;
 
 const apiBase = useApiBase();
+const { playersMap, opsMap, bansMap, whitelistMap } = useServerEvents();
 
 interface PlayerEntry {
   name: string;
@@ -497,29 +499,63 @@ interface PlayerEntry {
   level?: number;
 }
 
-const onlineLoading = ref(true);
+const onlineLoading = ref(false);
 const onlineError = ref<string | null>(null);
 const onlinePlayers = ref<string[]>([]);
 const maxPlayers = ref(0);
 
-const opsLoading = ref(true);
+const opsLoading = ref(false);
 const opsError = ref<string | null>(null);
 const opsList = ref<PlayerEntry[]>([]);
 
-const wlLoading = ref(true);
+const wlLoading = ref(false);
 const wlError = ref<string | null>(null);
 const wlList = ref<PlayerEntry[]>([]);
 
-const bansLoading = ref(true);
+const bansLoading = ref(false);
 const bansError = ref<string | null>(null);
 const bansList = ref<PlayerEntry[]>([]);
+
+watch(
+  () => playersMap.value[serverId],
+  (v) => {
+    if (v) {
+      onlinePlayers.value = v.players;
+      maxPlayers.value = v.max;
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => opsMap.value[serverId],
+  (v) => {
+    opsList.value = v || [];
+  },
+  { immediate: true },
+);
+
+watch(
+  () => whitelistMap.value[serverId],
+  (v) => {
+    wlList.value = v || [];
+  },
+  { immediate: true },
+);
+
+watch(
+  () => bansMap.value[serverId],
+  (v) => {
+    bansList.value = v || [];
+  },
+  { immediate: true },
+);
 
 const eventLog = ref<PlayerEvent[]>([]);
 const allPlayers = ref<AllTimePlayer[]>([]);
 const searchQuery = ref("");
 const offlineName = ref("");
 
-const refreshing = ref(false);
 const wsStatus = ref("Connecting...");
 
 let ws: WebSocket | null = null;
@@ -531,9 +567,6 @@ let eventCounter = 0;
 
 const RECONNECT_BASE_MS = 5000;
 const RECONNECT_MAX_MS = 60000;
-const FETCH_RETRY_BASE_MS = 1000;
-const FETCH_RETRY_MAX_MS = 30000;
-const FETCH_MAX_ATTEMPTS = 5;
 
 function lsKey(): string {
   return `mc-players-`;
@@ -829,120 +862,6 @@ const modalTitle = computed(() =>
   modalAction.value === "kick" ? "Kick Player" : "Ban Player",
 );
 
-let fetchingOnline = false;
-
-async function fetchOnlineWithRetry(attempt = 0) {
-  if (fetchingOnline) return;
-  fetchingOnline = true;
-  onlineLoading.value = true;
-  onlineError.value = null;
-  try {
-    const res = await $fetch<{
-      online?: number;
-      max?: number;
-      players?: string[];
-    }>(`/servers/${serverId}/players`, {
-      baseURL: apiBase,
-      credentials: "include",
-    });
-    onlinePlayers.value = res.players || [];
-    maxPlayers.value = res.max || 0;
-  } catch (err: any) {
-    const status = err?.response?.status;
-    if (status === 503) {
-      onlinePlayers.value = [];
-      maxPlayers.value = 0;
-      onlineError.value = "Server is offline";
-    } else if (attempt < FETCH_MAX_ATTEMPTS) {
-      const delay = Math.min(
-        FETCH_RETRY_BASE_MS * 2 ** attempt,
-        FETCH_RETRY_MAX_MS,
-      );
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      fetchingOnline = false;
-      return fetchOnlineWithRetry(attempt + 1);
-    } else {
-      onlineError.value = err?.message || "Failed to load players";
-    }
-  } finally {
-    onlineLoading.value = false;
-    fetchingOnline = false;
-  }
-}
-
-async function fetchOnline() {
-  return fetchOnlineWithRetry();
-}
-
-let fetchingOps = false;
-
-async function fetchOps() {
-  if (fetchingOps) return;
-  fetchingOps = true;
-  opsLoading.value = true;
-  opsError.value = null;
-  try {
-    const res = await $fetch<{ ops?: PlayerEntry[] }>(
-      `/servers/${serverId}/ops`,
-      { baseURL: apiBase, credentials: "include" },
-    );
-    opsList.value = res.ops || [];
-  } catch (err: any) {
-    opsError.value = err?.message || "Failed to load operators";
-  } finally {
-    opsLoading.value = false;
-    fetchingOps = false;
-  }
-}
-
-let fetchingWl = false;
-
-async function fetchWhitelist() {
-  if (fetchingWl) return;
-  fetchingWl = true;
-  wlLoading.value = true;
-  wlError.value = null;
-  try {
-    const res = await $fetch<{ whitelist?: PlayerEntry[] }>(
-      `/servers/${serverId}/whitelist`,
-      { baseURL: apiBase, credentials: "include" },
-    );
-    wlList.value = res.whitelist || [];
-  } catch (err: any) {
-    wlError.value = err?.message || "Failed to load whitelist";
-  } finally {
-    wlLoading.value = false;
-    fetchingWl = false;
-  }
-}
-
-let fetchingBans = false;
-
-async function fetchBans() {
-  if (fetchingBans) return;
-  fetchingBans = true;
-  bansLoading.value = true;
-  bansError.value = null;
-  try {
-    const res = await $fetch<{ bans?: PlayerEntry[] }>(
-      `/servers/${serverId}/bans`,
-      { baseURL: apiBase, credentials: "include" },
-    );
-    bansList.value = res.bans || [];
-  } catch (err: any) {
-    bansError.value = err?.message || "Failed to load bans";
-  } finally {
-    bansLoading.value = false;
-    fetchingBans = false;
-  }
-}
-
-async function refreshAll() {
-  refreshing.value = true;
-  await Promise.all([fetchOnline(), fetchOps(), fetchWhitelist(), fetchBans()]);
-  refreshing.value = false;
-}
-
 async function sendRcon(command: string) {
   try {
     await $fetch(`/servers/${serverId}/rcon`, {
@@ -952,9 +871,6 @@ async function sendRcon(command: string) {
       body: { command },
     });
     showToast("success", "Command sent", { description: command });
-    if (wsStatus.value !== "Connected") {
-      setTimeout(() => refreshAll(), 500);
-    }
   } catch (err: any) {
     const msg = err?.data?.detail || err?.message || "Command failed";
     showToast("error", "RCON failed", { description: msg });
@@ -997,7 +913,6 @@ function confirmModal() {
 
 onMounted(() => {
   loadAllPlayers();
-  refreshAll();
   connectLogsWS();
 });
 

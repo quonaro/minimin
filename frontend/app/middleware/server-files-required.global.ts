@@ -19,23 +19,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
-  try {
-    const res = await $fetch<
-      { initialized?: boolean } | { body?: { initialized?: boolean } }
-    >(`/servers/${serverId}/config`, {
-      baseURL: useApiBase(),
-      credentials: 'include',
-    })
+  const { initialized, loading, refresh } = useServerConfig(serverId)
 
-    const initializedRoot = (res as { initialized?: boolean })?.initialized
-    const initializedBody = (res as { body?: { initialized?: boolean } })?.body
-      ?.initialized
-    const initialized: boolean = initializedRoot ?? initializedBody ?? true
+  if (loading.value) {
+    await refresh()
+  }
 
-    if (!initialized) {
-      return navigateTo(overviewPath)
-    }
-  } catch {
-    return
+  if (!initialized.value) {
+    return navigateTo(overviewPath)
   }
 })

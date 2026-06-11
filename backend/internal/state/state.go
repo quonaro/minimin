@@ -44,6 +44,8 @@ type InstanceFile struct {
 	Servers map[string]ServerState `yaml:"servers"`
 	mu      sync.RWMutex
 	path    string
+	// Broadcast is called after every state mutation. It may be nil.
+	Broadcast func(serverID string, state ServerState) `yaml:"-"`
 }
 
 // Load reads instance.yml from disk or creates an empty structure if the file does not exist.
@@ -132,6 +134,9 @@ func (i *InstanceFile) Set(s ServerState) {
 	}
 	s.UpdatedAt = time.Now().UTC()
 	i.Servers[s.ServerID] = s
+	if i.Broadcast != nil {
+		i.Broadcast(s.ServerID, s)
+	}
 }
 
 // UpdateMeta patches mutable metadata fields and stamps UpdatedAt.
@@ -145,6 +150,9 @@ func (i *InstanceFile) UpdateMeta(serverID string, f func(*ServerState)) bool {
 	f(&s)
 	s.UpdatedAt = time.Now().UTC()
 	i.Servers[serverID] = s
+	if i.Broadcast != nil {
+		i.Broadcast(s.ServerID, s)
+	}
 	return true
 }
 
@@ -153,6 +161,9 @@ func (i *InstanceFile) Delete(serverID string) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	delete(i.Servers, serverID)
+	if i.Broadcast != nil {
+		i.Broadcast(serverID, ServerState{ServerID: serverID})
+	}
 }
 
 // TrySetDesired sets the desired status if no operation is already pending.
@@ -191,6 +202,9 @@ func (i *InstanceFile) ClearDesired(serverID, finalStatus string) {
 	}
 	s.UpdatedAt = time.Now().UTC()
 	i.Servers[serverID] = s
+	if i.Broadcast != nil {
+		i.Broadcast(s.ServerID, s)
+	}
 }
 
 // AddPendingProperties merges new pending properties into a server's state.

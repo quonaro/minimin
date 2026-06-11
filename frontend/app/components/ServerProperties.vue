@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
+import { watch } from "vue";
 import {
   Globe,
   Swords,
@@ -37,6 +38,10 @@ interface ConfigResponse {
   initialized?: boolean;
   pendingProperties?: Record<string, string>;
 }
+
+const { config: serverConfig, refresh: refreshConfig } = useServerConfig(
+  props.serverId,
+);
 
 const configLoading = ref(true);
 const configError = ref<string | null>(null);
@@ -124,49 +129,6 @@ function getPropertyBadgeStatus(
   return null;
 }
 
-async function loadConfig() {
-  configLoading.value = true;
-  configError.value = null;
-  configUninitialized.value = false;
-  try {
-    const res = await $fetch<ConfigResponse | { body: ConfigResponse }>(
-      `/servers/${props.serverId}/config`,
-      { baseURL: useApiBase(), credentials: "include" },
-    );
-    let content = "";
-    let initialized = true;
-    let pending: Record<string, string> = {};
-    if (res && typeof res === "object") {
-      if ("body" in res) {
-        const body = (res as any).body;
-        content = body.content || "";
-        initialized = body.initialized !== false;
-        pending = body.pendingProperties || {};
-      } else if ("content" in res) {
-        const raw = res as any;
-        content = raw.content || "";
-        initialized = raw.initialized !== false;
-        pending = raw.pendingProperties || {};
-      }
-    }
-    if (!initialized) {
-      configUninitialized.value = true;
-      originalProperties.value = {};
-      editedProperties.value = {};
-      pendingProperties.value = pending;
-    } else {
-      const parsed = parseProperties(content);
-      originalProperties.value = parsed;
-      editedProperties.value = { ...parsed };
-      pendingProperties.value = pending;
-    }
-  } catch (err: any) {
-    configError.value = err?.message || "Unknown error";
-  } finally {
-    configLoading.value = false;
-  }
-}
-
 async function saveProperties() {
   if (saveLoading.value) return;
   saveLoading.value = true;
@@ -197,7 +159,30 @@ async function saveProperties() {
   }
 }
 
-await loadConfig();
+watch(
+  () => serverConfig.value,
+  (cfg) => {
+    if (!cfg) {
+      configLoading.value = true;
+      return;
+    }
+    configLoading.value = false;
+    configError.value = null;
+    if (!cfg.initialized) {
+      configUninitialized.value = true;
+      originalProperties.value = {};
+      editedProperties.value = {};
+      pendingProperties.value = cfg.pendingProperties || {};
+    } else {
+      configUninitialized.value = false;
+      const parsed = parseProperties(cfg.content);
+      originalProperties.value = parsed;
+      editedProperties.value = { ...parsed };
+      pendingProperties.value = cfg.pendingProperties || {};
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

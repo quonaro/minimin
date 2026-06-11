@@ -224,8 +224,10 @@ const showSuggestions = ref(false);
 const selectedIndex = ref(0);
 const suggestionMode = ref<"command" | "player">("command");
 
-const players = ref<string[]>([]);
-let playersPollTimer: ReturnType<typeof setInterval> | null = null;
+const { playersMap } = useServerEvents();
+const players = computed<string[]>(
+  () => playersMap.value[serverId]?.players ?? [],
+);
 
 const PLAYER_COMMANDS = new Set([
   "kick",
@@ -380,18 +382,6 @@ function onTab(e: KeyboardEvent) {
   if (showSuggestions.value && suggestions.value.length) {
     e.preventDefault();
     acceptSuggestion(selectedIndex.value);
-  }
-}
-
-async function fetchPlayers() {
-  try {
-    const res = await $fetch<{ players?: string[] }>(
-      `/api/servers/${serverId}/players`,
-      { credentials: "include" },
-    );
-    players.value = res.players || [];
-  } catch {
-    // silently fail
   }
 }
 
@@ -574,8 +564,6 @@ onMounted(() => {
   }
   connect();
   inputRef.value?.focus();
-  fetchPlayers();
-  playersPollTimer = setInterval(fetchPlayers, 30000);
 });
 
 watch(fontSize, (value) => {
@@ -587,10 +575,6 @@ onUnmounted(() => {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
-  }
-  if (playersPollTimer) {
-    clearInterval(playersPollTimer);
-    playersPollTimer = null;
   }
   if (ws) {
     const oldWs = ws;
