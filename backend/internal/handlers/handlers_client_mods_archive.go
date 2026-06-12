@@ -755,6 +755,68 @@ func (h *Handler) HandleGetClientArchiveManifest(w http.ResponseWriter, r *http.
 	})
 }
 
+// HandleDownloadClientArchiveFile serves a single file from an archive by token (public, no auth).
+func (h *Handler) HandleDownloadClientArchiveFile(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+	filePath := r.PathValue("path")
+
+	archiveTokensMu.RLock()
+	archive, ok := archiveTokens[token]
+	archiveTokensMu.RUnlock()
+
+	if !ok || time.Now().After(archive.ExpiresAt) {
+		jsonError(w, "archive not found or expired", http.StatusNotFound)
+		return
+	}
+
+	s, ok := h.Instance.Get(archive.ServerID)
+	if !ok || s.VolumePath == "" {
+		jsonError(w, "server volume not initialized", http.StatusNotFound)
+		return
+	}
+
+	var diskPath string
+	parts := strings.SplitN(filePath, "/", 3)
+	if len(parts) >= 3 && parts[0] == ".minecraft" {
+		switch parts[1] {
+		case "mods":
+			diskPath = filepath.Join(s.VolumePath, "mods-client", parts[2])
+		case "resourcepacks":
+			diskPath = filepath.Join(s.VolumePath, "resourcepacks", parts[2])
+		case "shaderpacks":
+			diskPath = filepath.Join(s.VolumePath, "shaderpacks", parts[2])
+		}
+	}
+
+	if diskPath == "" {
+		jsonError(w, "invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	f, err := os.Open(diskPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			jsonError(w, "file not found", http.StatusNotFound)
+			return
+		}
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = f.Close() }()
+
+	info, err := f.Stat()
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(diskPath)))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", info.Size()))
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.Copy(w, f)
+}
+
 // HandleListServerArchives returns all active archive tokens for a server.
 func (h *Handler) HandleListServerArchives(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
