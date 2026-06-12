@@ -475,7 +475,7 @@ func createCurseForgeArchive(w io.Writer, packName, gameVersion, engineType, loa
 	return nil
 }
 
-func createPrismArchive(w io.Writer, packName, gameVersion, engineType, loaderVersion string, filesByType map[string][]string) error {
+func createPrismArchive(w io.Writer, packName, gameVersion, engineType, loaderVersion, token, baseURL string, filesByType map[string][]string) error {
 	zw := zip.NewWriter(w)
 	defer func() { _ = zw.Close() }()
 
@@ -557,6 +557,19 @@ func createPrismArchive(w io.Writer, packName, gameVersion, engineType, loaderVe
 		return err
 	}
 	_, _ = entry.Write(mmcData)
+
+	marker := map[string]any{
+		"serverId":   packName,
+		"token":      token,
+		"baseUrl":    baseURL,
+		"lastSyncAt": time.Now().UTC().Format(time.RFC3339),
+	}
+	markerData, _ := json.MarshalIndent(marker, "", "  ")
+	entry, err = zw.Create(".minimin.json")
+	if err != nil {
+		return err
+	}
+	_, _ = entry.Write(markerData)
 
 	dirMap := map[string]string{
 		"mods":          ".minecraft/mods/",
@@ -645,7 +658,8 @@ func (h *Handler) HandleDownloadClientArchive(w http.ResponseWriter, r *http.Req
 	case "curseforge":
 		genErr = createCurseForgeArchive(w, archive.ServerName, srv.GameVersion, srv.EngineType, srv.LoaderVersion, filesByType)
 	case "prism":
-		genErr = createPrismArchive(w, archive.ServerName, srv.GameVersion, srv.EngineType, srv.LoaderVersion, filesByType)
+		baseURL := fmt.Sprintf("%s://%s", r.URL.Scheme, r.Host)
+		genErr = createPrismArchive(w, archive.ServerName, srv.GameVersion, srv.EngineType, srv.LoaderVersion, archive.Token, baseURL, filesByType)
 	}
 
 	if genErr != nil {
