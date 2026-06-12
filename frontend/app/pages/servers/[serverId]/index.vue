@@ -630,6 +630,104 @@
         </div>
       </div>
 
+      <!-- Real-time Metrics -->
+      <div
+        v-if="serverMetrics.length > 0"
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-4 md:p-6 shadow-sm"
+      >
+        <h2
+          class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
+        >
+          <Activity class="w-5 h-5 text-primary" />
+          Live Metrics
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <!-- RAM -->
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+              RAM
+            </div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ latestMetric ? formatBytes(latestMetric.ramUsage) : "—" }}
+            </div>
+            <div class="text-xs text-gray-400 dark:text-neutral-500">
+              / {{ latestMetric ? formatBytes(latestMetric.ramLimit) : "—" }}
+            </div>
+            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="text-indigo-500"
+                :points="sparklinePoints(serverMetrics, 'ramUsage')"
+              />
+            </svg>
+          </div>
+          <!-- CPU -->
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+              CPU
+            </div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ latestMetric ? latestMetric.cpu.toFixed(1) + "%" : "—" }}
+            </div>
+            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="text-emerald-500"
+                :points="sparklinePoints(serverMetrics, 'cpu')"
+              />
+            </svg>
+          </div>
+          <!-- Online -->
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+              Online
+            </div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{
+                latestMetric
+                  ? latestMetric.online + "/" + latestMetric.max
+                  : "—"
+              }}
+            </div>
+            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="text-sky-500"
+                :points="sparklinePoints(serverMetrics, 'online')"
+              />
+            </svg>
+          </div>
+          <!-- TPS -->
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+              TPS
+            </div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{
+                latestMetric && latestMetric.tps != null
+                  ? latestMetric.tps.toFixed(1)
+                  : "—"
+              }}
+            </div>
+            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="text-amber-500"
+                :points="sparklinePoints(serverMetrics, 'tps')"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
       <!-- Logs -->
       <div
         class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
@@ -739,6 +837,10 @@ import {
 } from "lucide-vue-next";
 import { nextTick, onMounted, onBeforeUnmount } from "vue";
 import type { Server } from "~/composables/useServers";
+import {
+  useServerEvents,
+  type MetricsPayload,
+} from "~/composables/useServerEvents";
 
 definePageMeta({
   middleware: "auth",
@@ -748,6 +850,7 @@ const route = useRoute();
 const { show: showToast } = useToast();
 const serverId = route.params.serverId as string;
 const { servers, refresh: refreshServers } = useServers();
+const { metricsMap } = useServerEvents();
 const server = computed<Server | null>(
   () => servers.value.find((s: Server) => s.serverId === serverId) ?? null,
 );
@@ -787,6 +890,14 @@ const ramLoading = ref(false);
 const editingCpu = ref(false);
 const tempCpu = ref<number | null>(null);
 const cpuLoading = ref(false);
+
+const serverMetrics = computed<MetricsPayload[]>(
+  () => metricsMap.value[serverId] || [],
+);
+const latestMetric = computed<MetricsPayload | null>(() => {
+  const arr = serverMetrics.value;
+  return arr.length > 0 ? (arr[arr.length - 1] ?? null) : null;
+});
 
 const iconUrl = computed(() => {
   if (!server.value) return "";
@@ -864,6 +975,35 @@ const isPending = computed(() => {
   const d = server.value.desiredStatus;
   return !!d && d !== server.value.containerStatus;
 });
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function sparklinePoints(
+  data: MetricsPayload[],
+  key: "ramUsage" | "cpu" | "online" | "tps",
+): string {
+  const values = data.map((d) => (d as any)[key] ?? 0);
+  if (values.length < 2) return "";
+  const max = Math.max(...values, 0.001);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const w = 100;
+  const h = 32;
+  const step = w / (values.length - 1);
+  return values
+    .map((v, i) => {
+      const x = i * step;
+      const y = h - ((v - min) / range) * h;
+      return `${x},${y}`;
+    })
+    .join(" ");
+}
 
 function getStatusColor(status: string) {
   switch (status) {

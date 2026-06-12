@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"sync"
+	"time"
 )
 
 // Event is a single SSE event sent to all connected clients.
@@ -130,6 +131,18 @@ type BansPayload struct {
 type WhitelistPayload struct {
 	ServerID  string           `json:"serverId"`
 	Whitelist []map[string]any `json:"whitelist"`
+}
+
+// MetricsPayload is broadcast for real-time server metrics.
+type MetricsPayload struct {
+	ServerID  string    `json:"serverId"`
+	RAMUsage  uint64    `json:"ramUsage"`
+	RAMLimit  uint64    `json:"ramLimit"`
+	CPU       float64   `json:"cpu"`
+	Online    int       `json:"online"`
+	Max       int       `json:"max"`
+	TPS       *float64  `json:"tps,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // MarshalEvent formats an Event as an SSE message.

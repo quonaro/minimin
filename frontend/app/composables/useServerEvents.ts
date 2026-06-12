@@ -30,12 +30,24 @@ interface WhitelistPayload {
   whitelist: PlayerEntry[];
 }
 
+export interface MetricsPayload {
+  serverId: string;
+  ramUsage: number;
+  ramLimit: number;
+  cpu: number;
+  online: number;
+  max: number;
+  tps?: number;
+  timestamp: string;
+}
+
 const serverMap = ref<Record<string, Server>>({});
 const initialized = ref(false);
 const playersMap = ref<Record<string, { players: string[]; max: number }>>({});
 const opsMap = ref<Record<string, PlayerEntry[]>>({});
 const bansMap = ref<Record<string, PlayerEntry[]>>({});
 const whitelistMap = ref<Record<string, PlayerEntry[]>>({});
+const metricsMap = ref<Record<string, MetricsPayload[]>>({});
 
 const servers = computed<Server[]>(() =>
   Object.values(serverMap.value).sort(
@@ -139,6 +151,34 @@ function initEventSource() {
     }
   });
 
+  es.addEventListener("metrics", (e) => {
+    try {
+      const m = JSON.parse(e.data) as MetricsPayload;
+      if (!m.serverId) return;
+      const arr = metricsMap.value[m.serverId] || [];
+      arr.push(m);
+      // cap at ~720 points (approx 1h @ 5s interval)
+      if (arr.length > 720) {
+        arr.shift();
+      }
+      metricsMap.value[m.serverId] = arr;
+    } catch {
+      // ignore
+    }
+  });
+
+  // Clear metrics for stopped servers
+  es.addEventListener("server", (e) => {
+    try {
+      const s = JSON.parse(e.data) as Server;
+      if (s.serverId && (s.serverStatus === "stopped" || s.serverStatus === "exited")) {
+        delete metricsMap.value[s.serverId];
+      }
+    } catch {
+      // ignore
+    }
+  });
+
   es.onerror = () => {
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -168,5 +208,6 @@ export function useServerEvents() {
     opsMap,
     bansMap,
     whitelistMap,
+    metricsMap,
   };
 }

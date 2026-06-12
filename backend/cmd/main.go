@@ -149,6 +149,9 @@ func main() {
 	h.EventsHub = hub
 	router := routes.SetupRoutes(h, apiKey)
 
+	// Background metrics poller
+	go handlers.NewMetricsPoller(h).Start(ctx)
+
 	// Background health-checker
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)

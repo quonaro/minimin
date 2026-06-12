@@ -84,6 +84,11 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("POST /api/servers/{id}/mods/copy-all", middleware.WithAuth(apiKey, h.HandleCopyAllServerMods))
 	mux.HandleFunc("GET /api/servers/{id}/client-mods/{filename}/icon", middleware.WithAuth(apiKey, h.GetClientModIcon))
 
+	// Crash Reports (protected)
+	mux.HandleFunc("GET /api/servers/{id}/crash-reports", middleware.WithAuth(apiKey, h.HandleListCrashReports))
+	mux.HandleFunc("GET /api/servers/{id}/crash-reports/{filename}", middleware.WithAuth(apiKey, h.HandleReadCrashReport))
+	mux.HandleFunc("DELETE /api/servers/{id}/crash-reports/{filename}", middleware.WithAuth(apiKey, h.HandleDeleteCrashReport))
+
 	// Client assets (resourcepacks / shaderpacks) (protected)
 	mux.HandleFunc("GET /api/servers/{id}/client-assets", middleware.WithAuth(apiKey, h.HandleListClientAssets))
 	mux.HandleFunc("POST /api/servers/{id}/client-assets/upload", middleware.WithAuth(apiKey, h.HandleUploadClientAsset))
