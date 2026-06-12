@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -180,6 +181,19 @@ func generateToken() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func computeSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // HandleCreateClientArchive generates .zip and/or .mrpack from client mods.
@@ -667,6 +681,63 @@ func (h *Handler) HandleGetClientArchiveInfo(w http.ResponseWriter, r *http.Requ
 		"formats":        []string{"zip", "mrpack", "curseforge", "prism"},
 		"downloadCounts": archive.DownloadCounts,
 		"totalDownloads": archive.TotalDownloads,
+	})
+}
+
+// HandleGetClientArchiveManifest returns a manifest of all client files with sha256 hashes.
+func (h *Handler) HandleGetClientArchiveManifest(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+
+	archiveTokensMu.RLock()
+	archive, ok := archiveTokens[token]
+	archiveTokensMu.RUnlock()
+
+	if !ok || archive == nil || time.Now().After(archive.ExpiresAt) {
+		jsonError(w, "archive not found or expired", http.StatusNotFound)
+		return
+	}
+
+	filesByType, err := h.collectClientFiles(archive.ServerID, archive.Include)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type manifestFile struct {
+		Path   string `json:"path"`
+		SHA256 string `json:"sha256"`
+		Size   int64  `json:"size"`
+	}
+
+	dirMap := map[string]string{
+		"mods":          ".minecraft/mods/",
+		"resourcepacks": ".minecraft/resourcepacks/",
+		"shaderpacks":   ".minecraft/shaderpacks/",
+	}
+
+	var files []manifestFile
+	for t, paths := range filesByType {
+		prefix := dirMap[t]
+		for _, p := range paths {
+			info, err := os.Stat(p)
+			if err != nil {
+				continue
+			}
+			hash, err := computeSHA256(p)
+			if err != nil {
+				continue
+			}
+			files = append(files, manifestFile{
+				Path:   prefix + filepath.Base(p),
+				SHA256: hash,
+				Size:   info.Size(),
+			})
+		}
+	}
+
+	jsonResponse(w, map[string]any{
+		"serverName": archive.ServerName,
+		"files":      files,
 	})
 }
 

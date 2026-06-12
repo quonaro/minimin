@@ -107,6 +107,7 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	// Client archive (public)
 	mux.HandleFunc("GET /api/client-archive/{token}", h.HandleDownloadClientArchive)
 	mux.HandleFunc("GET /api/client-archive/{token}/info", h.HandleGetClientArchiveInfo)
+	mux.HandleFunc("GET /api/client-archive/{token}/manifest", h.HandleGetClientArchiveManifest)
 
 	// Modrinth proxy (protected)
 	mux.HandleFunc("GET /api/modrinth/search", middleware.WithAuth(apiKey, h.HandleModrinthSearch))
