@@ -154,14 +154,22 @@ func (h *Handler) HandleListClientMods(w http.ResponseWriter, r *http.Request) {
 		}
 		modPath := filepath.Join(modsDir, e.Name())
 		modInfo, _ := ParseModInfo(modPath, info.Size())
-		if modInfo != nil {
+		if modInfo == nil {
+			modInfo = &ModInfo{
+				Filename:  e.Name(),
+				Name:      strings.TrimSuffix(e.Name(), ".deactivated"),
+				Size:      info.Size(),
+				Enabled:   !isDeactivated,
+				Corrupted: true,
+			}
+		} else {
 			modInfo.Filename = e.Name()
 			modInfo.Enabled = !isDeactivated
 			if isDeactivated && strings.HasSuffix(modInfo.Name, ".deactivated") {
 				modInfo.Name = strings.TrimSuffix(modInfo.Name, ".deactivated")
 			}
-			mods = append(mods, *modInfo)
 		}
+		mods = append(mods, *modInfo)
 	}
 
 	jsonResponse(w, map[string]any{"mods": mods})

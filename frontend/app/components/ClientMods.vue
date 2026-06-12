@@ -74,19 +74,26 @@
               :key="mod.filename"
               class="flex items-start gap-3 p-3 rounded-xl border transition-colors"
               :class="
-                mod.enabled !== false
-                  ? 'bg-gray-50 dark:bg-neutral-700/50 border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
-                  : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
+                mod.corrupted
+                  ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
+                  : mod.enabled !== false
+                    ? 'bg-gray-50 dark:bg-neutral-700/50 border-gray-100 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
+                    : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
               "
               draggable="true"
               @dragstart="onDragStart($event, mod)"
               @contextmenu.prevent="openContextMenu(mod, $event)"
             >
               <div
-                class="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-neutral-600"
+                class="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden"
+                :class="
+                  mod.corrupted
+                    ? 'bg-red-100 dark:bg-red-900/30'
+                    : 'bg-gray-200 dark:bg-neutral-600'
+                "
               >
                 <img
-                  v-if="serverId"
+                  v-if="serverId && !mod.corrupted"
                   v-show="iconLoaded[mod.filename]"
                   :src="getIconUrl(mod.filename)"
                   class="w-full h-full object-cover"
@@ -95,27 +102,48 @@
                   @error="iconLoaded[mod.filename] = false"
                 />
                 <div
-                  v-show="!iconLoaded[mod.filename]"
-                  class="absolute inset-0 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+                  v-show="mod.corrupted || !iconLoaded[mod.filename]"
+                  class="absolute inset-0 flex items-center justify-center"
+                  :class="
+                    mod.corrupted
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                  "
                 >
-                  <Box class="w-5 h-5" />
+                  <AlertTriangle v-if="mod.corrupted" class="w-5 h-5" />
+                  <Box v-else class="w-5 h-5" />
                 </div>
               </div>
               <div class="flex-1 min-w-0">
                 <p
-                  class="text-sm font-semibold text-gray-900 dark:text-white truncate"
+                  class="text-sm font-semibold truncate"
+                  :class="
+                    mod.corrupted
+                      ? 'text-red-700 dark:text-red-300'
+                      : 'text-gray-900 dark:text-white'
+                  "
                 >
                   {{ mod.name || mod.filename }}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-neutral-400 truncate">
-                  {{ mod.version }} &middot; {{ mod.modid }}
-                  <span v-if="mod.authors">&middot; {{ mod.authors }}</span>
+                <p
+                  class="text-xs truncate"
+                  :class="
+                    mod.corrupted
+                      ? 'text-red-500 dark:text-red-400'
+                      : 'text-gray-500 dark:text-neutral-400'
+                  "
+                >
+                  <template v-if="mod.corrupted"> Corrupted JAR </template>
+                  <template v-else>
+                    {{ mod.version }} &middot; {{ mod.modid }}
+                    <span v-if="mod.authors">&middot; {{ mod.authors }}</span>
+                  </template>
                   <span v-if="mod.size"
                     >&middot; {{ formatBytes(mod.size) }}</span
                   >
                 </p>
                 <p
-                  v-if="mod.description"
+                  v-if="mod.description && !mod.corrupted"
                   class="text-xs text-gray-500 dark:text-neutral-400 line-clamp-2 mt-0.5"
                 >
                   {{ mod.description }}
@@ -252,6 +280,7 @@ import {
   ExternalLink,
   Image,
   Sparkles,
+  AlertTriangle,
 } from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
 import type {

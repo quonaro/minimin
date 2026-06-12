@@ -9,6 +9,7 @@ export interface ModInfo {
   icon?: string;
   enabled?: boolean;
   environment?: string;
+  corrupted?: boolean;
 }
 
 export function useMods(serverId: string) {

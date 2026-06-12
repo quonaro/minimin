@@ -60,6 +60,7 @@ type ModInfo struct {
 	Icon        string `json:"icon"`
 	Enabled     bool   `json:"enabled"`
 	Environment string `json:"environment"`
+	Corrupted   bool   `json:"corrupted"`
 }
 
 // ParseModInfo reads a .jar and extracts mod metadata.
