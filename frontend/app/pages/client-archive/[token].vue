@@ -7,13 +7,38 @@
       <p>Loading archive...</p>
     </div>
 
-    <div
-      v-else-if="error"
-      class="text-center text-red-500 dark:text-red-400 max-w-md"
-    >
-      <AlertCircle class="w-12 h-12 mx-auto mb-2" />
-      <p class="text-lg font-semibold">Archive not found</p>
-      <p class="text-sm mt-1">{{ error }}</p>
+    <div v-else-if="error" class="w-full max-w-md">
+      <div
+        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-gray-200 dark:border-neutral-700 p-8 text-center"
+      >
+        <div
+          class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4"
+        >
+          <XCircle class="w-8 h-8 text-red-500 dark:text-red-400" />
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          Archive not found
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-6">
+          {{ error }}
+        </p>
+        <div class="flex justify-center gap-3">
+          <button
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+            @click="goBack()"
+          >
+            <ArrowLeft class="w-4 h-4" />
+            Go Back
+          </button>
+          <a
+            href="/"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Home class="w-4 h-4" />
+            Go Home
+          </a>
+        </div>
+      </div>
     </div>
 
     <div
@@ -212,8 +237,7 @@ definePageMeta({
 });
 import {
   Loader2,
-  AlertCircle,
-  Package,
+  XCircle,
   FileArchive,
   FileBox,
   Download,
@@ -297,7 +321,14 @@ onMounted(async () => {
     );
     info.value = res;
   } catch (err: any) {
-    error.value = err?.message || "Archive not found or expired";
+    const statusCode = err?.statusCode || err?.response?.status;
+    if (statusCode === 404) {
+      error.value = "This archive link has expired or does not exist.";
+    } else if (statusCode === 500) {
+      error.value = "Server error, please try again later.";
+    } else {
+      error.value = "Archive not found or expired.";
+    }
   } finally {
     loading.value = false;
   }

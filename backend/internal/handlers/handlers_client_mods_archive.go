@@ -654,7 +654,7 @@ func (h *Handler) HandleGetClientArchiveInfo(w http.ResponseWriter, r *http.Requ
 	archive, ok := archiveTokens[token]
 	archiveTokensMu.RUnlock()
 
-	if !ok || time.Now().After(archive.ExpiresAt) {
+	if !ok || archive == nil || time.Now().After(archive.ExpiresAt) {
 		jsonError(w, "archive not found or expired", http.StatusNotFound)
 		return
 	}
