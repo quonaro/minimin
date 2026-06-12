@@ -95,30 +95,54 @@
           type="text"
           placeholder="Player name..."
           class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
-          @keydown.enter.prevent="sendRcon(`ban ${offlineName.trim()}`)"
+          @keydown.enter.prevent="
+            sendOfflineAction('ban', offlineName.trim(), offlineMode.value)
+          "
         />
+        <label
+          class="flex items-center gap-2 text-sm text-gray-700 dark:text-neutral-300 shrink-0"
+        >
+          <input
+            v-model="offlineMode"
+            type="checkbox"
+            class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
+          />
+          <span>Offline</span>
+        </label>
         <div class="flex items-center gap-2 shrink-0">
           <button
             class="text-sm px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-            @click="openReasonModal('ban', offlineName.trim())"
+            @click="
+              openReasonModal('ban', offlineName.trim(), offlineMode.value)
+            "
           >
             Ban
           </button>
           <button
             class="text-sm px-3 py-2 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50"
-            @click="sendRcon(`op ${offlineName.trim()}`)"
+            @click="
+              sendOfflineAction('op', offlineName.trim(), offlineMode.value)
+            "
           >
             Op
           </button>
           <button
             class="text-sm px-3 py-2 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
-            @click="sendRcon(`whitelist add ${offlineName.trim()}`)"
+            @click="
+              sendOfflineAction(
+                'whitelist',
+                offlineName.trim(),
+                offlineMode.value,
+              )
+            "
           >
             Whitelist
           </button>
           <button
             class="text-sm px-3 py-2 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
-            @click="sendRcon(`pardon ${offlineName.trim()}`)"
+            @click="
+              sendOfflineAction('unban', offlineName.trim(), offlineMode.value)
+            "
           >
             Unban
           </button>
@@ -555,6 +579,7 @@ const eventLog = ref<PlayerEvent[]>([]);
 const allPlayers = ref<AllTimePlayer[]>([]);
 const searchQuery = ref("");
 const offlineName = ref("");
+const offlineMode = ref(false);
 
 const wsStatus = ref("Connecting...");
 
@@ -860,6 +885,7 @@ const modalOpen = ref(false);
 const modalAction = ref<"kick" | "ban" | null>(null);
 const modalTarget = ref("");
 const modalReason = ref("");
+const modalOffline = ref(false);
 
 const modalTitle = computed(() =>
   modalAction.value === "kick" ? "Kick Player" : "Ban Player",
@@ -880,10 +906,35 @@ async function sendRcon(command: string) {
   }
 }
 
-function openReasonModal(action: "kick" | "ban", target: string) {
+async function sendOfflineAction(
+  action: string,
+  name: string,
+  offline: boolean,
+  reason?: string,
+) {
+  try {
+    await $fetch(`/servers/${serverId}/offline-action`, {
+      baseURL: apiBase,
+      method: "POST",
+      credentials: "include",
+      body: { action, name, offline, reason },
+    });
+    showToast("success", "Action sent", { description: `${action} ${name}` });
+  } catch (err: any) {
+    const msg = err?.data?.detail || err?.message || "Action failed";
+    showToast("error", "Action failed", { description: msg });
+  }
+}
+
+function openReasonModal(
+  action: "kick" | "ban",
+  target: string,
+  offline = false,
+) {
   modalAction.value = action;
   modalTarget.value = target;
   modalReason.value = "";
+  modalOffline.value = offline;
   modalOpen.value = true;
 }
 
@@ -892,6 +943,7 @@ function closeModal() {
   modalAction.value = null;
   modalTarget.value = "";
   modalReason.value = "";
+  modalOffline.value = false;
 }
 
 function confirmModal() {
@@ -902,6 +954,16 @@ function confirmModal() {
     closeModal();
     return;
   }
+  closeModal();
+  if (modalOffline.value) {
+    sendOfflineAction(
+      action === "kick" ? "kick" : "ban",
+      target,
+      true,
+      reason || undefined,
+    );
+    return;
+  }
   const cmd =
     action === "kick"
       ? reason
@@ -910,7 +972,6 @@ function confirmModal() {
       : reason
         ? `ban ${target} ${reason}`
         : `ban ${target}`;
-  closeModal();
   sendRcon(cmd);
 }
 
