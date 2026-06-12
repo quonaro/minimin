@@ -139,6 +139,7 @@ type MetricsPayload struct {
 	RAMUsage  uint64    `json:"ramUsage"`
 	RAMLimit  uint64    `json:"ramLimit"`
 	CPU       float64   `json:"cpu"`
+	CPUs      float64   `json:"cpus"`
 	Online    int       `json:"online"`
 	Max       int       `json:"max"`
 	TPS       *float64  `json:"tps,omitempty"`

@@ -13,7 +13,13 @@ func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec := newResponseRecorder(w)
 		next.ServeHTTP(rec, r)
-		slog.Info(fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, rec.status))
+		slog.Info("http request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rec.status,
+			"remote_addr", r.RemoteAddr,
+			"user_agent", r.UserAgent(),
+		)
 	})
 }
 

@@ -15,6 +15,12 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("POST /api/auth/login", h.Login)
 	mux.HandleFunc("POST /api/auth/logout", h.Logout)
 
+	// Health check (no auth required)
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
 	// Versions (no auth required — read-only public data)
 	mux.HandleFunc("GET /api/versions", h.HandleGetVersions)
 

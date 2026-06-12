@@ -580,6 +580,7 @@ func StartServerContainer(
 		WithEnv("VERSION", gameVersion).
 		WithEnv("UID", strconv.Itoa(uid)).
 		WithEnv("GID", strconv.Itoa(gid)).
+		WithEnv("OVERRIDE_SERVER_PROPERTIES", "false").
 		WithVolume(dockerHostPath, "/data").
 		WithRcon(rconPassword, rconHostPort, publicRcon).
 		WithLabel(LabelManaged, "mc-agent").

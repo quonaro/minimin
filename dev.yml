@@ -20,17 +20,15 @@ services:
     networks:
     - mc-agent-mesh
     healthcheck:
-      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8081/api/versions || exit 1" ]
-      interval: 5s
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8081/healthz || exit 1" ]
+      interval: 30s
       timeout: 5s
-      retries: 12
-      start_period: 60s
+      retries: 3
+      start_period: 30s
     command: >
       sh -c "
-        apk add --no-cache git &&
-        go install github.com/air-verse/air@latest &&
-        go mod download &&
-        go build -o /tmp/warm ./cmd/main.go &&
+        which git >/dev/null || apk add --no-cache git &&
+        which air >/dev/null || go install github.com/air-verse/air@latest &&
         air
       "
 
@@ -56,7 +54,7 @@ services:
     command: >
       sh -c "
         corepack enable &&
-        pnpm install &&
+        [ -d node_modules ] || pnpm install &&
         pnpm run dev --host
       "
 

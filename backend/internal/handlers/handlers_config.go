@@ -87,7 +87,7 @@ func UpdateProperties(path string, updates map[string]any) error {
 	if err == nil {
 		lines = strings.Split(string(data), "\n")
 	}
-	updated := make(map[string]bool)
+	keyIndex := make(map[string]int)
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "#") || trimmed == "" {
@@ -98,13 +98,14 @@ func UpdateProperties(path string, updates map[string]any) error {
 			continue
 		}
 		key := strings.TrimSpace(parts[0])
-		if val, ok := updates[key]; ok {
-			lines[i] = fmt.Sprintf("%s=%v", key, val)
-			updated[key] = true
+		if _, exists := keyIndex[key]; !exists {
+			keyIndex[key] = i
 		}
 	}
 	for k, v := range updates {
-		if !updated[k] {
+		if idx, exists := keyIndex[k]; exists {
+			lines[idx] = fmt.Sprintf("%s=%v", k, v)
+		} else {
 			lines = append(lines, fmt.Sprintf("%s=%v", k, v))
 		}
 	}

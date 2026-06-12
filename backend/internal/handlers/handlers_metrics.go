@@ -39,6 +39,7 @@ type MetricsPoller struct {
 	h         *Handler
 	interval  time.Duration
 	prevStats map[string]container.StatsResponse // keyed by containerID
+	rconCache map[string]*runner.RCONClient      // keyed by serverID
 	mu        sync.Mutex
 }
 
@@ -48,6 +49,7 @@ func NewMetricsPoller(h *Handler) *MetricsPoller {
 		h:         h,
 		interval:  2 * time.Second,
 		prevStats: make(map[string]container.StatsResponse),
+		rconCache: make(map[string]*runner.RCONClient),
 	}
 }
 
@@ -55,6 +57,7 @@ func NewMetricsPoller(h *Handler) *MetricsPoller {
 func (p *MetricsPoller) Start(ctx context.Context) {
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
+	defer p.closeAllRCON()
 	for {
 		select {
 		case <-ctx.Done():
@@ -68,12 +71,14 @@ func (p *MetricsPoller) Start(ctx context.Context) {
 func (p *MetricsPoller) poll(ctx context.Context) {
 	servers := p.h.Instance.All()
 	runningIDs := make(map[string]bool, len(servers))
+	runningServerIDs := make(map[string]bool, len(servers))
 
 	for _, s := range servers {
 		if s.ContainerID == "" || s.ContainerStatus != "running" {
 			continue
 		}
 		runningIDs[s.ContainerID] = true
+		runningServerIDs[s.ServerID] = true
 
 		statsReader, err := p.h.Cli.ContainerStats(ctx, s.ContainerID, false)
 		if err != nil {
@@ -121,26 +126,20 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 
 		if s.ServerStatus == "running" {
 			addr := fmt.Sprintf("mc-srv-%s:25575", s.ServerID)
-			rconClient, err := runner.DialRCON(addr, s.RconPassword, 3*time.Second)
-			if err != nil {
-				slog.Warn("metrics poll: rcon dial failed", "server", s.ServerID, "error", err)
+			resp, rconErr := p.executeOrReconnect(s.ServerID, addr, s.RconPassword, "list")
+			if rconErr != nil {
+				slog.Warn("metrics poll: rcon list failed", "server", s.ServerID, "error", rconErr)
 			} else {
-				resp, rconErr := rconClient.Execute("list")
-				if rconErr != nil {
-					slog.Warn("metrics poll: rcon list failed", "server", s.ServerID, "error", rconErr)
-				} else {
-					online, maxPlayers, _ = parseListResponse(resp)
-					if maxPlayers == 0 {
-						slog.Warn("metrics poll: list response unparsed", "server", s.ServerID, "response", resp)
-					}
+				online, maxPlayers, _ = parseListResponse(resp)
+				if maxPlayers == 0 {
+					slog.Warn("metrics poll: list response unparsed", "server", s.ServerID, "response", resp)
 				}
-				tpsResp, tpsErr := rconClient.Execute("tps")
-				if tpsErr != nil {
-					slog.Warn("metrics poll: rcon tps failed", "server", s.ServerID, "error", tpsErr)
-				} else {
-					tps = parseTPSOutput(tpsResp)
-				}
-				_ = rconClient.Close()
+			}
+			tpsResp, tpsErr := p.executeOrReconnect(s.ServerID, addr, s.RconPassword, "tps")
+			if tpsErr != nil {
+				slog.Warn("metrics poll: rcon tps failed", "server", s.ServerID, "error", tpsErr)
+			} else {
+				tps = parseTPSOutput(tpsResp)
 			}
 		}
 
@@ -149,6 +148,7 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 			RAMUsage:  ramUsage,
 			RAMLimit:  ramLimit,
 			CPU:       cpuPercent,
+			CPUs:      s.CPUs,
 			Online:    online,
 			Max:       maxPlayers,
 			TPS:       tps,
@@ -160,12 +160,75 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 		}
 	}
 
-	// Clean up stale entries for containers that are no longer running.
+	// Clean up stale entries for containers/servers that are no longer running.
 	p.mu.Lock()
 	for cid := range p.prevStats {
 		if !runningIDs[cid] {
 			delete(p.prevStats, cid)
 		}
 	}
+	for sid, client := range p.rconCache {
+		if !runningServerIDs[sid] {
+			_ = client.Close()
+			delete(p.rconCache, sid)
+		}
+	}
 	p.mu.Unlock()
+}
+
+func (p *MetricsPoller) closeAllRCON() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for _, client := range p.rconCache {
+		_ = client.Close()
+	}
+	p.rconCache = make(map[string]*runner.RCONClient)
+}
+
+func (p *MetricsPoller) getRCONClient(serverID, addr, password string) (*runner.RCONClient, error) {
+	p.mu.Lock()
+	if client, ok := p.rconCache[serverID]; ok {
+		p.mu.Unlock()
+		return client, nil
+	}
+	p.mu.Unlock()
+
+	client, err := runner.DialRCON(addr, password, 3*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	p.mu.Lock()
+	if existing, ok := p.rconCache[serverID]; ok {
+		p.mu.Unlock()
+		_ = client.Close()
+		return existing, nil
+	}
+	p.rconCache[serverID] = client
+	p.mu.Unlock()
+	return client, nil
+}
+
+func (p *MetricsPoller) executeOrReconnect(serverID, addr, password, cmd string) (string, error) {
+	client, err := p.getRCONClient(serverID, addr, password)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Execute(cmd)
+	if err != nil {
+		_ = client.Close()
+		p.mu.Lock()
+		delete(p.rconCache, serverID)
+		p.mu.Unlock()
+
+		client, err = runner.DialRCON(addr, password, 3*time.Second)
+		if err != nil {
+			return "", err
+		}
+		p.mu.Lock()
+		p.rconCache[serverID] = client
+		p.mu.Unlock()
+		return client.Execute(cmd)
+	}
+	return resp, nil
 }

@@ -192,7 +192,7 @@ func main() {
 							s.ServerStartedAt = time.Now().UTC()
 							instance.Set(s)
 							_ = instance.Save()
-							slog.Info("server ready", "server_id", s.ServerID, "status", s.ServerStatus)
+							slog.Info("server ready", "server_id", s.ServerID, "status", s.ServerStatus, "volume_path", s.VolumePath)
 						}
 					} else {
 						failures[s.ServerID]++

@@ -703,28 +703,6 @@
               />
             </svg>
           </div>
-          <!-- TPS -->
-          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-              TPS
-            </div>
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{
-                latestMetric && latestMetric.tps != null
-                  ? latestMetric.tps.toFixed(1)
-                  : "—"
-              }}
-            </div>
-            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="text-amber-500"
-                :points="sparklinePoints(serverMetrics, 'tps')"
-              />
-            </svg>
-          </div>
         </div>
       </div>
 
@@ -986,9 +964,14 @@ function formatBytes(bytes: number): string {
 
 function sparklinePoints(
   data: MetricsPayload[],
-  key: "ramUsage" | "cpu" | "online" | "tps",
+  key: "ramUsage" | "cpu" | "online",
 ): string {
-  const values = data.map((d) => (d as any)[key] ?? 0);
+  let values: number[];
+  if (key === "online") {
+    values = data.map((d) => (d.max > 0 ? (d.online / d.max) * 100 : 0));
+  } else {
+    values = data.map((d) => (d as any)[key] ?? 0);
+  }
   if (values.length < 2) return "";
   const max = Math.max(...values, 0.001);
   const min = Math.min(...values);
