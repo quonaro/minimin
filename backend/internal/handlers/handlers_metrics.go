@@ -46,7 +46,7 @@ type MetricsPoller struct {
 func NewMetricsPoller(h *Handler) *MetricsPoller {
 	return &MetricsPoller{
 		h:         h,
-		interval:  5 * time.Second,
+		interval:  2 * time.Second,
 		prevStats: make(map[string]container.StatsResponse),
 	}
 }

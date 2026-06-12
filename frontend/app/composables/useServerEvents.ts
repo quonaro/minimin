@@ -157,8 +157,8 @@ function initEventSource() {
       if (!m.serverId) return;
       const arr = metricsMap.value[m.serverId] || [];
       arr.push(m);
-      // cap at ~720 points (approx 1h @ 5s interval)
-      if (arr.length > 720) {
+      // cap at ~1800 points (approx 1h @ 2s interval)
+      if (arr.length > 1800) {
         arr.shift();
       }
       metricsMap.value[m.serverId] = arr;

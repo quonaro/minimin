@@ -119,6 +119,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		"",
 		worldGenEnv,
 		req.RestartPolicy,
+		h.NetworkName,
 	)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)

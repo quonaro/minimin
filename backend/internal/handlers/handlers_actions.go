@@ -92,6 +92,7 @@ func (h *Handler) doStart(id string) {
 			s.VolumePath,
 			nil,
 			s.RestartPolicy,
+			h.NetworkName,
 		)
 		if err != nil {
 			slog.Error("failed to start server container", "server_id", id, "error", err)

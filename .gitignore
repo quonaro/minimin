@@ -18,6 +18,8 @@ frontend/.nuxt/
 frontend/.output/
 frontend/.nitro/
 frontend/.cache/
+frontend/.pnpm-store/
+
 
 # Environment
 .env

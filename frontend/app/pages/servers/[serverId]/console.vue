@@ -414,13 +414,16 @@ function connect() {
     oldWs.close();
   }
   const config = useRuntimeConfig();
-  const base = (config.public.apiBase as string) || "http://localhost:8081";
+  const wsBaseRaw = (config.public.wsBase as string) || "";
+  const apiBase = (config.public.apiBase as string) || "http://localhost:8081";
   let wsBase: string;
-  if (base.startsWith("/")) {
+  if (wsBaseRaw) {
+    wsBase = wsBaseRaw;
+  } else if (apiBase.startsWith("/")) {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    wsBase = `${proto}//${window.location.host}${base === "/" ? "" : base}`;
+    wsBase = `${proto}//${window.location.host}${apiBase === "/" ? "" : apiBase}`;
   } else {
-    wsBase = base.replace(/^http/, "ws");
+    wsBase = apiBase.replace(/^http/, "ws");
   }
   const token = useCookie("auth_token").value || "";
   const url = `${wsBase}/ws/servers/${serverId}/rcon?token=${encodeURIComponent(token)}`;

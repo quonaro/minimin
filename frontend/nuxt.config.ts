@@ -30,10 +30,11 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      apiBase: process.env.API_BASE_URL || 'http://localhost:8081'
+      apiBase: process.env.API_BASE_URL || 'http://localhost:8081',
+      wsBase: process.env.WS_BASE_URL || ''
     }
   },
   nitro: {
-    // Proxy is handled by server/middleware/proxy.ts
-  }
+    // Proxy is handled by server/middleware/proxy.ts (production)
+  },
 })

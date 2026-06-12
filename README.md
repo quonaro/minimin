@@ -35,9 +35,9 @@ A lightweight, web-based control panel for managing multiple Minecraft servers v
 git clone https://github.com/quonaro/minimin.git
 cd minimin
 
-# 2. Set a strong API key
-cp backend/.env.example .env
-# Edit .env and set ORCHESTRATOR_API_KEY
+# 2. Set a strong API key and host server directory
+cp backend/.env.example backend/.env
+# Edit backend/.env and set ORCHESTRATOR_API_KEY and MC_SERVERS_HOST_DIR
 
 # 3. Start the stack
 docker compose up -d
@@ -47,41 +47,37 @@ docker compose up -d
 
 ### Docker Compose
 
-| Service | Description |
-|---------|-------------|
-| `minimin` | Main container with Caddy (port 80) + Go backend (port 8081) |
+| Service   | Description                                                         |
+| --------- | ------------------------------------------------------------------- |
+| `minimin` | Main container with Caddy (port 80) + Go backend (port 8081)        |
 | `volumes` | `instance` — state file (`instance.yml`), `./servers` — server data |
-| `ports` | `8080:80` — web UI and API |
+| `ports`   | `8080:80` — web UI and API                                          |
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ORCHESTRATOR_API_KEY` | *(required)* | Secret key for authentication |
-| `ORCHESTRATOR_LOG_LEVEL` | `info` | Backend log level: `debug`, `info`, `warn`, `error` |
-| `MC_SERVERS_DIR` | `/app/servers` | Directory for server data |
-| `MC_INSTANCE_FILE` | `/app/instance.yml` | Path to state file |
+| Variable                 | Default             | Description                                         |
+| ------------------------ | ------------------- | --------------------------------------------------- |
+| `ORCHESTRATOR_API_KEY`   | _(required)_        | Secret key for authentication                       |
+| `ORCHESTRATOR_LOG_LEVEL` | `info`              | Backend log level: `debug`, `info`, `warn`, `error` |
+| `MC_SERVERS_DIR`         | `/app/servers`      | Directory for server data inside the container      |
+| `MC_SERVERS_HOST_DIR`    | _(required)_        | Absolute host path that maps to `MC_SERVERS_DIR`    |
+| `MC_INSTANCE_FILE`       | `/app/instance.yml` | Path to state file                                  |
 
 ## Development
 
-### Backend
+The project runs exclusively inside Docker. Use `dev.yml` for hot-reload development.
 
 ```bash
-cd backend
-go run ./cmd/main.go
+# 1. Ensure backend/.env exists with ORCHESTRATOR_API_KEY and MC_SERVERS_HOST_DIR
+# 2. Export the same host directory for the compose file
+export MC_SERVERS_HOST_DIR=/absolute/path/to/servers
+
+# 3. Start dev stack
+docker compose -f dev.yml up
+
+# 4. Open frontend at http://localhost:3000
+#    Backend API is available at http://localhost:8081
 ```
-
-Requires Go 1.26+ and Docker.
-
-### Frontend
-
-```bash
-cd frontend
-pnpm install
-pnpm dev
-```
-
-Requires Node.js 22+ and pnpm.
 
 ## Building
 
@@ -90,6 +86,7 @@ docker build -t minimin .
 ```
 
 Multi-stage build:
+
 1. `frontend-builder` — installs npm deps and generates static SPA
 2. `backend-builder` — compiles Go binary
 3. `runtime` — Alpine Linux with Caddy + supervisor

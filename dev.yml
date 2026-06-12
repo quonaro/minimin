@@ -1,0 +1,72 @@
+services:
+  backend:
+    image: golang:alpine
+    container_name: minimin-backend-dev
+    working_dir: /app
+    volumes:
+    - ./backend:/app
+    - ./servers:/app/servers
+    - ./data:/app/data
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - go-bin:/go/bin
+    - go-mod-cache:/go/pkg/mod
+    - go-build-cache:/root/.cache/go-build
+    env_file:
+    - backend/.env
+    environment:
+    - MC_SERVERS_HOST_DIR=/srv/projects/my/minecraft/minimin/servers
+    ports:
+    - "8081:8081"
+    networks:
+    - mc-agent-mesh
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8081/api/versions || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    command: >
+      sh -c "
+        apk add --no-cache git &&
+        go install github.com/air-verse/air@latest &&
+        go mod download &&
+        go build -o /tmp/warm ./cmd/main.go &&
+        air
+      "
+
+  frontend:
+    image: node:22-alpine
+    container_name: minimin-frontend-dev
+    working_dir: /app/frontend
+    volumes:
+    - ./frontend:/app/frontend
+    - pnpm-store:/root/.local/share/pnpm/store/v3
+    environment:
+    - CI=true
+    - BACKEND_URL=http://backend:8081
+    - API_BASE_URL=http://localhost:3000
+    - WS_BASE_URL=ws://localhost:8081
+    ports:
+    - "3000:3000"
+    networks:
+    - mc-agent-mesh
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "
+        corepack enable &&
+        pnpm install &&
+        pnpm run dev --host
+      "
+
+volumes:
+  pnpm-store:
+  go-bin:
+  go-mod-cache:
+  go-build-cache:
+
+
+networks:
+  mc-agent-mesh:
+    name: mc-agent-mesh

@@ -22,6 +22,7 @@ type Handler struct {
 	ModUploadMaxMB int
 	ModrinthClient *modrinth.Client
 	EventsHub      *events.Hub
+	NetworkName    string
 }
 
 // NewHandler creates a new Handler.

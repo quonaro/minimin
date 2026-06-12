@@ -13,15 +13,13 @@ import (
 
 // PingServer performs a lightweight Minecraft Server List Ping on the given host:port.
 // It returns true if the server responds with a valid status JSON containing a version object.
-// TryPingServer attempts to ping a Minecraft server from either the host (dev mode)
-// or from inside the minimin Docker container. It first tries 127.0.0.1:hostPort,
-// then mc-srv-<serverID>:25565 (internal Docker network port).
+// TryPingServer attempts to ping a Minecraft server from inside the minimin Docker
+// container via the internal Docker network (mc-srv-<serverID>:25565).
 func TryPingServer(serverID string, hostPort uint16, timeout time.Duration) (bool, error) {
 	candidates := []struct {
 		host string
 		port uint16
 	}{
-		{"127.0.0.1", hostPort},
 		{fmt.Sprintf("mc-srv-%s", serverID), 25565},
 	}
 	var lastErr error

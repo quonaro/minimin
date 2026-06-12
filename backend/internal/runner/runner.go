@@ -47,6 +47,118 @@ func ContainerUIDGID() (int, int) {
 	return uid, gid
 }
 
+// OwnContainerID tries to determine the current container ID from cgroup or mountinfo.
+func OwnContainerID() (string, error) {
+	// Try cgroup v1 / v2 via /proc/self/cgroup
+	data, err := os.ReadFile("/proc/self/cgroup")
+	if err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			parts := strings.SplitN(line, ":", 3)
+			if len(parts) < 3 {
+				continue
+			}
+			path := strings.TrimSpace(parts[2])
+			// cgroup v1: /docker/<id>
+			if idx := strings.LastIndex(path, "/docker/"); idx != -1 {
+				id := strings.TrimSpace(path[idx+len("/docker/"):])
+				if id != "" {
+					return id, nil
+				}
+			}
+			// containerd: /containerd/<id>
+			if idx := strings.LastIndex(path, "/containerd/"); idx != -1 {
+				id := strings.TrimSpace(path[idx+len("/containerd/"):])
+				if id != "" {
+					return id, nil
+				}
+			}
+			// cgroup v2 with systemd: 0::/system.slice/docker-<id>.scope
+			if idx := strings.LastIndex(path, "docker-"); idx != -1 {
+				rest := path[idx+len("docker-"):]
+				if end := strings.IndexAny(rest, ". \t\n"); end != -1 {
+					rest = rest[:end]
+				}
+				if rest != "" {
+					return rest, nil
+				}
+			}
+			// cgroup v2: 0::/docker/<id>
+			if idx := strings.LastIndex(path, "/docker/"); idx != -1 {
+				id := strings.TrimSpace(path[idx+len("/docker/"):])
+				if id != "" {
+					return id, nil
+				}
+			}
+		}
+	}
+
+	// Fallback: /proc/self/mountinfo overlay path
+	data, err = os.ReadFile("/proc/self/mountinfo")
+	if err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			if strings.Contains(line, "overlay") && strings.Contains(line, "/var/lib/docker/") {
+				parts := strings.Split(line, "/")
+				for i, p := range parts {
+					if p == "overlay2" || p == "overlay" {
+						if i+1 < len(parts) {
+							id := strings.TrimSpace(parts[i+1])
+							if id != "" && id != "merged" {
+								return id, nil
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback: Docker sets hostname to the container ID (or name) by default.
+	// Docker's ContainerInspect accepts names, short IDs and long IDs.
+	if h, err := os.Hostname(); err == nil && h != "" {
+		return h, nil
+	}
+
+	return "", fmt.Errorf("could not determine container ID; is this running inside Docker?")
+}
+
+// OwnNetworkName inspects the current container and returns the name of the first attached network.
+func OwnNetworkName(ctx context.Context, cli *client.Client) (string, error) {
+	id, err := OwnContainerID()
+	if err != nil {
+		return "", err
+	}
+
+	info, err := cli.ContainerInspect(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect own container %s: %w", id, err)
+	}
+
+	for name := range info.NetworkSettings.Networks {
+		if name != "" {
+			return name, nil
+		}
+	}
+
+	return "", fmt.Errorf("own container %s has no attached networks", id)
+}
+
+// ValidateDockerEnvironment checks that the backend is running inside a Docker container
+// and returns the name of the network it should use for spawned server containers.
+func ValidateDockerEnvironment(ctx context.Context, cli *client.Client) (string, error) {
+	// Quick heuristic for older Docker runtimes
+	if _, err := os.Stat("/.dockerenv"); os.IsNotExist(err) {
+		// Missing .dockerenv does not prove we are outside Docker, but OwnNetworkName
+		// will fail anyway if we cannot determine the container ID.
+	}
+
+	netName, err := OwnNetworkName(ctx, cli)
+	if err != nil {
+		return "", fmt.Errorf("backend must run inside a Docker container: %w", err)
+	}
+
+	return netName, nil
+}
+
 // ContainerConfigBuilder assembles Docker container configuration via a fluent API.
 type ContainerConfigBuilder struct {
 	image         string
@@ -370,9 +482,6 @@ func FindFreePort(host string, preferred uint16) (uint16, error) {
 // hostPathForDocker translates a local path inside the backend container to the
 // corresponding host path so that Docker daemon binds the correct directory.
 func hostPathForDocker(localPath, serversDir, serversHostDir string) string {
-	if serversHostDir == "" || serversHostDir == serversDir {
-		return localPath
-	}
 	rel, err := filepath.Rel(serversDir, localPath)
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return localPath
@@ -398,11 +507,12 @@ func StartServerContainer(
 	existingVolumePath string,
 	worldGenEnv map[string]string,
 	restartPolicy string,
+	networkName string,
 ) (string, string, string, error) {
 	if err := PullImageIfNeeded(ctx, cli); err != nil {
 		return "", "", "", err
 	}
-	if err := EnsureNetwork(ctx, cli, NetworkName); err != nil {
+	if err := EnsureNetwork(ctx, cli, networkName); err != nil {
 		return "", "", "", err
 	}
 
@@ -465,7 +575,7 @@ func StartServerContainer(
 		WithEnv("MEMORY", memoryVal).
 		WithEnv("INIT_MEMORY", memoryVal).
 		WithPort(25565, gamePort, "0.0.0.0").
-		WithNetwork(NetworkName).
+		WithNetwork(networkName).
 		WithEnv("TYPE", engineType).
 		WithEnv("VERSION", gameVersion).
 		WithEnv("UID", strconv.Itoa(uid)).

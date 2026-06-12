@@ -2,10 +2,11 @@ import { defineEventHandler, getCookie, getRequestHeaders, send, sendStream, set
 
 export default defineEventHandler(async (event) => {
   const path = event.path
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8081'
 
   // Proxy /api/* requests to the backend (excluding Nitro's own /api routes)
   if (path.startsWith('/api/') && !path.startsWith('/api/_nitro')) {
-    const target = `http://localhost:8081${path}`
+    const target = `${backendUrl}${path}`
 
     // Forward relevant request headers
     const headers: Record<string, string> = {}

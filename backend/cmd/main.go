@@ -27,7 +27,11 @@ func main() {
 	apiBind := getEnv("ORCHESTRATOR_API_BIND", ":8081")
 	apiKey := getEnv("ORCHESTRATOR_API_KEY", "")
 	serversDir := getEnv("MC_SERVERS_DIR", "./servers")
-	serversHostDir := getEnv("MC_SERVERS_HOST_DIR", serversDir)
+	serversHostDir := os.Getenv("MC_SERVERS_HOST_DIR")
+	if serversHostDir == "" {
+		slog.Error("MC_SERVERS_HOST_DIR must be set")
+		os.Exit(1)
+	}
 	instanceFile := getEnv("MC_INSTANCE_FILE", "./instance.yml")
 	modUploadMaxMB := 1024
 	if v := os.Getenv("MC_MOD_UPLOAD_MAX_MB"); v != "" {
@@ -74,6 +78,13 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	networkName, err := runner.ValidateDockerEnvironment(ctx, cli)
+	if err != nil {
+		slog.Error("docker environment validation failed", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("using docker network", "name", networkName)
 
 	// Scan existing containers and import into instance.yml
 	slog.Info("scanning for managed containers")
@@ -147,6 +158,7 @@ func main() {
 	h.ServersHostDir = serversHostDir
 	h.ModUploadMaxMB = modUploadMaxMB
 	h.EventsHub = hub
+	h.NetworkName = networkName
 	router := routes.SetupRoutes(h, apiKey)
 
 	// Background metrics poller
