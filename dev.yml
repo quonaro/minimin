@@ -1,7 +1,9 @@
 services:
   backend:
-    image: golang:alpine
-    container_name: minimin-backend-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-dev
     working_dir: /app
     volumes:
     - ./backend:/app
@@ -19,44 +21,22 @@ services:
     - "8081:8081"
     networks:
     - mc-agent-mesh
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8081/healthz || exit 1" ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    command: >
-      sh -c "
-        which git >/dev/null || apk add --no-cache git &&
-        which air >/dev/null || go install github.com/air-verse/air@latest &&
-        air
-      "
 
   frontend:
-    image: node:22-alpine
-    container_name: minimin-frontend-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-dev
     working_dir: /app/frontend
     volumes:
     - ./frontend:/app/frontend
     - pnpm-store:/root/.local/share/pnpm/store/v3
-    environment:
-    - CI=true
-    - BACKEND_URL=http://backend:8081
-    - API_BASE_URL=http://localhost:3000
-    - WS_BASE_URL=ws://localhost:8081
     ports:
     - "3000:3000"
     networks:
     - mc-agent-mesh
     depends_on:
-      backend:
-        condition: service_healthy
-    command: >
-      sh -c "
-        corepack enable &&
-        [ -d node_modules ] || pnpm install &&
-        pnpm run dev --host
-      "
+    - backend
 
 volumes:
   pnpm-store:

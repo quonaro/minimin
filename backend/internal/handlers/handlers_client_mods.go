@@ -312,13 +312,14 @@ func (h *Handler) HandleMoveMod(w http.ResponseWriter, r *http.Request) {
 
 	filename := filepath.Base(req.Filename)
 	var srcDir, dstDir string
-	if req.Target == "client" {
+	switch req.Target {
+	case "client":
 		srcDir = serverDir
 		dstDir = clientDir
-	} else if req.Target == "server" {
+	case "server":
 		srcDir = clientDir
 		dstDir = serverDir
-	} else {
+	default:
 		jsonError(w, "target must be 'server' or 'client'", http.StatusBadRequest)
 		return
 	}
@@ -403,19 +404,21 @@ func (h *Handler) HandleCopyMod(w http.ResponseWriter, r *http.Request) {
 
 	filename := filepath.Base(req.Filename)
 	var srcDir, dstDir string
-	if req.Source == "server" {
+	switch req.Source {
+	case "server":
 		srcDir = serverDir
-	} else if req.Source == "client" {
+	case "client":
 		srcDir = clientDir
-	} else {
+	default:
 		jsonError(w, "source must be 'server' or 'client'", http.StatusBadRequest)
 		return
 	}
-	if req.Target == "server" {
+	switch req.Target {
+	case "server":
 		dstDir = serverDir
-	} else if req.Target == "client" {
+	case "client":
 		dstDir = clientDir
-	} else {
+	default:
 		jsonError(w, "target must be 'server' or 'client'", http.StatusBadRequest)
 		return
 	}

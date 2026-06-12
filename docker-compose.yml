@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: MiniMin
     ports:
-      - "8080:80"
+      - "8080:8081"
     volumes:
       - ./servers:/app/servers
       - ./data:/app/data

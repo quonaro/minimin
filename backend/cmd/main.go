@@ -16,6 +16,7 @@ import (
 	"orchestrator/internal/routes"
 	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
+	"orchestrator/internal/static"
 
 	"github.com/docker/docker/client"
 	"github.com/joho/godotenv"
@@ -160,6 +161,16 @@ func main() {
 	h.EventsHub = hub
 	h.NetworkName = networkName
 	router := routes.SetupRoutes(h, apiKey)
+
+	// Serve embedded SPA in production; nil in dev where web/ is empty.
+	if spa := static.SPAHandler(); spa != nil {
+		combined := http.NewServeMux()
+		combined.Handle("/api/", router)
+		combined.Handle("/ws/", router)
+		combined.Handle("/healthz", router)
+		combined.Handle("/", spa)
+		router = combined
+	}
 
 	// Background metrics poller
 	go handlers.NewMetricsPoller(h).Start(ctx)
