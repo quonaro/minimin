@@ -8,9 +8,45 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
+
+// modParseCacheKey uniquely identifies a parsed .jar by its path, size and mtime.
+type modParseCacheKey struct {
+	path  string
+	size  int64
+	mtime int64 // unix nano
+}
+
+var (
+	modParseCacheMu sync.RWMutex
+	modParseCache   = make(map[modParseCacheKey]*ModInfo)
+)
+
+// parseModInfoCached wraps ParseModInfo with a simple in-memory cache.
+// If the file hasn't changed (same path, size, mtime) the cached result is returned.
+func parseModInfoCached(path string, size int64, mtime time.Time) (*ModInfo, error) {
+	key := modParseCacheKey{path, size, mtime.UnixNano()}
+	modParseCacheMu.RLock()
+	if info, ok := modParseCache[key]; ok {
+		modParseCacheMu.RUnlock()
+		return info, nil
+	}
+	modParseCacheMu.RUnlock()
+
+	info, err := ParseModInfo(path, size)
+	if err != nil {
+		return nil, err
+	}
+
+	modParseCacheMu.Lock()
+	modParseCache[key] = info
+	modParseCacheMu.Unlock()
+	return info, nil
+}
 
 // ModInfo holds extracted metadata from a mod .jar file.
 type ModInfo struct {

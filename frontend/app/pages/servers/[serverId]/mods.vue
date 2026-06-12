@@ -736,8 +736,10 @@ async function handleGenerateArchive(
 onMounted(async () => {
   await fetchServerInfo();
   if (!serverEngine.value) return;
-  await refresh();
-  await refreshClient();
-  await modrinth.search(serverEngine.value, serverGameVersion.value);
+  await Promise.all([
+    refresh(),
+    refreshClient(),
+    modrinth.search(serverEngine.value, serverGameVersion.value),
+  ]);
 });
 </script>

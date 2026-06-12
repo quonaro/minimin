@@ -52,7 +52,7 @@ func (h *Handler) HandleListServerMods(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		modPath := filepath.Join(modsDir, e.Name())
-		modInfo, _ := ParseModInfo(modPath, info.Size())
+		modInfo, _ := parseModInfoCached(modPath, info.Size(), info.ModTime())
 		if modInfo != nil {
 			modInfo.Filename = e.Name()
 			modInfo.Enabled = !isDeactivated
@@ -180,7 +180,10 @@ func (h *Handler) GetServerModIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info, _ := ParseModInfo(modPath, 0)
+	var info *ModInfo
+	if fi, statErr := os.Stat(modPath); statErr == nil {
+		info, _ = parseModInfoCached(modPath, fi.Size(), fi.ModTime())
+	}
 
 	zr, err := zip.OpenReader(modPath)
 	if err != nil {
