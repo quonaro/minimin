@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"archive/zip"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -20,13 +21,9 @@ type ArchiveToken struct {
 	Token          string         `json:"token"`
 	ServerID       string         `json:"serverId"`
 	ServerName     string         `json:"serverName"`
-	ZipPath        string         `json:"zipPath"`
-	MrpackPath     string         `json:"mrpackPath"`
-	CurseForgePath string         `json:"curseForgePath"`
-	PrismPath      string         `json:"prismPath"`
+	Include        []string       `json:"include"`
 	ExpiresAt      time.Time      `json:"expiresAt"`
 	CreatedAt      time.Time      `json:"createdAt"`
-	Formats        []string       `json:"formats"`
 	DownloadCounts map[string]int `json:"downloadCounts"`
 	TotalDownloads int            `json:"totalDownloads"`
 }
@@ -36,26 +33,146 @@ var (
 	archiveTokensMu sync.RWMutex
 )
 
-func init() {
-	go cleanupExpiredArchives()
+type archiveMetaEntry struct {
+	Token          string         `json:"token"`
+	ServerID       string         `json:"serverId"`
+	ServerName     string         `json:"serverName"`
+	Include        []string       `json:"include"`
+	ExpiresAt      string         `json:"expiresAt"`
+	CreatedAt      string         `json:"createdAt"`
+	DownloadCounts map[string]int `json:"downloadCounts"`
+	TotalDownloads int            `json:"totalDownloads"`
 }
 
-func cleanupExpiredArchives() {
+func (a *ArchiveToken) toMetaEntry() archiveMetaEntry {
+	return archiveMetaEntry{
+		Token:          a.Token,
+		ServerID:       a.ServerID,
+		ServerName:     a.ServerName,
+		Include:        a.Include,
+		ExpiresAt:      a.ExpiresAt.Format(time.RFC3339),
+		CreatedAt:      a.CreatedAt.Format(time.RFC3339),
+		DownloadCounts: a.DownloadCounts,
+		TotalDownloads: a.TotalDownloads,
+	}
+}
+
+func entryToArchiveToken(e archiveMetaEntry) *ArchiveToken {
+	expiresAt, _ := time.Parse(time.RFC3339, e.ExpiresAt)
+	createdAt, _ := time.Parse(time.RFC3339, e.CreatedAt)
+	return &ArchiveToken{
+		Token:          e.Token,
+		ServerID:       e.ServerID,
+		ServerName:     e.ServerName,
+		Include:        e.Include,
+		ExpiresAt:      expiresAt,
+		CreatedAt:      createdAt,
+		DownloadCounts: e.DownloadCounts,
+		TotalDownloads: e.TotalDownloads,
+	}
+}
+
+func archiveMetaPath(volumePath string) string {
+	return filepath.Join(volumePath, ".webui-archive-meta.json")
+}
+
+func (h *Handler) loadServerArchiveMeta(volumePath string) []archiveMetaEntry {
+	data, err := os.ReadFile(archiveMetaPath(volumePath))
+	if err != nil {
+		return nil
+	}
+	var entries []archiveMetaEntry
+	_ = json.Unmarshal(data, &entries)
+	return entries
+}
+
+func (h *Handler) saveServerArchiveMeta(volumePath string, entries []archiveMetaEntry) {
+	path := archiveMetaPath(volumePath)
+	data, _ := json.MarshalIndent(entries, "", "  ")
+	_ = os.WriteFile(path, data, 0o644)
+}
+
+// InitArchives loads archive metadata from all server volumes on startup.
+func (h *Handler) InitArchives() {
+	archiveTokensMu.Lock()
+	defer archiveTokensMu.Unlock()
+
+	for _, s := range h.Instance.All() {
+		if s.VolumePath == "" {
+			continue
+		}
+		entries := h.loadServerArchiveMeta(s.VolumePath)
+		for _, e := range entries {
+			at := entryToArchiveToken(e)
+			archiveTokens[at.Token] = at
+		}
+	}
+}
+
+func (h *Handler) saveArchiveMeta(serverID string, archive *ArchiveToken) {
+	s, ok := h.Instance.Get(serverID)
+	if !ok || s.VolumePath == "" {
+		return
+	}
+	entries := h.loadServerArchiveMeta(s.VolumePath)
+	found := false
+	for i, e := range entries {
+		if e.Token == archive.Token {
+			entries[i] = archive.toMetaEntry()
+			found = true
+			break
+		}
+	}
+	if !found {
+		entries = append(entries, archive.toMetaEntry())
+	}
+	h.saveServerArchiveMeta(s.VolumePath, entries)
+}
+
+func (h *Handler) removeArchiveMeta(serverID, token string) {
+	s, ok := h.Instance.Get(serverID)
+	if !ok || s.VolumePath == "" {
+		return
+	}
+	entries := h.loadServerArchiveMeta(s.VolumePath)
+	filtered := entries[:0]
+	for _, e := range entries {
+		if e.Token != token {
+			filtered = append(filtered, e)
+		}
+	}
+	h.saveServerArchiveMeta(s.VolumePath, filtered)
+}
+
+func (h *Handler) cleanupExpiredArchives() {
+	archiveTokensMu.Lock()
+	now := time.Now()
+	type del struct{ token, serverID string }
+	var toDelete []del
+	for token, entry := range archiveTokens {
+		if now.After(entry.ExpiresAt) {
+			delete(archiveTokens, token)
+			toDelete = append(toDelete, del{token, entry.ServerID})
+		}
+	}
+	archiveTokensMu.Unlock()
+
+	for _, d := range toDelete {
+		h.removeArchiveMeta(d.serverID, d.token)
+	}
+}
+
+// StartArchiveCleanup runs a background ticker that removes expired archives.
+func (h *Handler) StartArchiveCleanup(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	for range ticker.C {
-		archiveTokensMu.Lock()
-		now := time.Now()
-		for token, entry := range archiveTokens {
-			if now.After(entry.ExpiresAt) {
-				_ = os.Remove(entry.ZipPath)
-				_ = os.Remove(entry.MrpackPath)
-				_ = os.Remove(entry.CurseForgePath)
-				_ = os.Remove(entry.PrismPath)
-				delete(archiveTokens, token)
-			}
+	for {
+		select {
+		case <-ticker.C:
+			h.cleanupExpiredArchives()
+		case <-ctx.Done():
+			return
 		}
-		archiveTokensMu.Unlock()
 	}
 }
 
@@ -98,6 +215,39 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	}
 	formats := []string{"zip", "mrpack", "curseforge", "prism"}
 
+	token := generateToken()
+	expiresAt := time.Now().Add(time.Duration(req.TTL) * time.Hour)
+
+	archive := &ArchiveToken{
+		Token:          token,
+		ServerID:       id,
+		ServerName:     s.ServerID,
+		Include:        req.Include,
+		ExpiresAt:      expiresAt,
+		CreatedAt:      time.Now(),
+		DownloadCounts: make(map[string]int),
+	}
+
+	archiveTokensMu.Lock()
+	archiveTokens[token] = archive
+	archiveTokensMu.Unlock()
+
+	h.saveArchiveMeta(id, archive)
+
+	jsonResponse(w, map[string]any{
+		"token":      token,
+		"expiresAt":  expiresAt.Format(time.RFC3339),
+		"serverName": s.ServerID,
+		"formats":    formats,
+	})
+}
+
+func (h *Handler) collectClientFiles(serverID string, include []string) (map[string][]string, error) {
+	s, ok := h.Instance.Get(serverID)
+	if !ok || s.VolumePath == "" {
+		return nil, fmt.Errorf("server volume not initialized")
+	}
+
 	typeDirMap := map[string]string{
 		"mods":          filepath.Join(s.VolumePath, "mods-client"),
 		"resourcepacks": filepath.Join(s.VolumePath, "resourcepacks"),
@@ -110,7 +260,7 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	}
 
 	filesByType := make(map[string][]string)
-	for _, t := range req.Include {
+	for _, t := range include {
 		dir, ok := typeDirMap[t]
 		if !ok {
 			continue
@@ -121,8 +271,7 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 			if os.IsNotExist(err) {
 				continue
 			}
-			jsonError(w, fmt.Sprintf("failed to read %s directory", t), http.StatusInternalServerError)
-			return
+			return nil, fmt.Errorf("failed to read %s directory: %w", t, err)
 		}
 		for _, e := range entries {
 			if e.IsDir() {
@@ -136,79 +285,13 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(filesByType) == 0 {
-		jsonError(w, "no files found for selected types", http.StatusNotFound)
-		return
+		return nil, fmt.Errorf("no files found for selected types")
 	}
-
-	tmpDir := filepath.Join(os.TempDir(), "webui-archives")
-	_ = os.MkdirAll(tmpDir, 0o755)
-
-	token := generateToken()
-	expiresAt := time.Now().Add(time.Duration(req.TTL) * time.Hour)
-
-	archive := &ArchiveToken{
-		Token:          token,
-		ServerID:       id,
-		ServerName:     s.ServerID,
-		ExpiresAt:      expiresAt,
-		CreatedAt:      time.Now(),
-		Formats:        formats,
-		DownloadCounts: make(map[string]int),
-	}
-
-	for _, format := range formats {
-		switch format {
-		case "zip":
-			zipPath := filepath.Join(tmpDir, token+".zip")
-			if err := createZipArchive(zipPath, filesByType); err != nil {
-				jsonError(w, fmt.Sprintf("failed to create zip: %v", err), http.StatusInternalServerError)
-				return
-			}
-			archive.ZipPath = zipPath
-		case "mrpack":
-			mrpackPath := filepath.Join(tmpDir, token+".mrpack")
-			if err := createMrpackArchive(mrpackPath, s.ServerID, filesByType); err != nil {
-				jsonError(w, fmt.Sprintf("failed to create mrpack: %v", err), http.StatusInternalServerError)
-				return
-			}
-			archive.MrpackPath = mrpackPath
-		case "curseforge":
-			cfPath := filepath.Join(tmpDir, token+"-curseforge.zip")
-			if err := createCurseForgeArchive(cfPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, filesByType); err != nil {
-				jsonError(w, fmt.Sprintf("failed to create curseforge archive: %v", err), http.StatusInternalServerError)
-				return
-			}
-			archive.CurseForgePath = cfPath
-		case "prism":
-			prismPath := filepath.Join(tmpDir, token+"-prism.zip")
-			if err := createPrismArchive(prismPath, s.ServerID, s.GameVersion, s.EngineType, s.LoaderVersion, filesByType); err != nil {
-				jsonError(w, fmt.Sprintf("failed to create prism archive: %v", err), http.StatusInternalServerError)
-				return
-			}
-			archive.PrismPath = prismPath
-		}
-	}
-
-	archiveTokensMu.Lock()
-	archiveTokens[token] = archive
-	archiveTokensMu.Unlock()
-
-	jsonResponse(w, map[string]any{
-		"token":      token,
-		"expiresAt":  expiresAt.Format(time.RFC3339),
-		"serverName": s.ServerID,
-		"formats":    formats,
-	})
+	return filesByType, nil
 }
 
-func createZipArchive(zipPath string, filesByType map[string][]string) error {
-	zf, err := os.Create(zipPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = zf.Close() }()
-
-	zw := zip.NewWriter(zf)
+func createZipArchive(w io.Writer, filesByType map[string][]string) error {
+	zw := zip.NewWriter(w)
 	defer func() { _ = zw.Close() }()
 
 	zipDirMap := map[string]string{
@@ -231,7 +314,7 @@ func createZipArchive(zipPath string, filesByType map[string][]string) error {
 			header.Name = prefix + filepath.Base(path)
 			header.Method = zip.Deflate
 
-			w, err := zw.CreateHeader(header)
+			entry, err := zw.CreateHeader(header)
 			if err != nil {
 				continue
 			}
@@ -239,21 +322,15 @@ func createZipArchive(zipPath string, filesByType map[string][]string) error {
 			if err != nil {
 				continue
 			}
-			_, _ = io.Copy(w, f)
+			_, _ = io.Copy(entry, f)
 			_ = f.Close()
 		}
 	}
 	return nil
 }
 
-func createMrpackArchive(mrpackPath, packName string, filesByType map[string][]string) error {
-	zf, err := os.Create(mrpackPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = zf.Close() }()
-
-	zw := zip.NewWriter(zf)
+func createMrpackArchive(w io.Writer, packName string, filesByType map[string][]string) error {
+	zw := zip.NewWriter(w)
 	defer func() { _ = zw.Close() }()
 
 	type mrpackFile struct {
@@ -291,11 +368,6 @@ func createMrpackArchive(mrpackPath, packName string, filesByType map[string][]s
 			if err != nil {
 				continue
 			}
-			f, err := os.Open(path)
-			if err != nil {
-				continue
-			}
-			_ = f.Close()
 
 			index.Files = append(index.Files, mrpackFile{
 				Path:   prefix + name,
@@ -304,36 +376,30 @@ func createMrpackArchive(mrpackPath, packName string, filesByType map[string][]s
 			})
 
 			header := &zip.FileHeader{Name: prefix + name, Method: zip.Deflate, Modified: info.ModTime()}
-			w, err := zw.CreateHeader(header)
+			entry, err := zw.CreateHeader(header)
 			if err != nil {
 				continue
 			}
-			f2, err := os.Open(path)
+			f, err := os.Open(path)
 			if err != nil {
 				continue
 			}
-			_, _ = io.Copy(w, f2)
-			_ = f2.Close()
+			_, _ = io.Copy(entry, f)
+			_ = f.Close()
 		}
 	}
 
 	indexData, _ := json.MarshalIndent(index, "", "  ")
-	w, err := zw.Create("modrinth.index.json")
+	entry, err := zw.Create("modrinth.index.json")
 	if err != nil {
 		return err
 	}
-	_, _ = w.Write(indexData)
+	_, _ = entry.Write(indexData)
 	return nil
 }
 
-func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, filesByType map[string][]string) error {
-	zf, err := os.Create(zipPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = zf.Close() }()
-
-	zw := zip.NewWriter(zf)
+func createCurseForgeArchive(w io.Writer, packName, gameVersion, engineType, loaderVersion string, filesByType map[string][]string) error {
+	zw := zip.NewWriter(w)
 	defer func() { _ = zw.Close() }()
 
 	engine := strings.ToLower(engineType)
@@ -359,11 +425,11 @@ func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderV
 	}
 
 	manifestData, _ := json.MarshalIndent(manifest, "", "  ")
-	w, err := zw.Create("manifest.json")
+	entry, err := zw.Create("manifest.json")
 	if err != nil {
 		return err
 	}
-	_, _ = w.Write(manifestData)
+	_, _ = entry.Write(manifestData)
 
 	dirMap := map[string]string{
 		"mods":          "overrides/mods/",
@@ -380,7 +446,7 @@ func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderV
 				continue
 			}
 			header := &zip.FileHeader{Name: prefix + name, Method: zip.Deflate, Modified: info.ModTime()}
-			w, err := zw.CreateHeader(header)
+			entry, err := zw.CreateHeader(header)
 			if err != nil {
 				continue
 			}
@@ -388,32 +454,24 @@ func createCurseForgeArchive(zipPath, packName, gameVersion, engineType, loaderV
 			if err != nil {
 				continue
 			}
-			_, _ = io.Copy(w, f)
+			_, _ = io.Copy(entry, f)
 			_ = f.Close()
 		}
 	}
 	return nil
 }
 
-func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersion string, filesByType map[string][]string) error {
-	zf, err := os.Create(zipPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = zf.Close() }()
-
-	zw := zip.NewWriter(zf)
+func createPrismArchive(w io.Writer, packName, gameVersion, engineType, loaderVersion string, filesByType map[string][]string) error {
+	zw := zip.NewWriter(w)
 	defer func() { _ = zw.Close() }()
 
-	// instance.cfg
 	cfg := fmt.Sprintf("[General]\nname=%s\nInstanceType=OneSix\niconKey=default\n", packName)
-	w, err := zw.Create("instance.cfg")
+	entry, err := zw.Create("instance.cfg")
 	if err != nil {
 		return err
 	}
-	_, _ = w.Write([]byte(cfg))
+	_, _ = entry.Write([]byte(cfg))
 
-	// mmc-pack.json
 	engine := strings.ToLower(engineType)
 
 	minecraftComponent := map[string]any{
@@ -480,11 +538,11 @@ func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersio
 		"formatVersion": 1,
 	}
 	mmcData, _ := json.MarshalIndent(mmcPack, "", "  ")
-	w, err = zw.Create("mmc-pack.json")
+	entry, err = zw.Create("mmc-pack.json")
 	if err != nil {
 		return err
 	}
-	_, _ = w.Write(mmcData)
+	_, _ = entry.Write(mmcData)
 
 	dirMap := map[string]string{
 		"mods":          ".minecraft/mods/",
@@ -501,7 +559,7 @@ func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersio
 				continue
 			}
 			header := &zip.FileHeader{Name: prefix + name, Method: zip.Deflate, Modified: info.ModTime()}
-			w, err := zw.CreateHeader(header)
+			entry, err := zw.CreateHeader(header)
 			if err != nil {
 				continue
 			}
@@ -509,7 +567,7 @@ func createPrismArchive(zipPath, packName, gameVersion, engineType, loaderVersio
 			if err != nil {
 				continue
 			}
-			_, _ = io.Copy(w, f)
+			_, _ = io.Copy(entry, f)
 			_ = f.Close()
 		}
 	}
@@ -533,48 +591,59 @@ func (h *Handler) HandleDownloadClientArchive(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	archiveTokensMu.Lock()
-	archive.TotalDownloads++
-	archive.DownloadCounts[format]++
-	archiveTokensMu.Unlock()
+	filesByType, err := h.collectClientFiles(archive.ServerID, archive.Include)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	var filePath, contentType string
+	srv, _ := h.Instance.Get(archive.ServerID)
+
+	var contentType, ext string
 	switch format {
 	case "zip":
-		filePath = archive.ZipPath
 		contentType = "application/zip"
+		ext = "zip"
 	case "mrpack":
-		filePath = archive.MrpackPath
 		contentType = "application/octet-stream"
+		ext = "mrpack"
 	case "curseforge":
-		filePath = archive.CurseForgePath
 		contentType = "application/zip"
+		ext = "zip"
 	case "prism":
-		filePath = archive.PrismPath
 		contentType = "application/zip"
+		ext = "zip"
 	default:
 		jsonError(w, "invalid format", http.StatusBadRequest)
 		return
 	}
 
-	if filePath == "" {
-		jsonError(w, "requested format not available", http.StatusNotFound)
-		return
-	}
-
-	f, err := os.Open(filePath)
-	if err != nil {
-		jsonError(w, "failed to open archive", http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = f.Close() }()
-
-	stat, _ := f.Stat()
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s-%s.%s\"", archive.ServerName, archive.CreatedAt.Format("20060102"), format))
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", stat.Size()))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s-%s.%s\"", archive.ServerName, archive.CreatedAt.Format("20060102"), ext))
 	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, f)
+
+	var genErr error
+	switch format {
+	case "zip":
+		genErr = createZipArchive(w, filesByType)
+	case "mrpack":
+		genErr = createMrpackArchive(w, archive.ServerName, filesByType)
+	case "curseforge":
+		genErr = createCurseForgeArchive(w, archive.ServerName, srv.GameVersion, srv.EngineType, srv.LoaderVersion, filesByType)
+	case "prism":
+		genErr = createPrismArchive(w, archive.ServerName, srv.GameVersion, srv.EngineType, srv.LoaderVersion, filesByType)
+	}
+
+	if genErr != nil {
+		return
+	}
+
+	archiveTokensMu.Lock()
+	archive.TotalDownloads++
+	archive.DownloadCounts[format]++
+	archiveTokensMu.Unlock()
+
+	h.saveArchiveMeta(archive.ServerID, archive)
 }
 
 // HandleGetClientArchiveInfo returns metadata about an archive (public, no auth).
@@ -590,26 +659,12 @@ func (h *Handler) HandleGetClientArchiveInfo(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var formats []string
-	if archive.ZipPath != "" {
-		formats = append(formats, "zip")
-	}
-	if archive.MrpackPath != "" {
-		formats = append(formats, "mrpack")
-	}
-	if archive.CurseForgePath != "" {
-		formats = append(formats, "curseforge")
-	}
-	if archive.PrismPath != "" {
-		formats = append(formats, "prism")
-	}
-
 	jsonResponse(w, map[string]any{
 		"token":          token,
 		"serverName":     archive.ServerName,
 		"expiresAt":      archive.ExpiresAt.Format(time.RFC3339),
 		"createdAt":      archive.CreatedAt.Format(time.RFC3339),
-		"formats":        formats,
+		"formats":        []string{"zip", "mrpack", "curseforge", "prism"},
 		"downloadCounts": archive.DownloadCounts,
 		"totalDownloads": archive.TotalDownloads,
 	})
@@ -630,25 +685,12 @@ func (h *Handler) HandleListServerArchives(w http.ResponseWriter, r *http.Reques
 		if now.After(a.ExpiresAt) {
 			continue
 		}
-		var fmts []string
-		if a.ZipPath != "" {
-			fmts = append(fmts, "zip")
-		}
-		if a.MrpackPath != "" {
-			fmts = append(fmts, "mrpack")
-		}
-		if a.CurseForgePath != "" {
-			fmts = append(fmts, "curseforge")
-		}
-		if a.PrismPath != "" {
-			fmts = append(fmts, "prism")
-		}
 		results = append(results, map[string]any{
 			"token":          a.Token,
 			"serverName":     a.ServerName,
 			"expiresAt":      a.ExpiresAt.Format(time.RFC3339),
 			"createdAt":      a.CreatedAt.Format(time.RFC3339),
-			"formats":        fmts,
+			"formats":        []string{"zip", "mrpack", "curseforge", "prism"},
 			"downloadCounts": a.DownloadCounts,
 			"totalDownloads": a.TotalDownloads,
 		})
@@ -656,7 +698,7 @@ func (h *Handler) HandleListServerArchives(w http.ResponseWriter, r *http.Reques
 	jsonResponse(w, results)
 }
 
-// HandleDeleteServerArchive removes an archive token and its files.
+// HandleDeleteServerArchive removes an archive token.
 func (h *Handler) HandleDeleteServerArchive(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	token := r.PathValue("token")
@@ -668,12 +710,10 @@ func (h *Handler) HandleDeleteServerArchive(w http.ResponseWriter, r *http.Reque
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
-	_ = os.Remove(archive.ZipPath)
-	_ = os.Remove(archive.MrpackPath)
-	_ = os.Remove(archive.CurseForgePath)
-	_ = os.Remove(archive.PrismPath)
 	delete(archiveTokens, token)
 	archiveTokensMu.Unlock()
+
+	h.removeArchiveMeta(id, token)
 
 	jsonResponse(w, map[string]any{"deleted": true})
 }

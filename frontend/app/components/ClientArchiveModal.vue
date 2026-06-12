@@ -33,12 +33,12 @@ const archiveInclude = ref<string[]>(["mods"]);
 const archiveTTLDays = ref(1);
 
 const ttlOptions = [
-  { value: 1, label: "1 день" },
-  { value: 7, label: "7 дней" },
-  { value: 30, label: "30 дней" },
-  { value: 90, label: "3 месяца" },
-  { value: 180, label: "6 месяцев" },
-  { value: 365, label: "12 месяцев" },
+  { value: 1, label: "1 day" },
+  { value: 7, label: "7 days" },
+  { value: 30, label: "30 days" },
+  { value: 90, label: "3 months" },
+  { value: 180, label: "6 months" },
+  { value: 365, label: "12 months" },
 ];
 
 function generate() {

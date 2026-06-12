@@ -160,6 +160,7 @@ func main() {
 	h.ModUploadMaxMB = modUploadMaxMB
 	h.EventsHub = hub
 	h.NetworkName = networkName
+	h.InitArchives()
 	router := routes.SetupRoutes(h, apiKey)
 
 	// Serve embedded SPA in production; nil in dev where web/ is empty.
@@ -171,6 +172,9 @@ func main() {
 		combined.Handle("/", spa)
 		router = combined
 	}
+
+	// Background archive cleanup
+	go h.StartArchiveCleanup(ctx)
 
 	// Background metrics poller
 	go handlers.NewMetricsPoller(h).Start(ctx)

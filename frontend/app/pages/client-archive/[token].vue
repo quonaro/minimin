@@ -186,7 +186,14 @@
           </p>
         </div>
       </div>
-      <div v-if="isAuthenticated" class="flex justify-center mt-4">
+      <div v-if="isAuthenticated" class="flex justify-center gap-3 mt-4">
+        <button
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+          @click="goBack()"
+        >
+          <ArrowLeft class="w-4 h-4" />
+          Go Back
+        </button>
         <a
           href="/"
           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
@@ -214,6 +221,7 @@ import {
   Flame,
   Box,
   Home,
+  ArrowLeft,
 } from "lucide-vue-next";
 
 interface ArchiveInfoResponse {
@@ -225,6 +233,7 @@ interface ArchiveInfoResponse {
 }
 
 const route = useRoute();
+const router = useRouter();
 const token = route.params.token as string;
 const { isAuthenticated } = useAuth();
 
@@ -256,6 +265,14 @@ function hasFormat(fmt: string): boolean {
 }
 
 const now = ref(new Date());
+
+function goBack() {
+  if (typeof window !== "undefined" && window.history.length > 1) {
+    window.history.back();
+  } else {
+    navigateTo("/");
+  }
+}
 
 const expiresText = computed(() => {
   if (!info.value?.expiresAt) return "";
