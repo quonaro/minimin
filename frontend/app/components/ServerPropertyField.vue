@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { PropType } from "~/utils/serverProperties";
+import type { ServerPropType } from "~/utils/serverProperties";
 
 const props = defineProps<{
   itemKey: string;
   label: string;
-  type: PropType;
+  type: ServerPropType;
   dangerous?: boolean;
   modelValue: string;
   badgeStatus?: "modified" | "restart-required" | null;

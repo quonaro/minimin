@@ -1,9 +1,9 @@
-export type PropType = "text" | "number" | "boolean" | "select";
+export type ServerPropType = "text" | "number" | "boolean" | "select";
 
 export interface KnownProperty {
   key: string;
   label: string;
-  type: PropType;
+  type: ServerPropType;
   options?: string[];
   group: string;
   dangerous?: boolean;

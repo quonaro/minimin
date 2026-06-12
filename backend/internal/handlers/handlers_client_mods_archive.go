@@ -17,16 +17,18 @@ import (
 
 // ArchiveToken represents a generated archive with expiration.
 type ArchiveToken struct {
-	Token          string    `json:"token"`
-	ServerID       string    `json:"serverId"`
-	ServerName     string    `json:"serverName"`
-	ZipPath        string    `json:"zipPath"`
-	MrpackPath     string    `json:"mrpackPath"`
-	CurseForgePath string    `json:"curseForgePath"`
-	PrismPath      string    `json:"prismPath"`
-	ExpiresAt      time.Time `json:"expiresAt"`
-	CreatedAt      time.Time `json:"createdAt"`
-	Formats        []string  `json:"formats"`
+	Token          string         `json:"token"`
+	ServerID       string         `json:"serverId"`
+	ServerName     string         `json:"serverName"`
+	ZipPath        string         `json:"zipPath"`
+	MrpackPath     string         `json:"mrpackPath"`
+	CurseForgePath string         `json:"curseForgePath"`
+	PrismPath      string         `json:"prismPath"`
+	ExpiresAt      time.Time      `json:"expiresAt"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	Formats        []string       `json:"formats"`
+	DownloadCounts map[string]int `json:"downloadCounts"`
+	TotalDownloads int            `json:"totalDownloads"`
 }
 
 var (
@@ -77,7 +79,6 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req struct {
-		Formats []string `json:"formats"` // "zip", "mrpack", "curseforge", "prism"
 		TTL     int      `json:"ttl"`     // hours
 		Include []string `json:"include"` // "mods", "resourcepacks", "shaderpacks"
 	}
@@ -85,15 +86,17 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if len(req.Formats) == 0 {
-		req.Formats = []string{"zip"}
-	}
 	if req.TTL <= 0 {
 		req.TTL = 24
+	}
+	const maxTTL = 8760 // 12 months in hours
+	if req.TTL > maxTTL {
+		req.TTL = maxTTL
 	}
 	if len(req.Include) == 0 {
 		req.Include = []string{"mods"}
 	}
+	formats := []string{"zip", "mrpack", "curseforge", "prism"}
 
 	typeDirMap := map[string]string{
 		"mods":          filepath.Join(s.VolumePath, "mods-client"),
@@ -144,15 +147,16 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 	expiresAt := time.Now().Add(time.Duration(req.TTL) * time.Hour)
 
 	archive := &ArchiveToken{
-		Token:      token,
-		ServerID:   id,
-		ServerName: s.ServerID,
-		ExpiresAt:  expiresAt,
-		CreatedAt:  time.Now(),
-		Formats:    req.Formats,
+		Token:          token,
+		ServerID:       id,
+		ServerName:     s.ServerID,
+		ExpiresAt:      expiresAt,
+		CreatedAt:      time.Now(),
+		Formats:        formats,
+		DownloadCounts: make(map[string]int),
 	}
 
-	for _, format := range req.Formats {
+	for _, format := range formats {
 		switch format {
 		case "zip":
 			zipPath := filepath.Join(tmpDir, token+".zip")
@@ -193,7 +197,7 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 		"token":      token,
 		"expiresAt":  expiresAt.Format(time.RFC3339),
 		"serverName": s.ServerID,
-		"formats":    req.Formats,
+		"formats":    formats,
 	})
 }
 
@@ -529,6 +533,11 @@ func (h *Handler) HandleDownloadClientArchive(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	archiveTokensMu.Lock()
+	archive.TotalDownloads++
+	archive.DownloadCounts[format]++
+	archiveTokensMu.Unlock()
+
 	var filePath, contentType string
 	switch format {
 	case "zip":
@@ -596,10 +605,75 @@ func (h *Handler) HandleGetClientArchiveInfo(w http.ResponseWriter, r *http.Requ
 	}
 
 	jsonResponse(w, map[string]any{
-		"token":      token,
-		"serverName": archive.ServerName,
-		"expiresAt":  archive.ExpiresAt.Format(time.RFC3339),
-		"createdAt":  archive.CreatedAt.Format(time.RFC3339),
-		"formats":    formats,
+		"token":          token,
+		"serverName":     archive.ServerName,
+		"expiresAt":      archive.ExpiresAt.Format(time.RFC3339),
+		"createdAt":      archive.CreatedAt.Format(time.RFC3339),
+		"formats":        formats,
+		"downloadCounts": archive.DownloadCounts,
+		"totalDownloads": archive.TotalDownloads,
 	})
+}
+
+// HandleListServerArchives returns all active archive tokens for a server.
+func (h *Handler) HandleListServerArchives(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	archiveTokensMu.RLock()
+	defer archiveTokensMu.RUnlock()
+
+	now := time.Now()
+	var results []map[string]any
+	for _, a := range archiveTokens {
+		if a.ServerID != id {
+			continue
+		}
+		if now.After(a.ExpiresAt) {
+			continue
+		}
+		var fmts []string
+		if a.ZipPath != "" {
+			fmts = append(fmts, "zip")
+		}
+		if a.MrpackPath != "" {
+			fmts = append(fmts, "mrpack")
+		}
+		if a.CurseForgePath != "" {
+			fmts = append(fmts, "curseforge")
+		}
+		if a.PrismPath != "" {
+			fmts = append(fmts, "prism")
+		}
+		results = append(results, map[string]any{
+			"token":          a.Token,
+			"serverName":     a.ServerName,
+			"expiresAt":      a.ExpiresAt.Format(time.RFC3339),
+			"createdAt":      a.CreatedAt.Format(time.RFC3339),
+			"formats":        fmts,
+			"downloadCounts": a.DownloadCounts,
+			"totalDownloads": a.TotalDownloads,
+		})
+	}
+	jsonResponse(w, results)
+}
+
+// HandleDeleteServerArchive removes an archive token and its files.
+func (h *Handler) HandleDeleteServerArchive(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	token := r.PathValue("token")
+
+	archiveTokensMu.Lock()
+	archive, ok := archiveTokens[token]
+	if !ok || archive.ServerID != id {
+		archiveTokensMu.Unlock()
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	_ = os.Remove(archive.ZipPath)
+	_ = os.Remove(archive.MrpackPath)
+	_ = os.Remove(archive.CurseForgePath)
+	_ = os.Remove(archive.PrismPath)
+	delete(archiveTokens, token)
+	archiveTokensMu.Unlock()
+
+	jsonResponse(w, map[string]any{"deleted": true})
 }

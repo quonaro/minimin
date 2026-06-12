@@ -7,6 +7,16 @@ export interface ArchiveInfo {
   formats: string[];
 }
 
+export interface ArchiveLinkEntry {
+  token: string;
+  serverName: string;
+  expiresAt: string;
+  createdAt: string;
+  formats: string[];
+  downloadCounts: Record<string, number>;
+  totalDownloads: number;
+}
+
 export function useClientMods(serverId: string) {
   const { show } = useToast();
 
@@ -168,7 +178,6 @@ export function useClientMods(serverId: string) {
   }
 
   async function createArchive(
-    formats: string[],
     ttl: number,
     include: string[] = ["mods"],
   ): Promise<ArchiveInfo | null> {
@@ -183,7 +192,7 @@ export function useClientMods(serverId: string) {
       }>(`/servers/${serverId}/client-mods/archive`, {
         baseURL: useApiBase(),
         method: "POST",
-        body: { formats, ttl, include },
+        body: { ttl, include },
         credentials: "include",
       });
       const data = (res as any).body ?? res;
@@ -206,6 +215,41 @@ export function useClientMods(serverId: string) {
     }
   }
 
+  async function listArchives(): Promise<ArchiveLinkEntry[]> {
+    try {
+      const res = await $fetch<ArchiveLinkEntry[]>(
+        `/servers/${serverId}/client-mods/archives`,
+        {
+          baseURL: useApiBase(),
+          credentials: "include",
+        },
+      );
+      return (res as any) ?? [];
+    } catch (err: any) {
+      show("error", "Failed to load archives", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+      return [];
+    }
+  }
+
+  async function deleteArchive(token: string): Promise<boolean> {
+    try {
+      await $fetch(`/servers/${serverId}/client-mods/archives/${token}`, {
+        baseURL: useApiBase(),
+        method: "DELETE",
+        credentials: "include",
+      });
+      show("success", "Archive deleted");
+      return true;
+    } catch (err: any) {
+      show("error", "Failed to delete archive", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+      return false;
+    }
+  }
+
   return {
     mods,
     loading,
@@ -220,5 +264,7 @@ export function useClientMods(serverId: string) {
     moveMod,
     copyMod,
     createArchive,
+    listArchives,
+    deleteArchive,
   };
 }

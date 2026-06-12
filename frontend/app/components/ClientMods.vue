@@ -198,7 +198,11 @@
             v-model:show="showArchiveModal"
             :archive-loading="archiveLoading"
             :archive-result="archiveResult"
+            :archive-links="archiveLinks"
+            :links-loading="linksLoading"
             @generate="generateArchive"
+            @refresh-links="emit('refresh-archive-links')"
+            @delete-link="emit('delete-archive-link', $event)"
           />
         </div>
       </div>
@@ -250,7 +254,10 @@ import {
   Sparkles,
 } from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
-import type { ArchiveInfo } from "~/composables/useClientMods";
+import type {
+  ArchiveInfo,
+  ArchiveLinkEntry,
+} from "~/composables/useClientMods";
 
 interface Props {
   mods: ModInfo[];
@@ -259,12 +266,16 @@ interface Props {
   searchQuery?: string;
   archiveLoading?: boolean;
   archiveResult?: ArchiveInfo | null;
+  archiveLinks?: ArchiveLinkEntry[];
+  linksLoading?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
   archiveLoading: false,
   archiveResult: null,
+  archiveLinks: () => [],
+  linksLoading: false,
 });
 const emit = defineEmits<{
   delete: [filename: string];
@@ -277,7 +288,9 @@ const emit = defineEmits<{
     target: "server" | "client",
   ];
   "update:searchQuery": [value: string];
-  "generate-archive": [formats: string[], ttl: number, include: string[]];
+  "generate-archive": [ttl: number, include: string[]];
+  "refresh-archive-links": [];
+  "delete-archive-link": [token: string];
 }>();
 
 const activeTab = ref<"mods" | "resourcepacks" | "shaderpacks">("mods");
@@ -413,7 +426,7 @@ function onDragStart(e: DragEvent, mod: ModInfo) {
   e.dataTransfer?.setData("application/x-mod-source", "client");
 }
 
-function generateArchive(formats: string[], ttl: number, include: string[]) {
-  emit("generate-archive", formats, ttl, include);
+function generateArchive(ttl: number, include: string[]) {
+  emit("generate-archive", ttl, include);
 }
 </script>

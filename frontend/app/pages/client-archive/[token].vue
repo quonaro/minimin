@@ -175,12 +175,25 @@
         </div>
       </div>
 
-      <div class="text-center text-xs text-gray-400 dark:text-neutral-500">
-        <p>Link expires: {{ expiresText }}</p>
-        <p class="mt-1">
-          Generated:
-          {{ info?.createdAt ? new Date(info.createdAt).toLocaleString() : "" }}
-        </p>
+      <div class="flex items-center justify-center gap-4 mt-4">
+        <div class="text-center text-xs text-gray-400 dark:text-neutral-500">
+          <p>Link expires: {{ expiresText }}</p>
+          <p class="mt-1">
+            Generated:
+            {{
+              info?.createdAt ? new Date(info.createdAt).toLocaleString() : ""
+            }}
+          </p>
+        </div>
+      </div>
+      <div v-if="isAuthenticated" class="flex justify-center mt-4">
+        <a
+          href="/"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+        >
+          <Home class="w-4 h-4" />
+          Go Home
+        </a>
       </div>
     </div>
   </div>
@@ -200,6 +213,7 @@ import {
   Link,
   Flame,
   Box,
+  Home,
 } from "lucide-vue-next";
 
 interface ArchiveInfoResponse {
@@ -212,6 +226,7 @@ interface ArchiveInfoResponse {
 
 const route = useRoute();
 const token = route.params.token as string;
+const { isAuthenticated } = useAuth();
 
 const loading = ref(true);
 const error = ref("");

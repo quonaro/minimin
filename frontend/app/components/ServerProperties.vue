@@ -16,7 +16,7 @@ import {
   selectOptions,
   knownKeys,
   groupOrder,
-  type PropType,
+  type ServerPropType,
 } from "~/utils/serverProperties";
 
 const props = defineProps<{
@@ -71,13 +71,13 @@ function toggleGroup(group: string) {
 const groupedItems = computed(() => {
   const groups: Record<
     string,
-    { key: string; label: string; type: PropType; dangerous?: boolean }[]
+    { key: string; label: string; type: ServerPropType; dangerous?: boolean }[]
   > = {};
-  const dangerous: { key: string; label: string; type: PropType }[] = [];
+  const dangerous: { key: string; label: string; type: ServerPropType }[] = [];
   const unknown: {
     key: string;
     label: string;
-    type: PropType;
+    type: ServerPropType;
     dangerous?: boolean;
   }[] = [];
   const props = editedProperties.value;

@@ -337,6 +337,8 @@
             :server-id="serverId"
             :archive-loading="clientArchiveLoading"
             :archive-result="archiveResult"
+            :archive-links="archiveLinks"
+            :links-loading="linksLoading"
             v-model:search-query="clientSearchQuery"
             @delete="handleClientDelete"
             @upload="handleClientUpload"
@@ -344,6 +346,8 @@
             @move="handleClientMove"
             @copy="handleCopy"
             @generate-archive="handleGenerateArchive"
+            @refresh-archive-links="handleRefreshLinks"
+            @delete-archive-link="handleDeleteLink"
           />
         </div>
       </div>
@@ -420,6 +424,8 @@ const {
   moveMod: moveClientMod,
   copyMod: copyClientMod,
   createArchive,
+  listArchives,
+  deleteArchive,
 } = useClientMods(serverId);
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -721,15 +727,35 @@ async function handleLoadProject(projectId: string) {
 const archiveResult = ref<
   import("~/composables/useClientMods").ArchiveInfo | null
 >(null);
+const archiveLinks = ref<
+  import("~/composables/useClientMods").ArchiveLinkEntry[]
+>([]);
+const linksLoading = ref(false);
 
 async function handleGenerateArchive(
-  formats: string[],
   ttl: number,
   include: string[] = ["mods"],
 ) {
-  const result = await createArchive(formats, ttl, include);
+  const result = await createArchive(ttl, include);
   if (result) {
     archiveResult.value = result;
+    await handleRefreshLinks();
+  }
+}
+
+async function handleRefreshLinks() {
+  linksLoading.value = true;
+  try {
+    archiveLinks.value = await listArchives();
+  } finally {
+    linksLoading.value = false;
+  }
+}
+
+async function handleDeleteLink(token: string) {
+  const ok = await deleteArchive(token);
+  if (ok) {
+    archiveLinks.value = archiveLinks.value.filter((l) => l.token !== token);
   }
 }
 
