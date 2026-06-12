@@ -4,7 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: backend-dev
-    working_dir: /app
     volumes:
     - ./backend:/app
     - ./servers:/app/servers
@@ -13,28 +12,22 @@ services:
     - go-bin:/go/bin
     - go-mod-cache:/go/pkg/mod
     - go-build-cache:/root/.cache/go-build
-    env_file:
-    - backend/.env
     environment:
+    - ORCHESTRATOR_API_KEY=test
     - MC_SERVERS_HOST_DIR=/srv/projects/my/minecraft/minimin/servers
     ports:
     - "8081:8081"
-    networks:
-    - mc-agent-mesh
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
       target: frontend-dev
-    working_dir: /app/frontend
     volumes:
     - ./frontend:/app/frontend
     - pnpm-store:/root/.local/share/pnpm/store/v3
     ports:
     - "3000:3000"
-    networks:
-    - mc-agent-mesh
     depends_on:
     - backend
 
@@ -45,6 +38,3 @@ volumes:
   go-build-cache:
 
 
-networks:
-  mc-agent-mesh:
-    name: mc-agent-mesh

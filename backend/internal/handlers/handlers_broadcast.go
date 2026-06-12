@@ -9,18 +9,6 @@ import (
 	"orchestrator/internal/runner"
 )
 
-// broadcastServerState pushes the current server state to all SSE clients.
-func (h *Handler) broadcastServerState(id string) {
-	if h.EventsHub == nil {
-		return
-	}
-	s, ok := h.Instance.Get(id)
-	if !ok {
-		return
-	}
-	h.EventsHub.BroadcastJSON("server", s)
-}
-
 // broadcastPlayerData reads the current player-related JSON files and
 // RCON list output, then broadcasts them via SSE.
 func (h *Handler) broadcastPlayerData(id string) {

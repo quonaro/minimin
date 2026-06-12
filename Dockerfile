@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # ------------------
 # Frontend build stage
 # ------------------
