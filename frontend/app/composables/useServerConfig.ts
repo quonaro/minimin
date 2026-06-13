@@ -1,4 +1,4 @@
-import { ref, computed } from "vue";
+import { ref, computed, watchEffect, toValue, type MaybeRefOrGetter } from "vue";
 
 export interface ServerConfig {
   content: string;
@@ -64,36 +64,38 @@ async function fetchConfig(serverId: string) {
   }
 }
 
-export function useServerConfig(serverId: string | undefined | null) {
-  const id = serverId ?? "";
+export function useServerConfig(serverId: MaybeRefOrGetter<string | undefined | null>) {
+  const id = computed(() => toValue(serverId) ?? "");
 
-  if (id && !configMap.value[id]?.fetched) {
-    fetchConfig(id);
-  }
+  watchEffect(() => {
+    if (id.value && !configMap.value[id.value]?.fetched) {
+      fetchConfig(id.value);
+    }
+  });
 
   const initialized = computed<boolean>(() => {
-    if (!id) return true;
-    return configMap.value[id]?.config?.initialized ?? true;
+    if (!id.value) return true;
+    return configMap.value[id.value]?.config?.initialized ?? true;
   });
 
   const config = computed<ServerConfig | null>(() => {
-    if (!id) return null;
-    return configMap.value[id]?.config ?? null;
+    if (!id.value) return null;
+    return configMap.value[id.value]?.config ?? null;
   });
 
   const loading = computed<boolean>(() => {
-    if (!id) return false;
-    return configMap.value[id]?.loading ?? false;
+    if (!id.value) return false;
+    return configMap.value[id.value]?.loading ?? false;
   });
 
   const error = computed<string | null>(() => {
-    if (!id) return null;
-    return configMap.value[id]?.error ?? null;
+    if (!id.value) return null;
+    return configMap.value[id.value]?.error ?? null;
   });
 
   async function refresh() {
-    if (!id) return;
-    await fetchConfig(id);
+    if (!id.value) return;
+    await fetchConfig(id.value);
   }
 
   return {

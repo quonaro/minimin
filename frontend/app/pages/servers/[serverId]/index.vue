@@ -631,7 +631,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <!-- Path (host) -->
                   <div
-                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 col-span-full"
                   >
                     <div
                       class="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-neutral-600/50 flex items-center justify-center text-gray-600 dark:text-gray-400"
@@ -646,7 +646,7 @@
                       </p>
                       <div class="flex items-center gap-2">
                         <p
-                          class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
+                          class="text-sm font-semibold text-gray-900 dark:text-white break-all font-mono"
                           :title="server.hostPath"
                         >
                           {{ server.hostPath || "-" }}

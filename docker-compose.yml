@@ -1,23 +1,40 @@
 services:
-  minimin:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: MiniMin
-    ports:
-      - "8080:8081"
+      target: backend-dev
     volumes:
-      - ./servers:/app/servers
-      - ./data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ./backend:/app
+    - ./servers:/app/servers
+    - ./data:/app/data
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - go-bin:/go/bin
+    - go-mod-cache:/go/pkg/mod
+    - go-build-cache:/root/.cache/go-build
     environment:
-      - ORCHESTRATOR_API_KEY=REDACTED
-      - MC_SERVERS_HOST_DIR=/srv/projects/my/minecraft/minimin/servers
-      - MC_MOD_UPLOAD_MAX_MB=1024
-    networks:
-      - mc-agent-mesh
-    restart: unless-stopped
+    - ORCHESTRATOR_API_KEY=test
+    - MC_SERVERS_HOST_DIR=/srv/projects/my/minecraft/minimin/servers
+    ports:
+    - "8081:8081"
 
-networks:
-  mc-agent-mesh:
-    name: mc-agent-mesh
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-dev
+    volumes:
+    - ./frontend:/app/frontend
+    - pnpm-store:/root/.local/share/pnpm/store/v3
+    ports:
+    - "3000:3000"
+    depends_on:
+    - backend
+
+volumes:
+  pnpm-store:
+  go-bin:
+  go-mod-cache:
+  go-build-cache:
+
+

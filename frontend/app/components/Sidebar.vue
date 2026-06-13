@@ -255,7 +255,7 @@ const currentServerEngineType = computed(() => {
   return server?.engineType || "";
 });
 
-const { initialized: serverFilesInitialized } = useServerConfig(serverId.value);
+const { initialized: serverFilesInitialized } = useServerConfig(serverId);
 
 function getServerStatusColor(status: string) {
   switch (status) {
