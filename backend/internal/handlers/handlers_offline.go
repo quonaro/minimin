@@ -56,10 +56,10 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Action string `json:"action"`
-		Name   string `json:"name"`
-		Offline bool  `json:"offline"`
-		Reason string `json:"reason"`
+		Action  string `json:"action"`
+		Name    string `json:"name"`
+		Offline bool   `json:"offline"`
+		Reason  string `json:"reason"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
@@ -110,7 +110,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Action {
 	case "whitelist":
-		list, err := readServerJSON(s, "whitelist.json")
+		list, err := state.ReadServerJSON(s, "whitelist.json")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -133,7 +133,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, map[string]any{"ok": true, "uuid": uuid})
 
 	case "op":
-		list, err := readServerJSON(s, "ops.json")
+		list, err := state.ReadServerJSON(s, "ops.json")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -160,7 +160,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, map[string]any{"ok": true, "uuid": uuid, "note": "ops.json requires server restart to take effect in vanilla"})
 
 	case "ban":
-		list, err := readServerJSON(s, "banned-players.json")
+		list, err := state.ReadServerJSON(s, "banned-players.json")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -194,7 +194,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, map[string]any{"ok": true, "uuid": uuid})
 
 	case "unban":
-		list, err := readServerJSON(s, "banned-players.json")
+		list, err := state.ReadServerJSON(s, "banned-players.json")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -213,7 +213,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, map[string]any{"ok": true})
 
 	case "deop":
-		list, err := readServerJSON(s, "ops.json")
+		list, err := state.ReadServerJSON(s, "ops.json")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -231,7 +231,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, map[string]any{"ok": true, "note": "ops.json requires server restart to take effect in vanilla"})
 
 	case "whitelist-remove":
-		list, err := readServerJSON(s, "whitelist.json")
+		list, err := state.ReadServerJSON(s, "whitelist.json")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return

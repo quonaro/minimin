@@ -46,7 +46,7 @@ func (h *Handler) WSLogs(w http.ResponseWriter, r *http.Request) {
 		tailLines = 50000
 	}
 
-	conn, err := wsUpgrader.Upgrade(w, r, nil)
+	conn, err := h.WSUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("WSLogs: upgrade failed", "error", err)
 		return
@@ -169,7 +169,7 @@ func (h *Handler) WSRcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := wsUpgrader.Upgrade(w, r, nil)
+	conn, err := h.WSUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}

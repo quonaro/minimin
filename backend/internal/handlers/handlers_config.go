@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -191,25 +189,6 @@ func (h *Handler) HandleGetServerLogs(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, map[string]any{"lines": lines})
 }
 
-var listResponseRe = regexp.MustCompile(`There are (\d+) of a max(?: of)? (\d+) players online[:.]?(.*)`)
-
-func parseListResponse(resp string) (int, int, []string) {
-	matches := listResponseRe.FindStringSubmatch(resp)
-	if len(matches) < 4 {
-		return 0, 0, []string{}
-	}
-	online, _ := strconv.Atoi(matches[1])
-	maxPlayers, _ := strconv.Atoi(matches[2])
-	names := strings.Split(matches[3], ",")
-	players := make([]string, 0, len(names))
-	for _, n := range names {
-		if trimmed := strings.TrimSpace(n); trimmed != "" {
-			players = append(players, trimmed)
-		}
-	}
-	return online, maxPlayers, players
-}
-
 // handleGetPlayers returns the current online players via the RCON list command.
 func (h *Handler) HandleGetPlayers(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -234,27 +213,8 @@ func (h *Handler) HandleGetPlayers(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, fmt.Sprintf("rcon execution failed: %s", err.Error()), http.StatusServiceUnavailable)
 		return
 	}
-	online, maxPlayers, players := parseListResponse(resp)
+	online, maxPlayers, players := runner.ParseListResponse(resp)
 	jsonResponse(w, map[string]any{"online": online, "max": maxPlayers, "players": players})
-}
-
-func readServerJSON(s state.ServerState, filename string) ([]map[string]any, error) {
-	if s.VolumePath == "" {
-		return []map[string]any{}, nil
-	}
-	p := filepath.Join(s.VolumePath, filename)
-	data, err := os.ReadFile(p)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []map[string]any{}, nil
-		}
-		return nil, err
-	}
-	var out []map[string]any
-	if err := json.Unmarshal(data, &out); err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 // handleGetBans returns the server's banned-players.json.
@@ -265,7 +225,7 @@ func (h *Handler) HandleGetBans(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
-	bans, err := readServerJSON(s, "banned-players.json")
+	bans, err := state.ReadServerJSON(s, "banned-players.json")
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -281,7 +241,7 @@ func (h *Handler) HandleGetOps(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
-	ops, err := readServerJSON(s, "ops.json")
+	ops, err := state.ReadServerJSON(s, "ops.json")
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -297,7 +257,7 @@ func (h *Handler) HandleGetWhitelist(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
-	wl, err := readServerJSON(s, "whitelist.json")
+	wl, err := state.ReadServerJSON(s, "whitelist.json")
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return

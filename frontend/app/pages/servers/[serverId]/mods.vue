@@ -752,9 +752,10 @@ async function handleInstall(
 }
 
 async function handleLoadVersions(projectId: string) {
+  const loader = modrinth.projectType.value === "mod" ? serverEngine.value : "";
   const list = await modrinth.getVersions(
     projectId,
-    serverEngine.value,
+    loader,
     serverGameVersion.value,
   );
   if (list.length > 0) {

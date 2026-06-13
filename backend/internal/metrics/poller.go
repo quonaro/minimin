@@ -1,52 +1,38 @@
-package handlers
+package metrics
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"regexp"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"orchestrator/internal/events"
 	"orchestrator/internal/runner"
+	"orchestrator/internal/state"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 )
 
-var tpsFloatRe = regexp.MustCompile(`\d+\.\d+`)
-
-func parseTPSOutput(resp string) *float64 {
-	if !strings.Contains(strings.ToLower(resp), "tps") {
-		return nil
-	}
-	m := tpsFloatRe.FindString(resp)
-	if m == "" {
-		return nil
-	}
-	v, err := strconv.ParseFloat(m, 64)
-	if err != nil {
-		return nil
-	}
-	return &v
-}
-
-// MetricsPoller collects container stats and RCON data and broadcasts metrics events.
-type MetricsPoller struct {
-	h         *Handler
+// Poller collects container stats and RCON data and broadcasts metrics events.
+type Poller struct {
+	cli       *client.Client
+	instance  *state.InstanceFile
+	hub       *events.Hub
 	interval  time.Duration
 	prevStats map[string]container.StatsResponse // keyed by containerID
 	rconCache map[string]*runner.RCONClient      // keyed by serverID
 	mu        sync.Mutex
 }
 
-// NewMetricsPoller creates a poller attached to the given handler.
-func NewMetricsPoller(h *Handler) *MetricsPoller {
-	return &MetricsPoller{
-		h:         h,
+// NewPoller creates a poller attached to the given dependencies.
+func NewPoller(cli *client.Client, instance *state.InstanceFile, hub *events.Hub) *Poller {
+	return &Poller{
+		cli:       cli,
+		instance:  instance,
+		hub:       hub,
 		interval:  2 * time.Second,
 		prevStats: make(map[string]container.StatsResponse),
 		rconCache: make(map[string]*runner.RCONClient),
@@ -54,7 +40,7 @@ func NewMetricsPoller(h *Handler) *MetricsPoller {
 }
 
 // Start runs the polling loop until ctx is cancelled.
-func (p *MetricsPoller) Start(ctx context.Context) {
+func (p *Poller) Start(ctx context.Context) {
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
 	defer p.closeAllRCON()
@@ -68,8 +54,8 @@ func (p *MetricsPoller) Start(ctx context.Context) {
 	}
 }
 
-func (p *MetricsPoller) poll(ctx context.Context) {
-	servers := p.h.Instance.All()
+func (p *Poller) poll(ctx context.Context) {
+	servers := p.instance.All()
 	runningIDs := make(map[string]bool, len(servers))
 	runningServerIDs := make(map[string]bool, len(servers))
 
@@ -80,7 +66,7 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 		runningIDs[s.ContainerID] = true
 		runningServerIDs[s.ServerID] = true
 
-		statsReader, err := p.h.Cli.ContainerStats(ctx, s.ContainerID, false)
+		statsReader, err := p.cli.ContainerStats(ctx, s.ContainerID, false)
 		if err != nil {
 			slog.Debug("metrics poll: container stats failed", "server", s.ServerID, "error", err)
 			continue
@@ -130,7 +116,7 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 			if rconErr != nil {
 				slog.Warn("metrics poll: rcon list failed", "server", s.ServerID, "error", rconErr)
 			} else {
-				online, maxPlayers, _ = parseListResponse(resp)
+				online, maxPlayers, _ = runner.ParseListResponse(resp)
 				if maxPlayers == 0 {
 					slog.Warn("metrics poll: list response unparsed", "server", s.ServerID, "response", resp)
 				}
@@ -139,7 +125,7 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 			if tpsErr != nil {
 				slog.Warn("metrics poll: rcon tps failed", "server", s.ServerID, "error", tpsErr)
 			} else {
-				tps = parseTPSOutput(tpsResp)
+				tps = runner.ParseTPSOutput(tpsResp)
 			}
 		}
 
@@ -155,8 +141,8 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 			Timestamp: time.Now().UTC(),
 		}
 
-		if p.h.EventsHub != nil {
-			p.h.EventsHub.BroadcastJSON("metrics", payload)
+		if p.hub != nil {
+			p.hub.BroadcastJSON("metrics", payload)
 		}
 	}
 
@@ -176,7 +162,7 @@ func (p *MetricsPoller) poll(ctx context.Context) {
 	p.mu.Unlock()
 }
 
-func (p *MetricsPoller) closeAllRCON() {
+func (p *Poller) closeAllRCON() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for _, client := range p.rconCache {
@@ -185,7 +171,7 @@ func (p *MetricsPoller) closeAllRCON() {
 	p.rconCache = make(map[string]*runner.RCONClient)
 }
 
-func (p *MetricsPoller) getRCONClient(serverID, addr, password string) (*runner.RCONClient, error) {
+func (p *Poller) getRCONClient(serverID, addr, password string) (*runner.RCONClient, error) {
 	p.mu.Lock()
 	if client, ok := p.rconCache[serverID]; ok {
 		p.mu.Unlock()
@@ -209,7 +195,7 @@ func (p *MetricsPoller) getRCONClient(serverID, addr, password string) (*runner.
 	return client, nil
 }
 
-func (p *MetricsPoller) executeOrReconnect(serverID, addr, password, cmd string) (string, error) {
+func (p *Poller) executeOrReconnect(serverID, addr, password, cmd string) (string, error) {
 	client, err := p.getRCONClient(serverID, addr, password)
 	if err != nil {
 		return "", err

@@ -7,6 +7,7 @@ import (
 
 	"orchestrator/internal/events"
 	"orchestrator/internal/runner"
+	"orchestrator/internal/state"
 )
 
 // broadcastPlayerData reads the current player-related JSON files and
@@ -28,7 +29,7 @@ func (h *Handler) broadcastPlayerData(id string) {
 			resp, rconErr := client.Execute("list")
 			_ = client.Close()
 			if rconErr == nil {
-				online, maxPlayers, players := parseListResponse(resp)
+				online, maxPlayers, players := runner.ParseListResponse(resp)
 				_ = online
 				h.EventsHub.BroadcastJSON("players", events.PlayerListPayload{
 					ServerID: id,
@@ -42,15 +43,15 @@ func (h *Handler) broadcastPlayerData(id string) {
 	}
 
 	// Ops
-	ops, _ := readServerJSON(s, "ops.json")
+	ops, _ := state.ReadServerJSON(s, "ops.json")
 	h.EventsHub.BroadcastJSON("ops", events.OpsPayload{ServerID: id, Ops: ops})
 
 	// Bans
-	bans, _ := readServerJSON(s, "banned-players.json")
+	bans, _ := state.ReadServerJSON(s, "banned-players.json")
 	h.EventsHub.BroadcastJSON("bans", events.BansPayload{ServerID: id, Bans: bans})
 
 	// Whitelist
-	wl, _ := readServerJSON(s, "whitelist.json")
+	wl, _ := state.ReadServerJSON(s, "whitelist.json")
 	h.EventsHub.BroadcastJSON("whitelist", events.WhitelistPayload{ServerID: id, Whitelist: wl})
 }
 

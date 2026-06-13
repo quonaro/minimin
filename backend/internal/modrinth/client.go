@@ -3,6 +3,7 @@ package modrinth
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -30,6 +31,40 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
+func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
+	const maxRetries = 3
+	delay := 500 * time.Millisecond
+
+	for i := 0; i < maxRetries; i++ {
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			return resp, nil
+		}
+
+		_, _ = io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusTooManyRequests && resp.StatusCode < 500 {
+			return nil, fmt.Errorf("modrinth returned %d", resp.StatusCode)
+		}
+
+		if i == maxRetries-1 {
+			break
+		}
+
+		time.Sleep(delay)
+		if delay < 5*time.Second {
+			delay *= 2
+		}
+	}
+
+	return nil, fmt.Errorf("modrinth request failed after %d retries", maxRetries)
+}
+
 // Search queries Modrinth for projects.
 func (c *Client) Search(params SearchParams) (SearchResponse, error) {
 	key := fmt.Sprintf("%s:%s:%d:%d", params.Query, params.Facets, params.Offset, params.Limit)
@@ -50,14 +85,11 @@ func (c *Client) Search(params SearchParams) (SearchResponse, error) {
 	}
 	req.URL.RawQuery = q.Encode()
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(req)
 	if err != nil {
 		return SearchResponse{}, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return SearchResponse{}, fmt.Errorf("modrinth search returned %d", resp.StatusCode)
-	}
 
 	var result SearchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -73,14 +105,15 @@ func (c *Client) GetProject(id string) (Project, error) {
 		return cached, nil
 	}
 
-	resp, err := c.httpClient.Get(c.baseURL + "/project/" + id)
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/project/"+id, nil)
+	if err != nil {
+		return Project{}, err
+	}
+	resp, err := c.doWithRetry(req)
 	if err != nil {
 		return Project{}, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return Project{}, fmt.Errorf("modrinth project returned %d", resp.StatusCode)
-	}
 
 	var result Project
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -110,14 +143,11 @@ func (c *Client) GetVersions(projectID string, params VersionParams) ([]Version,
 	}
 	req.URL.RawQuery = q.Encode()
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("modrinth versions returned %d", resp.StatusCode)
-	}
 
 	var result []Version
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -133,14 +163,15 @@ func (c *Client) GetVersion(id string) (Version, error) {
 		return cached, nil
 	}
 
-	resp, err := c.httpClient.Get(c.baseURL + "/version/" + id)
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/version/"+id, nil)
+	if err != nil {
+		return Version{}, err
+	}
+	resp, err := c.doWithRetry(req)
 	if err != nil {
 		return Version{}, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return Version{}, fmt.Errorf("modrinth version returned %d", resp.StatusCode)
-	}
 
 	var result Version
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {

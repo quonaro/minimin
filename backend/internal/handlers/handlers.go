@@ -23,6 +23,8 @@ type Handler struct {
 	ModrinthClient *modrinth.Client
 	EventsHub      *events.Hub
 	NetworkName    string
+	SecureCookie   bool
+	WSUpgrader     websocket.Upgrader
 }
 
 // NewHandler creates a new Handler.
@@ -33,6 +35,19 @@ func NewHandler(cli *client.Client, instance *state.InstanceFile, apiKey string,
 		APIKey:         apiKey,
 		ModrinthClient: modrinth.NewClient(modrinthBaseURL),
 	}
+}
+
+func (h *Handler) isSecure(r *http.Request) bool {
+	if h.SecureCookie {
+		return true
+	}
+	if r.TLS != nil {
+		return true
+	}
+	if r.Header.Get("X-Forwarded-Proto") == "https" {
+		return true
+	}
+	return false
 }
 
 // Login validates the static API key and sets an httpOnly cookie.
@@ -54,7 +69,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   86400 * 365, // 1 year
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   h.isSecure(r),
 		SameSite: http.SameSiteStrictMode,
 	})
 	jsonResponse(w, map[string]bool{"success": true})
@@ -68,14 +83,10 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   h.isSecure(r),
 		SameSite: http.SameSiteStrictMode,
 	})
 	jsonResponse(w, map[string]bool{"success": true})
-}
-
-var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 func jsonError(w http.ResponseWriter, msg string, code int) {

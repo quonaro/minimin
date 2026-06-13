@@ -8,17 +8,21 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
+	"orchestrator/internal/health"
+	"orchestrator/internal/metrics"
 	"orchestrator/internal/routes"
 	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
 	"orchestrator/internal/static"
 
 	"github.com/docker/docker/client"
+	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
@@ -155,6 +159,18 @@ func main() {
 	}
 
 	modrinthCustomURL := os.Getenv("MODRINTH_CUSTOM_URL")
+	secureCookie := os.Getenv("ORCHESTRATOR_SECURE_COOKIE") == "true"
+	wsOrigin := os.Getenv("ORCHESTRATOR_WS_ORIGIN")
+	if wsOrigin == "" {
+		wsOrigin = "*"
+	}
+	var allowedOrigins []string
+	if wsOrigin != "*" {
+		allowedOrigins = strings.Split(wsOrigin, ",")
+		for i := range allowedOrigins {
+			allowedOrigins[i] = strings.TrimSpace(allowedOrigins[i])
+		}
+	}
 
 	h := handlers.NewHandler(cli, instance, apiKey, modrinthCustomURL)
 	h.ServersDir = serversDir
@@ -162,6 +178,21 @@ func main() {
 	h.ModUploadMaxMB = modUploadMaxMB
 	h.EventsHub = hub
 	h.NetworkName = networkName
+	h.SecureCookie = secureCookie
+	h.WSUpgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			if len(allowedOrigins) == 0 || (len(allowedOrigins) == 1 && allowedOrigins[0] == "*") {
+				return true
+			}
+			origin := r.Header.Get("Origin")
+			for _, allowed := range allowedOrigins {
+				if allowed == origin {
+					return true
+				}
+			}
+			return false
+		},
+	}
 	h.InitArchives()
 	router := routes.SetupRoutes(h, apiKey)
 
@@ -179,66 +210,10 @@ func main() {
 	go h.StartArchiveCleanup(ctx)
 
 	// Background metrics poller
-	go handlers.NewMetricsPoller(h).Start(ctx)
+	go metrics.NewPoller(cli, instance, hub).Start(ctx)
 
 	// Background health-checker
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-		failures := make(map[string]int)
-		broadcastTick := 0
-		for {
-			select {
-			case <-ticker.C:
-				broadcastTick++
-				active := make(map[string]bool, len(instance.All()))
-				for _, s := range instance.All() {
-					active[s.ServerID] = true
-					if s.ContainerStatus != "running" {
-						continue
-					}
-					port := s.GamePort
-					if port == 0 {
-						port = 25565
-					}
-					ok, pingErr := runner.TryPingServer(s.ServerID, port, 5*time.Second)
-					if ok {
-						failures[s.ServerID] = 0
-						if s.ServerStatus != "running" {
-							s.ServerStatus = "running"
-							s.ServerStartedAt = time.Now().UTC()
-							instance.Set(s)
-							_ = instance.Save()
-							slog.Info("server ready", "server_id", s.ServerID, "status", s.ServerStatus, "volume_path", s.VolumePath)
-						}
-					} else {
-						failures[s.ServerID]++
-						if pingErr != nil {
-							slog.Debug("server ping failed", "server_id", s.ServerID, "error", pingErr, "consecutive_failures", failures[s.ServerID])
-						}
-						if s.ServerStatus == "running" && failures[s.ServerID] >= 3 {
-							s.ServerStatus = "starting"
-							s.ServerStartedAt = time.Time{}
-							instance.Set(s)
-							_ = instance.Save()
-							slog.Info("server not ready", "server_id", s.ServerID, "status", s.ServerStatus, "consecutive_failures", failures[s.ServerID])
-						}
-					}
-					// Push player data every 30 seconds.
-					if broadcastTick%3 == 0 && h.EventsHub.HasClients() {
-						h.BroadcastPlayerDataAsync(s.ServerID)
-					}
-				}
-				for id := range failures {
-					if !active[id] {
-						delete(failures, id)
-					}
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	go health.NewChecker(instance, h.BroadcastPlayerDataAsync).Start(ctx)
 
 	slog.Info("orchestrator API listening", "addr", apiBind)
 	server := &http.Server{Addr: apiBind, Handler: router}

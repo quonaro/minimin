@@ -55,18 +55,34 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const searchCache = new Map<string, SearchCacheEntry>();
 const versionsCache = new Map<string, VersionsCacheEntry>();
-const projectCache = new Map<string, { project: ModrinthProject; timestamp: number }>();
-const versionDetailsCache = new Map<string, { version: ModrinthVersion; timestamp: number }>();
+const projectCache = new Map<
+  string,
+  { project: ModrinthProject; timestamp: number }
+>();
+const versionDetailsCache = new Map<
+  string,
+  { version: ModrinthVersion; timestamp: number }
+>();
 
 function isCacheValid(timestamp: number): boolean {
   return Date.now() - timestamp < CACHE_TTL_MS;
 }
 
-function buildSearchKey(query: string, loader: string, gameVersion: string, offset: number, projectType: string): string {
+function buildSearchKey(
+  query: string,
+  loader: string,
+  gameVersion: string,
+  offset: number,
+  projectType: string,
+): string {
   return `${query.toLowerCase().trim()}:${loader.toLowerCase()}:${gameVersion}:${offset}:${projectType}`;
 }
 
-function buildVersionsKey(projectId: string, loader: string, gameVersion: string): string {
+function buildVersionsKey(
+  projectId: string,
+  loader: string,
+  gameVersion: string,
+): string {
   return `${projectId}:${loader.toLowerCase()}:${gameVersion}`;
 }
 
@@ -88,7 +104,13 @@ export function useModrinth() {
     searchOffset.value = 0;
     hasMore.value = true;
 
-    const key = buildSearchKey(searchQuery.value, loader, gameVersion, 0, projectType.value);
+    const key = buildSearchKey(
+      searchQuery.value,
+      loader,
+      gameVersion,
+      0,
+      projectType.value,
+    );
     const cached = searchCache.get(key);
     if (cached && isCacheValid(cached.timestamp)) {
       searchResults.value = cached.results;
@@ -105,19 +127,16 @@ export function useModrinth() {
         facets.push(`["categories:${loader.toLowerCase()}"]`);
       }
       facets.push(`["versions:${gameVersion}"]`);
-      const res = await $fetch<any>(
-        `/modrinth/search`,
-        {
-          baseURL: useApiBase(),
-          credentials: "include",
-          query: {
-            query: searchQuery.value,
-            facets: `[${facets.join(",")}]`,
-            offset: 0,
-            limit: searchLimit,
-          },
+      const res = await $fetch<any>(`/modrinth/search`, {
+        baseURL: useApiBase(),
+        credentials: "include",
+        query: {
+          query: searchQuery.value,
+          facets: `[${facets.join(",")}]`,
+          offset: 0,
+          limit: searchLimit,
         },
-      );
+      });
       const hits = res?.hits || [];
       const results = hits.map((h: any) => ({
         project_id: h.project_id,
@@ -132,7 +151,12 @@ export function useModrinth() {
       }));
       searchResults.value = results;
       hasMore.value = hits.length === searchLimit;
-      searchCache.set(key, { results, offset: 0, hasMore: hasMore.value, timestamp: Date.now() });
+      searchCache.set(key, {
+        results,
+        offset: 0,
+        hasMore: hasMore.value,
+        timestamp: Date.now(),
+      });
     } catch (err: any) {
       show("error", "Search failed", {
         description: err?.message || "Unknown error",
@@ -149,7 +173,13 @@ export function useModrinth() {
     searchLoading.value = true;
     const nextOffset = searchOffset.value + searchLimit;
 
-    const key = buildSearchKey(searchQuery.value, loader, gameVersion, nextOffset, projectType.value);
+    const key = buildSearchKey(
+      searchQuery.value,
+      loader,
+      gameVersion,
+      nextOffset,
+      projectType.value,
+    );
     const cached = searchCache.get(key);
     if (cached && isCacheValid(cached.timestamp)) {
       searchResults.value.push(...cached.results);
@@ -166,19 +196,16 @@ export function useModrinth() {
         facets.push(`["categories:${loader.toLowerCase()}"]`);
       }
       facets.push(`["versions:${gameVersion}"]`);
-      const res = await $fetch<any>(
-        `/modrinth/search`,
-        {
-          baseURL: useApiBase(),
-          credentials: "include",
-          query: {
-            query: searchQuery.value,
-            facets: `[${facets.join(",")}]`,
-            offset: nextOffset,
-            limit: searchLimit,
-          },
+      const res = await $fetch<any>(`/modrinth/search`, {
+        baseURL: useApiBase(),
+        credentials: "include",
+        query: {
+          query: searchQuery.value,
+          facets: `[${facets.join(",")}]`,
+          offset: nextOffset,
+          limit: searchLimit,
         },
-      );
+      });
       const hits = res?.hits || [];
       const results = hits.map((h: any) => ({
         project_id: h.project_id,
@@ -194,7 +221,12 @@ export function useModrinth() {
       searchResults.value.push(...results);
       searchOffset.value = nextOffset;
       hasMore.value = hits.length === searchLimit;
-      searchCache.set(key, { results, offset: nextOffset, hasMore: hasMore.value, timestamp: Date.now() });
+      searchCache.set(key, {
+        results,
+        offset: nextOffset,
+        hasMore: hasMore.value,
+        timestamp: Date.now(),
+      });
     } catch (err: any) {
       show("error", "Failed to load more", {
         description: err?.message || "Unknown error",
@@ -216,14 +248,20 @@ export function useModrinth() {
     }
 
     try {
-      const res = await $fetch<any[]>(`/modrinth/project/${projectId}/versions`, {
-        baseURL: useApiBase(),
-        credentials: "include",
-        query: {
-          loaders: loader.toLowerCase(),
-          game_versions: gameVersion,
+      const query: Record<string, string> = {
+        game_versions: gameVersion,
+      };
+      if (loader) {
+        query.loaders = loader.toLowerCase();
+      }
+      const res = await $fetch<any[]>(
+        `/modrinth/project/${projectId}/versions`,
+        {
+          baseURL: useApiBase(),
+          credentials: "include",
+          query,
         },
-      });
+      );
       const versions = (res || []).map((v: any) => ({
         id: v.id,
         project_id: v.project_id,
@@ -246,7 +284,9 @@ export function useModrinth() {
     }
   }
 
-  async function getVersionDetails(versionId: string): Promise<ModrinthVersion | null> {
+  async function getVersionDetails(
+    versionId: string,
+  ): Promise<ModrinthVersion | null> {
     const cached = versionDetailsCache.get(versionId);
     if (cached && isCacheValid(cached.timestamp)) {
       return cached.version;
@@ -282,7 +322,11 @@ export function useModrinth() {
   async function install(
     _projectId: string,
     versionId: string,
-  ): Promise<{ url: string; filename: string; dependencies: ModrinthDependency[] } | null> {
+  ): Promise<{
+    url: string;
+    filename: string;
+    dependencies: ModrinthDependency[];
+  } | null> {
     const key = `${_projectId}:${versionId}`;
     installLoading.value[key] = true;
     try {
@@ -290,11 +334,16 @@ export function useModrinth() {
       if (!version) {
         throw new Error("Version not found");
       }
-      const primaryFile = version.files.find((f) => f.primary) || version.files[0];
+      const primaryFile =
+        version.files.find((f) => f.primary) || version.files[0];
       if (!primaryFile) {
         throw new Error("No file found for version");
       }
-      return { url: primaryFile.url, filename: primaryFile.filename, dependencies: version.dependencies || [] };
+      return {
+        url: primaryFile.url,
+        filename: primaryFile.filename,
+        dependencies: version.dependencies || [],
+      };
     } catch (err: any) {
       show("error", "Install failed", {
         description: err?.message || "Unknown error",
@@ -312,12 +361,16 @@ export function useModrinth() {
     gameVersion: string,
   ): Promise<{ url: string; filename: string } | null> {
     if (versionId) {
-      return install(projectId, versionId).then((r) => (r ? { url: r.url, filename: r.filename } : null));
+      return install(projectId, versionId).then((r) =>
+        r ? { url: r.url, filename: r.filename } : null,
+      );
     }
     const versions = await getVersions(projectId, loader, gameVersion);
     if (versions.length === 0) return null;
     const first = versions[0]!;
-    return install(projectId, first.id).then((r) => (r ? { url: r.url, filename: r.filename } : null));
+    return install(projectId, first.id).then((r) =>
+      r ? { url: r.url, filename: r.filename } : null,
+    );
   }
 
   async function bulkInstall(
@@ -331,7 +384,9 @@ export function useModrinth() {
     return results;
   }
 
-  async function getProject(projectId: string): Promise<ModrinthProject | null> {
+  async function getProject(
+    projectId: string,
+  ): Promise<ModrinthProject | null> {
     const cached = projectCache.get(projectId);
     if (cached && isCacheValid(cached.timestamp)) {
       return cached.project;

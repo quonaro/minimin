@@ -1,8 +1,10 @@
 package state
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -238,6 +240,26 @@ func (i *InstanceFile) ClearPendingProperties(serverID string) bool {
 	s.UpdatedAt = time.Now().UTC()
 	i.Servers[serverID] = s
 	return true
+}
+
+// ReadServerJSON reads a JSON file from the server's volume path.
+func ReadServerJSON(s ServerState, filename string) ([]map[string]any, error) {
+	if s.VolumePath == "" {
+		return []map[string]any{}, nil
+	}
+	p := filepath.Join(s.VolumePath, filename)
+	data, err := os.ReadFile(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []map[string]any{}, nil
+		}
+		return nil, err
+	}
+	var out []map[string]any
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // All returns a snapshot of every stored server state.
