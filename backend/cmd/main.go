@@ -158,6 +158,10 @@ func main() {
 		if s.HostPath == "" && s.VolumePath != "" {
 			s.HostPath = runner.HostPathForDocker(s.VolumePath, serversDir, serversHostDir)
 		}
+		if s.ContainerPath == "" {
+			s.ContainerPath = "/data"
+		}
+		s.ModCount = state.CountMods(s)
 		hub.BroadcastJSON("server", s)
 	}
 

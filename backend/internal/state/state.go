@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ type ServerState struct {
 	VolumeID           string            `json:"volumeId"     yaml:"volume_id"`
 	VolumePath         string            `json:"volumePath"   yaml:"volume_path"`
 	HostPath           string            `json:"hostPath"     yaml:"host_path"`
+	ContainerPath      string            `json:"containerPath" yaml:"container_path"`
 	ContainerID        string            `json:"containerId"  yaml:"container_id"`
 	RamBytes           int64             `json:"ramBytes"     yaml:"ram_bytes"`
 	CPUs               float64           `json:"cpus"          yaml:"cpus"`
@@ -38,6 +40,7 @@ type ServerState struct {
 	CreatedAt          time.Time         `json:"createdAt"      yaml:"created_at"`
 	UpdatedAt          time.Time         `json:"updatedAt"      yaml:"updated_at"`
 	DesiredStatus      string            `json:"desiredStatus"      yaml:"desired_status,omitempty"`
+	ModCount           int               `json:"modCount"       yaml:"mod_count"`
 	PendingProperties  map[string]string `json:"pendingProperties"  yaml:"pending_properties,omitempty"`
 }
 
@@ -241,6 +244,25 @@ func (i *InstanceFile) ClearPendingProperties(serverID string) bool {
 	s.UpdatedAt = time.Now().UTC()
 	i.Servers[serverID] = s
 	return true
+}
+
+// CountMods returns the number of .jar files in the server's mods directory.
+func CountMods(s ServerState) int {
+	if s.VolumePath == "" {
+		return 0
+	}
+	modsDir := filepath.Join(s.VolumePath, "mods")
+	entries, err := os.ReadDir(modsDir)
+	if err != nil {
+		return 0
+	}
+	count := 0
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".jar") {
+			count++
+		}
+	}
+	return count
 }
 
 // ReadServerJSON reads a JSON file from the server's volume path.

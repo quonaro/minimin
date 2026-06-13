@@ -90,11 +90,15 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, map[string]bool{"success": true})
 }
 
-// resolveHostPath fills HostPath for legacy servers that don't have it persisted.
-func (h *Handler) resolveHostPath(s state.ServerState) state.ServerState {
+// resolveLegacyFields fills missing fields for legacy servers.
+func (h *Handler) resolveLegacyFields(s state.ServerState) state.ServerState {
 	if s.HostPath == "" && s.VolumePath != "" {
 		s.HostPath = runner.HostPathForDocker(s.VolumePath, h.ServersDir, h.ServersHostDir)
 	}
+	if s.ContainerPath == "" {
+		s.ContainerPath = "/data"
+	}
+	s.ModCount = state.CountMods(s)
 	return s
 }
 

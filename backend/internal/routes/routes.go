@@ -50,6 +50,7 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("POST /api/servers/{id}/force-stop", middleware.WithAuth(apiKey, h.HandleForceStopServer))
 	mux.HandleFunc("DELETE /api/servers/{id}", middleware.WithAuth(apiKey, h.HandleDeleteServer))
 	mux.HandleFunc("POST /api/servers/{id}/recreate-world", middleware.WithAuth(apiKey, h.HandleRecreateWorld))
+	mux.HandleFunc("POST /api/servers/{id}/reassign-ports", middleware.WithAuth(apiKey, h.HandleReassignPorts))
 
 	// Config (protected)
 	mux.HandleFunc("GET /api/servers/{id}/config", middleware.WithAuth(apiKey, h.HandleGetServerConfig))

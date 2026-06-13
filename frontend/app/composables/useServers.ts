@@ -16,6 +16,8 @@ export interface Server {
   cpus?: number;
   volumePath?: string;
   hostPath?: string;
+  containerPath?: string;
+  modCount?: number;
 }
 
 export function useServers() {

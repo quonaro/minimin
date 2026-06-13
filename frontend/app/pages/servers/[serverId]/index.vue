@@ -101,6 +101,15 @@
                   server: {{ server.serverStatus }}
                 </span>
                 <span
+                  v-if="server.modCount !== undefined && server.modCount > 0"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                >
+                  <Package class="w-3.5 h-3.5" />
+                  {{ server.modCount }} mod{{
+                    server.modCount === 1 ? "" : "s"
+                  }}
+                </span>
+                <span
                   v-if="containerUptime"
                   class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
                   :title="`Started at: ${formatTimestamp(containerStartedAt)}`"
@@ -130,474 +139,528 @@
             </div>
 
             <!-- Info tiles -->
-            <div
-              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6"
-            >
-              <!-- Agent ID -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <!-- Identity -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
               >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"
+                <p
+                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
-                  <Hash class="w-4 h-4" />
-                </div>
-                <div class="min-w-0">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
-                  >
-                    Server ID
-                  </p>
-                  <p
-                    class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
-                  >
-                    {{ serverId }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Game Port -->
-              <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
-              >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400"
-                >
-                  <Globe class="w-4 h-4" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
-                  >
-                    Game Port (host)
-                  </p>
-                  <div v-if="!editingPort" class="flex items-center gap-2">
-                    <p
-                      class="text-sm font-semibold text-gray-900 dark:text-white"
-                    >
-                      {{ server.gamePort }}
-                    </p>
-                    <button
-                      v-if="server.containerStatus !== 'running'"
-                      class="text-gray-400 hover:text-primary transition-colors"
-                      :disabled="portLoading"
-                      @click="
-                        tempPort = server.gamePort;
-                        editingPort = true;
-                      "
-                    >
-                      <Pencil class="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div v-else class="flex items-center gap-2">
-                    <number-input
-                      v-model="tempPort"
-                      :min="1024"
-                      :max="65535"
-                      size="sm"
-                      class="w-24"
-                      @keyup.enter="savePort"
-                    />
-                    <button
-                      class="text-green-500 hover:text-green-600 transition-colors"
-                      :disabled="portLoading"
-                      @click="savePort"
-                    >
-                      <Check class="w-4 h-4" />
-                    </button>
-                    <button
-                      class="text-red-500 hover:text-red-600 transition-colors"
-                      :disabled="portLoading"
-                      @click="editingPort = false"
-                    >
-                      <XIcon class="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Public RCON -->
-              <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
-              >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400"
-                >
-                  <Terminal class="w-4 h-4" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
-                  >
-                    Public RCON
-                  </p>
+                  Identity
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Server ID -->
                   <div
-                    v-if="!editingPublicRcon"
-                    class="flex items-center gap-2"
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    <p
-                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"
                     >
-                      {{
-                        server.publicRcon ? `Yes (${server.rconPort})` : "No"
-                      }}
-                    </p>
-                    <button
-                      v-if="server.containerStatus !== 'running'"
-                      class="text-gray-400 hover:text-primary transition-colors"
-                      :disabled="rconLoading"
-                      @click="
-                        tempPublicRcon = server.publicRcon;
-                        tempRconPort = server.rconPort || server.gamePort + 10;
-                        editingPublicRcon = true;
-                      "
-                    >
-                      <Pencil class="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div v-else class="flex items-center gap-2">
-                    <select
-                      v-model="tempPublicRcon"
-                      class="text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-                    >
-                      <option :value="false">No</option>
-                      <option :value="true">Yes</option>
-                    </select>
-                    <number-input
-                      v-if="tempPublicRcon"
-                      v-model="tempRconPort"
-                      :min="1024"
-                      :max="65535"
-                      size="sm"
-                      class="w-24"
-                      @keyup.enter="savePublicRcon"
-                    />
-                    <button
-                      class="text-green-500 hover:text-green-600 transition-colors"
-                      :disabled="rconLoading"
-                      @click="savePublicRcon"
-                    >
-                      <Check class="w-4 h-4" />
-                    </button>
-                    <button
-                      class="text-red-500 hover:text-red-600 transition-colors"
-                      :disabled="rconLoading"
-                      @click="editingPublicRcon = false"
-                    >
-                      <XIcon class="w-4 h-4" />
-                    </button>
+                      <Hash class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Server ID
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
+                      >
+                        {{ serverId }}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Restart Policy -->
+              <!-- Network -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
               >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400"
+                <p
+                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
-                  <RefreshCw class="w-4 h-4" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
-                  >
-                    Restart Policy
-                  </p>
+                  Network
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Game Port -->
                   <div
-                    v-if="!editingRestartPolicy"
-                    class="flex items-center gap-2"
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    <p
-                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400"
                     >
-                      {{ server.restartPolicy || "no" }}
-                    </p>
-                    <button
-                      v-if="server.containerStatus !== 'running'"
-                      class="text-gray-400 hover:text-primary transition-colors"
-                      :disabled="restartPolicyLoading"
-                      @click="
-                        tempRestartPolicy = server.restartPolicy || 'no';
-                        editingRestartPolicy = true;
-                      "
-                    >
-                      <Pencil class="w-3.5 h-3.5" />
-                    </button>
+                      <Globe class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Game Port (host)
+                      </p>
+                      <div v-if="!editingPort" class="flex items-center gap-2">
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{ server.gamePort }}
+                        </p>
+                        <button
+                          v-if="server.containerStatus !== 'running'"
+                          class="text-gray-400 hover:text-primary transition-colors"
+                          :disabled="portLoading"
+                          @click="
+                            tempPort = server.gamePort;
+                            editingPort = true;
+                          "
+                        >
+                          <Pencil class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div v-else class="flex items-center gap-2">
+                        <number-input
+                          v-model="tempPort"
+                          :min="1024"
+                          :max="65535"
+                          size="sm"
+                          class="w-24"
+                          @keyup.enter="savePort"
+                        />
+                        <button
+                          class="text-green-500 hover:text-green-600 transition-colors"
+                          :disabled="portLoading"
+                          @click="savePort"
+                        >
+                          <Check class="w-4 h-4" />
+                        </button>
+                        <button
+                          class="text-red-500 hover:text-red-600 transition-colors"
+                          :disabled="portLoading"
+                          @click="editingPort = false"
+                        >
+                          <XIcon class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div v-else class="flex items-center gap-2">
-                    <select
-                      v-model="tempRestartPolicy"
-                      class="text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+
+                  <!-- Public RCON -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400"
                     >
-                      <option value="no">no</option>
-                      <option value="always">always</option>
-                      <option value="unless-stopped">unless-stopped</option>
-                      <option value="on-failure">on-failure</option>
-                    </select>
-                    <button
-                      class="text-green-500 hover:text-green-600 transition-colors"
-                      :disabled="restartPolicyLoading"
-                      @click="saveRestartPolicy"
-                    >
-                      <Check class="w-4 h-4" />
-                    </button>
-                    <button
-                      class="text-red-500 hover:text-red-600 transition-colors"
-                      :disabled="restartPolicyLoading"
-                      @click="editingRestartPolicy = false"
-                    >
-                      <XIcon class="w-4 h-4" />
-                    </button>
+                      <Terminal class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Public RCON
+                      </p>
+                      <div
+                        v-if="!editingPublicRcon"
+                        class="flex items-center gap-2"
+                      >
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{
+                            server.publicRcon
+                              ? `Yes (${server.rconPort})`
+                              : "No"
+                          }}
+                        </p>
+                        <button
+                          v-if="server.containerStatus !== 'running'"
+                          class="text-gray-400 hover:text-primary transition-colors"
+                          :disabled="rconLoading"
+                          @click="
+                            tempPublicRcon = server.publicRcon;
+                            tempRconPort =
+                              server.rconPort || server.gamePort + 10;
+                            editingPublicRcon = true;
+                          "
+                        >
+                          <Pencil class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div v-else class="flex items-center gap-2">
+                        <select
+                          v-model="tempPublicRcon"
+                          class="text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+                        >
+                          <option :value="false">No</option>
+                          <option :value="true">Yes</option>
+                        </select>
+                        <number-input
+                          v-if="tempPublicRcon"
+                          v-model="tempRconPort"
+                          :min="1024"
+                          :max="65535"
+                          size="sm"
+                          class="w-24"
+                          @keyup.enter="savePublicRcon"
+                        />
+                        <button
+                          class="text-green-500 hover:text-green-600 transition-colors"
+                          :disabled="rconLoading"
+                          @click="savePublicRcon"
+                        >
+                          <Check class="w-4 h-4" />
+                        </button>
+                        <button
+                          class="text-red-500 hover:text-red-600 transition-colors"
+                          :disabled="rconLoading"
+                          @click="editingPublicRcon = false"
+                        >
+                          <XIcon class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Engine -->
+              <!-- Server -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
               >
-                <div
-                  :class="[
-                    'w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-xs font-bold',
-                    getEngineIconColor(server.engineType),
-                  ]"
+                <p
+                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
-                  {{ getEngineAbbreviation(server.engineType) }}
-                </div>
-                <div class="min-w-0">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  Server
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Restart Policy -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    Engine
-                  </p>
-                  <p
-                    class="text-sm font-semibold text-gray-900 dark:text-white"
-                  >
-                    {{ server.engineType }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Version -->
-              <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
-              >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400"
-                >
-                  <Tag class="w-4 h-4" />
-                </div>
-                <div class="min-w-0">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
-                  >
-                    Version
-                  </p>
-                  <p
-                    class="text-sm font-semibold text-gray-900 dark:text-white"
-                  >
-                    {{ server.gameVersion }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- RAM -->
-              <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
-              >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400"
-                >
-                  <MemoryStick class="w-4 h-4" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
-                  >
-                    RAM
-                  </p>
-                  <div v-if="!editingRam" class="flex items-center gap-2">
-                    <p
-                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400"
                     >
-                      {{
-                        server.ramBytes
-                          ? (server.ramBytes / (1024 * 1024 * 1024)).toFixed(
-                              0,
-                            ) + " GB"
-                          : "-"
-                      }}
-                    </p>
-                    <button
-                      v-if="server.containerStatus !== 'running'"
-                      class="text-gray-400 hover:text-primary transition-colors"
-                      :disabled="ramLoading"
-                      @click="
-                        tempRamGb = server.ramBytes
-                          ? Math.round(server.ramBytes / (1024 * 1024 * 1024))
-                          : 2;
-                        editingRam = true;
-                      "
-                    >
-                      <Pencil class="w-3.5 h-3.5" />
-                    </button>
+                      <RefreshCw class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Restart Policy
+                      </p>
+                      <div
+                        v-if="!editingRestartPolicy"
+                        class="flex items-center gap-2"
+                      >
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{ server.restartPolicy || "no" }}
+                        </p>
+                        <button
+                          v-if="server.containerStatus !== 'running'"
+                          class="text-gray-400 hover:text-primary transition-colors"
+                          :disabled="restartPolicyLoading"
+                          @click="
+                            tempRestartPolicy = server.restartPolicy || 'no';
+                            editingRestartPolicy = true;
+                          "
+                        >
+                          <Pencil class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div v-else class="flex items-center gap-2">
+                        <select
+                          v-model="tempRestartPolicy"
+                          class="text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+                        >
+                          <option value="no">no</option>
+                          <option value="always">always</option>
+                          <option value="unless-stopped">unless-stopped</option>
+                          <option value="on-failure">on-failure</option>
+                        </select>
+                        <button
+                          class="text-green-500 hover:text-green-600 transition-colors"
+                          :disabled="restartPolicyLoading"
+                          @click="saveRestartPolicy"
+                        >
+                          <Check class="w-4 h-4" />
+                        </button>
+                        <button
+                          class="text-red-500 hover:text-red-600 transition-colors"
+                          :disabled="restartPolicyLoading"
+                          @click="editingRestartPolicy = false"
+                        >
+                          <XIcon class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div v-else class="flex items-center gap-2">
-                    <number-input
-                      v-model="tempRamGb"
-                      :min="1"
-                      :max="128"
-                      size="sm"
-                      class="w-24"
-                      @keyup.enter="saveRam"
-                    />
-                    <span class="text-sm text-gray-500 dark:text-neutral-400"
-                      >GB</span
-                    >
-                    <button
-                      class="text-green-500 hover:text-green-600 transition-colors"
-                      :disabled="ramLoading"
-                      @click="saveRam"
-                    >
-                      <Check class="w-4 h-4" />
-                    </button>
-                    <button
-                      class="text-red-500 hover:text-red-600 transition-colors"
-                      :disabled="ramLoading"
-                      @click="editingRam = false"
-                    >
-                      <XIcon class="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
 
-              <!-- CPUs -->
-              <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
-              >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400"
-                >
-                  <Cpu class="w-4 h-4" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  <!-- Engine -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    CPUs
-                  </p>
-                  <div v-if="!editingCpu" class="flex items-center gap-2">
-                    <p
-                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    <div
+                      :class="[
+                        'w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-xs font-bold',
+                        getEngineIconColor(server.engineType),
+                      ]"
                     >
-                      {{ server.cpus ?? "-" }}
-                    </p>
-                    <button
-                      v-if="server.containerStatus !== 'running'"
-                      class="text-gray-400 hover:text-primary transition-colors"
-                      :disabled="cpuLoading"
-                      @click="
-                        tempCpu = server.cpus ?? 1;
-                        editingCpu = true;
-                      "
-                    >
-                      <Pencil class="w-3.5 h-3.5" />
-                    </button>
+                      {{ getEngineAbbreviation(server.engineType) }}
+                    </div>
+                    <div class="min-w-0">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Engine
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{ server.engineType }}
+                      </p>
+                    </div>
                   </div>
-                  <div v-else class="flex items-center gap-2">
-                    <number-input
-                      v-model="tempCpu"
-                      :min="0.5"
-                      :step="0.5"
-                      size="sm"
-                      class="w-24"
-                      @keyup.enter="saveCpu"
-                    />
-                    <button
-                      class="text-green-500 hover:text-green-600 transition-colors"
-                      :disabled="cpuLoading"
-                      @click="saveCpu"
+
+                  <!-- Version -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 dark:text-pink-400"
                     >
-                      <Check class="w-4 h-4" />
-                    </button>
-                    <button
-                      class="text-red-500 hover:text-red-600 transition-colors"
-                      :disabled="cpuLoading"
-                      @click="editingCpu = false"
+                      <Tag class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Version
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{ server.gameVersion }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Mods -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400"
                     >
-                      <XIcon class="w-4 h-4" />
-                    </button>
+                      <Package class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Mods
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{ server.modCount ?? 0 }}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Path (host) -->
+              <!-- Resources -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
               >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-neutral-600/50 flex items-center justify-center text-gray-600 dark:text-gray-400"
+                <p
+                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
-                  <FolderOpen class="w-4 h-4" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  Resources
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- RAM -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    Path (host)
-                  </p>
-                  <div class="flex items-center gap-2">
-                    <p
-                      class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
-                      :title="server.hostPath"
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400"
                     >
-                      {{ server.hostPath || "-" }}
-                    </p>
-                    <button
-                      v-if="server.hostPath"
-                      class="text-gray-400 hover:text-primary transition-colors shrink-0"
-                      :title="'Copy path'"
-                      @click="copyToClipboard(server.hostPath!)"
+                      <MemoryStick class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        RAM
+                      </p>
+                      <div v-if="!editingRam" class="flex items-center gap-2">
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{
+                            server.ramBytes
+                              ? (
+                                  server.ramBytes /
+                                  (1024 * 1024 * 1024)
+                                ).toFixed(0) + " GB"
+                              : "-"
+                          }}
+                        </p>
+                        <button
+                          v-if="server.containerStatus !== 'running'"
+                          class="text-gray-400 hover:text-primary transition-colors"
+                          :disabled="ramLoading"
+                          @click="
+                            tempRamGb = server.ramBytes
+                              ? Math.round(
+                                  server.ramBytes / (1024 * 1024 * 1024),
+                                )
+                              : 2;
+                            editingRam = true;
+                          "
+                        >
+                          <Pencil class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div v-else class="flex items-center gap-2">
+                        <number-input
+                          v-model="tempRamGb"
+                          :min="1"
+                          :max="128"
+                          size="sm"
+                          class="w-24"
+                          @keyup.enter="saveRam"
+                        />
+                        <span
+                          class="text-sm text-gray-500 dark:text-neutral-400"
+                          >GB</span
+                        >
+                        <button
+                          class="text-green-500 hover:text-green-600 transition-colors"
+                          :disabled="ramLoading"
+                          @click="saveRam"
+                        >
+                          <Check class="w-4 h-4" />
+                        </button>
+                        <button
+                          class="text-red-500 hover:text-red-600 transition-colors"
+                          :disabled="ramLoading"
+                          @click="editingRam = false"
+                        >
+                          <XIcon class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- CPUs -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400"
                     >
-                      <Copy class="w-3.5 h-3.5" />
-                    </button>
+                      <Cpu class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        CPUs
+                      </p>
+                      <div v-if="!editingCpu" class="flex items-center gap-2">
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{ server.cpus ?? "-" }}
+                        </p>
+                        <button
+                          v-if="server.containerStatus !== 'running'"
+                          class="text-gray-400 hover:text-primary transition-colors"
+                          :disabled="cpuLoading"
+                          @click="
+                            tempCpu = server.cpus ?? 1;
+                            editingCpu = true;
+                          "
+                        >
+                          <Pencil class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div v-else class="flex items-center gap-2">
+                        <number-input
+                          v-model="tempCpu"
+                          :min="0.5"
+                          :step="0.5"
+                          size="sm"
+                          class="w-24"
+                          @keyup.enter="saveCpu"
+                        />
+                        <button
+                          class="text-green-500 hover:text-green-600 transition-colors"
+                          :disabled="cpuLoading"
+                          @click="saveCpu"
+                        >
+                          <Check class="w-4 h-4" />
+                        </button>
+                        <button
+                          class="text-red-500 hover:text-red-600 transition-colors"
+                          :disabled="cpuLoading"
+                          @click="editingCpu = false"
+                        >
+                          <XIcon class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Path (container) -->
+              <!-- Storage -->
               <div
-                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
               >
-                <div
-                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-neutral-600/50 flex items-center justify-center text-gray-600 dark:text-gray-400"
+                <p
+                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
-                  <FolderOpen class="w-4 h-4" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p
-                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  Storage
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Path (host) -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    Path (container)
-                  </p>
-                  <div class="flex items-center gap-2">
-                    <p
-                      class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
-                      :title="server.volumePath"
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-neutral-600/50 flex items-center justify-center text-gray-600 dark:text-gray-400"
                     >
-                      {{ server.volumePath || "-" }}
-                    </p>
-                    <button
-                      v-if="server.volumePath"
-                      class="text-gray-400 hover:text-primary transition-colors shrink-0"
-                      :title="'Copy path'"
-                      @click="copyToClipboard(server.volumePath!)"
-                    >
-                      <Copy class="w-3.5 h-3.5" />
-                    </button>
+                      <FolderOpen class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Path (host)
+                      </p>
+                      <div class="flex items-center gap-2">
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
+                          :title="server.hostPath"
+                        >
+                          {{ server.hostPath || "-" }}
+                        </p>
+                        <button
+                          v-if="server.hostPath"
+                          class="text-gray-400 hover:text-primary transition-colors shrink-0"
+                          :title="'Copy path'"
+                          @click="copyToClipboard(server.hostPath!)"
+                        >
+                          <Copy class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -854,6 +917,15 @@
       danger
       @confirm="onRecreateConfirmed"
     />
+    <confirm-dialog
+      v-if="server"
+      v-model="showPortConflictDialog"
+      title="Port Conflict"
+      :description="`Game port ${server.gamePort} is already used by another server. Reassign to a free port?`"
+      confirm-label="Reassign"
+      simple
+      @confirm="onReassignPortsConfirmed"
+    />
   </div>
 </template>
 
@@ -870,6 +942,7 @@ import {
   Hash,
   MemoryStick,
   OctagonAlert,
+  Package,
   Pencil,
   Play,
   RefreshCw,
@@ -883,7 +956,7 @@ import {
   Trash2,
   X as XIcon,
 } from "lucide-vue-next";
-import { nextTick, onMounted, onBeforeUnmount } from "vue";
+import { nextTick, onMounted, onBeforeUnmount, watch } from "vue";
 import type { Server } from "~/composables/useServers";
 import {
   useServerEvents,
@@ -938,6 +1011,48 @@ const ramLoading = ref(false);
 const editingCpu = ref(false);
 const tempCpu = ref<number | null>(null);
 const cpuLoading = ref(false);
+
+const showPortConflictDialog = ref(false);
+const portConflictChecked = ref(false);
+
+const hasPortConflict = computed(() => {
+  if (!server.value) return false;
+  if (server.value.containerStatus === "running") return false;
+  return servers.value.some(
+    (s) => s.serverId !== serverId && s.gamePort === server.value!.gamePort,
+  );
+});
+
+watch(
+  () => server.value?.gamePort,
+  () => {
+    if (hasPortConflict.value && !portConflictChecked.value) {
+      showPortConflictDialog.value = true;
+      portConflictChecked.value = true;
+    }
+  },
+  { immediate: true },
+);
+
+async function onReassignPortsConfirmed() {
+  portLoading.value = true;
+  try {
+    await $fetch(`/servers/${serverId}/reassign-ports`, {
+      baseURL: useApiBase(),
+      method: "POST",
+      credentials: "include",
+    });
+    showToast("success", "Ports reassigned", {
+      description: "Server ports have been updated to free ones.",
+    });
+    await refreshServers();
+  } catch (err: any) {
+    const msg = err?.data?.detail || err?.message || "Failed to reassign ports";
+    showToast("error", "Reassign failed", { description: msg });
+  } finally {
+    portLoading.value = false;
+  }
+}
 
 const serverMetrics = computed<MetricsPayload[]>(
   () => metricsMap.value[serverId] || [],

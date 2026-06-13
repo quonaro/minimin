@@ -134,6 +134,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		VolumeID:           volumeID,
 		VolumePath:         volumePath,
 		HostPath:           runner.HostPathForDocker(volumePath, h.ServersDir, h.ServersHostDir),
+		ContainerPath:      "/data",
 		ContainerID:        containerID,
 		RamBytes:           req.RamBytes,
 		CPUs:               req.CPUs,
@@ -148,6 +149,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		ContainerStatus:    "running",
 		ContainerStartedAt: time.Now().UTC(),
 		ServerStatus:       "starting",
+		ModCount:           state.CountMods(state.ServerState{VolumePath: volumePath}),
 	}
 	h.Instance.Set(s)
 	_ = h.Instance.Save()
@@ -164,11 +166,65 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, s)
 }
 
+// HandleReassignPorts picks new free ports for a stopped server and clears its container ID.
+func (h *Handler) HandleReassignPorts(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	s, ok := h.Instance.Get(id)
+	if !ok {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	if s.ContainerStatus == "running" {
+		jsonError(w, "cannot reassign ports while server is running", http.StatusConflict)
+		return
+	}
+
+	portUsed := func(p uint16) bool {
+		return h.Instance.IsPortUsed(p, id)
+	}
+
+	gamePort, err := runner.FindFreePortExcluding("", s.GamePort, portUsed)
+	if err != nil {
+		jsonError(w, fmt.Sprintf("no free game port: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	rconHost := "127.0.0.1"
+	if s.PublicRcon {
+		rconHost = ""
+	}
+	rconPort, err := runner.FindFreePortExcluding(rconHost, s.RconPort, portUsed)
+	if err != nil {
+		jsonError(w, fmt.Sprintf("no free rcon port: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if rconPort == gamePort {
+		rconPort, err = runner.FindFreePortExcluding(rconHost, 0, portUsed)
+		if err != nil {
+			jsonError(w, fmt.Sprintf("no free rcon port: %v", err), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	updated := h.Instance.UpdateMeta(id, func(st *state.ServerState) {
+		st.GamePort = gamePort
+		st.RconPort = rconPort
+		st.ContainerID = ""
+	})
+	if !updated {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	_ = h.Instance.Save()
+	s, _ = h.Instance.Get(id)
+	jsonResponse(w, s)
+}
+
 // handleListServers returns all registered server states.
 func (h *Handler) HandleListServers(w http.ResponseWriter, r *http.Request) {
 	servers := h.Instance.All()
 	for i := range servers {
-		servers[i] = h.resolveHostPath(servers[i])
+		servers[i] = h.resolveLegacyFields(servers[i])
 	}
 	jsonResponse(w, servers)
 }
@@ -181,7 +237,7 @@ func (h *Handler) HandleGetServer(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
-	jsonResponse(w, h.resolveHostPath(s))
+	jsonResponse(w, h.resolveLegacyFields(s))
 }
 
 // handleUpdateServer patches mutable server metadata fields.
@@ -261,5 +317,5 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.Instance.Save()
 	s, _ = h.Instance.Get(id)
-	jsonResponse(w, s)
+	jsonResponse(w, h.resolveLegacyFields(s))
 }

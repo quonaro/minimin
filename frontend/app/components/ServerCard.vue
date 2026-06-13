@@ -36,6 +36,13 @@
           <Activity v-if="server.serverStatus === 'running'" class="w-3 h-3" />
           server: {{ server.serverStatus }}
         </span>
+        <span
+          v-if="server.modCount !== undefined && server.modCount > 0"
+          class="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+        >
+          <Package class="w-3 h-3" />
+          {{ server.modCount }} mod{{ server.modCount === 1 ? "" : "s" }}
+        </span>
       </div>
     </div>
 
@@ -100,7 +107,14 @@
 import { computed } from "vue";
 import { useUptime } from "~/composables/useDuration";
 import type { Server } from "~/composables/useServers";
-import { Activity, Clock, Network, Tag, ChevronRight } from "lucide-vue-next";
+import {
+  Activity,
+  Clock,
+  Network,
+  Package,
+  Tag,
+  ChevronRight,
+} from "lucide-vue-next";
 
 const props = defineProps<{
   server: Server;

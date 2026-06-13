@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"orchestrator/internal/runner"
+	"orchestrator/internal/state"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -107,6 +108,8 @@ func (h *Handler) doStart(id string) {
 		s.VolumeID = volumeID
 		s.VolumePath = volumePath
 		s.HostPath = runner.HostPathForDocker(volumePath, h.ServersDir, h.ServersHostDir)
+		s.ContainerPath = "/data"
+		s.ModCount = state.CountMods(s)
 	}
 
 	s.ContainerStatus = "running"

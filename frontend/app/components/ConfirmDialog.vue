@@ -6,6 +6,7 @@ const props = defineProps<{
   confirmLabel?: string;
   danger?: boolean;
   showWipe?: boolean;
+  simple?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,7 +40,9 @@ watch(
   },
 );
 
-const isValid = computed(() => inputValue.value === randomWord.value);
+const isValid = computed(
+  () => props.simple || inputValue.value === randomWord.value,
+);
 
 function onConfirm() {
   if (!isValid.value) return;
@@ -79,23 +82,26 @@ function onCancel() {
           Also delete all server data (world, configs, mods)
         </span>
       </label>
-      <p class="text-sm text-gray-600 dark:text-neutral-400 mb-2">
-        Type
-        <code
-          class="font-mono font-bold bg-gray-100 dark:bg-neutral-700 px-1 rounded"
-        >
-          {{ randomWord }}
-        </code>
-        to confirm:
-      </p>
-      <input
-        ref="inputRef"
-        v-model="inputValue"
-        type="text"
-        class="w-full mb-6 px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-        :placeholder="randomWord"
-        @keyup.enter="onConfirm"
-      />
+      <template v-if="!simple">
+        <p class="text-sm text-gray-600 dark:text-neutral-400 mb-2">
+          Type
+          <code
+            class="font-mono font-bold bg-gray-100 dark:bg-neutral-700 px-1 rounded"
+          >
+            {{ randomWord }}
+          </code>
+          to confirm:
+        </p>
+        <input
+          ref="inputRef"
+          v-model="inputValue"
+          type="text"
+          class="w-full mb-6 px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+          :placeholder="randomWord"
+          @keyup.enter="onConfirm"
+        />
+      </template>
+      <div v-else class="mb-6" />
       <div class="flex justify-end gap-3">
         <button
           class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
