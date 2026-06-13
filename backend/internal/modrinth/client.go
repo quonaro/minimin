@@ -8,19 +8,25 @@ import (
 	"time"
 )
 
-const baseURL = "https://api.modrinth.com/v2"
+const defaultBaseURL = "https://api.modrinth.com/v2"
 
 // Client wraps HTTP calls to the Modrinth API with caching.
 type Client struct {
 	httpClient *http.Client
 	cache      *Cache
+	baseURL    string
 }
 
 // NewClient creates a new Modrinth client.
-func NewClient() *Client {
+// If baseURL is empty, the official Modrinth API is used.
+func NewClient(baseURL string) *Client {
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
 	return &Client{
 		httpClient: &http.Client{Timeout: 15 * time.Second},
 		cache:      NewCache(),
+		baseURL:    baseURL,
 	}
 }
 
@@ -31,7 +37,7 @@ func (c *Client) Search(params SearchParams) (SearchResponse, error) {
 		return cached, nil
 	}
 
-	req, err := http.NewRequest(http.MethodGet, baseURL+"/search", nil)
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/search", nil)
 	if err != nil {
 		return SearchResponse{}, err
 	}
@@ -67,7 +73,7 @@ func (c *Client) GetProject(id string) (Project, error) {
 		return cached, nil
 	}
 
-	resp, err := c.httpClient.Get(baseURL + "/project/" + id)
+	resp, err := c.httpClient.Get(c.baseURL + "/project/" + id)
 	if err != nil {
 		return Project{}, err
 	}
@@ -91,7 +97,7 @@ func (c *Client) GetVersions(projectID string, params VersionParams) ([]Version,
 		return cached, nil
 	}
 
-	req, err := http.NewRequest(http.MethodGet, baseURL+"/project/"+projectID+"/version", nil)
+	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/project/"+projectID+"/version", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +133,7 @@ func (c *Client) GetVersion(id string) (Version, error) {
 		return cached, nil
 	}
 
-	resp, err := c.httpClient.Get(baseURL + "/version/" + id)
+	resp, err := c.httpClient.Get(c.baseURL + "/version/" + id)
 	if err != nil {
 		return Version{}, err
 	}

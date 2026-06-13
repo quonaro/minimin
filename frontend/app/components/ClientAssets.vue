@@ -33,7 +33,7 @@
       v-show="props.embedded || isOpen"
       class="space-y-2 flex-1 min-h-0 overflow-y-auto p-4"
     >
-      <div class="flex items-center gap-2">
+      <div v-if="props.showUpload" class="flex items-center gap-2">
         <input
           ref="fileInput"
           type="file"
@@ -107,6 +107,7 @@ import {
   Trash2,
   type Component,
 } from "lucide-vue-next";
+import { useClientAssetsRefresh } from "~/composables/useClientAssetsRefresh";
 
 interface Props {
   serverId: string;
@@ -115,11 +116,13 @@ interface Props {
   icon: Component;
   searchQuery?: string;
   embedded?: boolean;
+  showUpload?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
   embedded: false,
+  showUpload: true,
 });
 
 const filteredAssets = computed(() => {
@@ -140,6 +143,11 @@ const {
   uploadFile,
   toggleAsset,
 } = useClientAssets(props.serverId, props.type);
+
+const { key: refreshKey } = useClientAssetsRefresh(props.serverId);
+watch(refreshKey, () => {
+  refresh();
+});
 
 onMounted(() => {
   refresh();

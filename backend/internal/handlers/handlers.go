@@ -26,12 +26,12 @@ type Handler struct {
 }
 
 // NewHandler creates a new Handler.
-func NewHandler(cli *client.Client, instance *state.InstanceFile, apiKey string) *Handler {
+func NewHandler(cli *client.Client, instance *state.InstanceFile, apiKey string, modrinthBaseURL string) *Handler {
 	return &Handler{
 		Cli:            cli,
 		Instance:       instance,
 		APIKey:         apiKey,
-		ModrinthClient: modrinth.NewClient(),
+		ModrinthClient: modrinth.NewClient(modrinthBaseURL),
 	}
 }
 

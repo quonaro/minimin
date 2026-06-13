@@ -247,6 +247,7 @@
           title="Resource Packs"
           :icon="Image"
           :search-query="searchQuery"
+          :show-upload="false"
         />
       </div>
 
@@ -262,6 +263,7 @@
           title="Shader Packs"
           :icon="Sparkles"
           :search-query="searchQuery"
+          :show-upload="false"
         />
       </div>
     </div>

@@ -154,7 +154,9 @@ func main() {
 		hub.BroadcastJSON("server", s)
 	}
 
-	h := handlers.NewHandler(cli, instance, apiKey)
+	modrinthCustomURL := os.Getenv("MODRINTH_CUSTOM_URL")
+
+	h := handlers.NewHandler(cli, instance, apiKey, modrinthCustomURL)
 	h.ServersDir = serversDir
 	h.ServersHostDir = serversHostDir
 	h.ModUploadMaxMB = modUploadMaxMB

@@ -81,7 +81,11 @@
               </button>
             </div>
             <div
-              v-if="zipContents.length > 0"
+              v-if="
+                zipContents.length > 0 &&
+                uploadTarget === 'client' &&
+                clientUploadSection === 'mods'
+              "
               class="mt-2 max-h-32 overflow-y-auto rounded-lg border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 p-2 space-y-1"
             >
               <p class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
@@ -116,6 +120,29 @@
                 @click="uploadTarget = t.value"
               >
                 {{ t.label }}
+              </button>
+            </div>
+          </div>
+          <div v-if="uploadTarget === 'client'">
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
+              >Client Section</label
+            >
+            <div
+              class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
+            >
+              <button
+                v-for="s in clientUploadSections"
+                :key="s.value"
+                class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors"
+                :class="
+                  clientUploadSection === s.value
+                    ? 'bg-primary text-white'
+                    : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
+                "
+                @click="clientUploadSection = s.value"
+              >
+                {{ s.label }}
               </button>
             </div>
           </div>
@@ -388,6 +415,7 @@
 import { debounce } from "~/utils/debounce";
 import { Upload, Link, Download, Copy, Box } from "lucide-vue-next";
 import JSZip from "jszip";
+import { useClientAssetsRefresh } from "~/composables/useClientAssetsRefresh";
 
 usePageTitle("Mods");
 
@@ -441,6 +469,17 @@ const uploadTargets = [
   { value: "server" as const, label: "Server" },
   { value: "client" as const, label: "Client" },
 ];
+const clientUploadSection = ref<"mods" | "resourcepacks" | "shaderpacks">(
+  "mods",
+);
+const clientUploadSections = [
+  { value: "mods" as const, label: "Mods" },
+  { value: "resourcepacks" as const, label: "Resource Packs" },
+  { value: "shaderpacks" as const, label: "Shader Packs" },
+];
+
+const { trigger: triggerClientAssetsRefresh } =
+  useClientAssetsRefresh(serverId);
 const installedSideFilter = ref<"all" | "server" | "client">("all");
 const clientSearchQuery = ref("");
 const librarySideFilter = ref<"all" | "server" | "client">("all");
@@ -522,9 +561,25 @@ async function handleUploadConfirm() {
   if (!pendingUploadFile.value) return;
   if (uploadTarget.value === "server") {
     await uploadFile(pendingUploadFile.value);
-  } else {
+  } else if (clientUploadSection.value === "mods") {
     await uploadClientFile(pendingUploadFile.value);
     await refreshClient();
+  } else {
+    const formData = new FormData();
+    formData.append("file", pendingUploadFile.value);
+    await $fetch(
+      `/servers/${serverId}/client-assets/upload?type=${clientUploadSection.value}`,
+      {
+        baseURL: useApiBase(),
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      },
+    );
+    useToast().show("success", "Upload complete", {
+      description: pendingUploadFile.value.name,
+    });
+    triggerClientAssetsRefresh();
   }
   pendingUploadFile.value = null;
   zipContents.value = [];
