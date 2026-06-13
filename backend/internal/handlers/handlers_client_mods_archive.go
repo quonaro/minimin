@@ -225,7 +225,7 @@ func (h *Handler) HandleCreateClientArchive(w http.ResponseWriter, r *http.Reque
 		req.TTL = maxTTL
 	}
 	if len(req.Include) == 0 {
-		req.Include = []string{"mods"}
+		req.Include = []string{"mods", "resourcepacks", "shaderpacks"}
 	}
 	formats := []string{"zip", "mrpack", "curseforge", "prism"}
 
