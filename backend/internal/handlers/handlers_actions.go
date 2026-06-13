@@ -44,7 +44,10 @@ func (h *Handler) doStart(id string) {
 		if s.RconPort == 0 {
 			s.RconPort = s.GamePort + 10
 		}
-		gamePort, err := runner.FindFreePort("", s.GamePort)
+		portUsed := func(p uint16) bool {
+			return h.Instance.IsPortUsed(p, id)
+		}
+		gamePort, err := runner.FindFreePortExcluding("", s.GamePort, portUsed)
 		if err != nil {
 			slog.Error("no free game port", "server_id", id, "error", err)
 			h.Instance.ClearDesired(id, prevStatus)
@@ -55,7 +58,7 @@ func (h *Handler) doStart(id string) {
 		if s.PublicRcon {
 			rconHost = ""
 		}
-		rconPort, err := runner.FindFreePort(rconHost, s.RconPort)
+		rconPort, err := runner.FindFreePortExcluding(rconHost, s.RconPort, portUsed)
 		if err != nil {
 			slog.Error("no free rcon port", "server_id", id, "error", err)
 			h.Instance.ClearDesired(id, prevStatus)
@@ -63,7 +66,7 @@ func (h *Handler) doStart(id string) {
 			return
 		}
 		if rconPort == gamePort {
-			rconPort, err = runner.FindFreePort(rconHost, 0)
+			rconPort, err = runner.FindFreePortExcluding(rconHost, 0, portUsed)
 			if err != nil {
 				slog.Error("no free rcon port", "server_id", id, "error", err)
 				h.Instance.ClearDesired(id, prevStatus)
@@ -103,6 +106,7 @@ func (h *Handler) doStart(id string) {
 		s.ContainerID = containerID
 		s.VolumeID = volumeID
 		s.VolumePath = volumePath
+		s.HostPath = runner.HostPathForDocker(volumePath, h.ServersDir, h.ServersHostDir)
 	}
 
 	s.ContainerStatus = "running"

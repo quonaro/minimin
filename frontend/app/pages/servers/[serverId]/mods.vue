@@ -395,6 +395,8 @@
             :version-details="versionDetailsMap"
             :dep-projects="depProjectsMap"
             :project-type="modrinth.projectType.value"
+            :installed-mod-basenames="installedModBasenames"
+            :installed-asset-basenames="installedAssetBasenames"
             v-model:side-filter="librarySideFilter"
             @update:search-query="onSearchInput"
             @update:project-type="onProjectTypeChange"
@@ -416,6 +418,7 @@ import { debounce } from "~/utils/debounce";
 import { Upload, Link, Download, Copy, Box } from "lucide-vue-next";
 import JSZip from "jszip";
 import { useClientAssetsRefresh } from "~/composables/useClientAssetsRefresh";
+import { useClientAssets } from "~/composables/useClientAssets";
 
 usePageTitle("Mods");
 
@@ -456,6 +459,9 @@ const {
   deleteArchive,
 } = useClientMods(serverId);
 
+const resourcePacks = useClientAssets(serverId, "resourcepacks");
+const shaderPacks = useClientAssets(serverId, "shaderpacks");
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const showUploadModal = ref(false);
 const showDownloadModal = ref(false);
@@ -480,6 +486,29 @@ const clientUploadSections = [
 
 const { trigger: triggerClientAssetsRefresh } =
   useClientAssetsRefresh(serverId);
+
+const installedModBasenames = computed(() => {
+  const server = new Set<string>();
+  const client = new Set<string>();
+  const add = (set: Set<string>, filename: string) => {
+    const base = filename.replace(/\.[^.]+$/, "").toLowerCase();
+    if (base) set.add(base);
+  };
+  mods.value.forEach((m) => add(server, m.filename));
+  clientModList.value.forEach((m) => add(client, m.filename));
+  return { server, client };
+});
+
+const installedAssetBasenames = computed(() => {
+  const names = new Set<string>();
+  const add = (filename: string) => {
+    const base = filename.replace(/\.[^.]+$/, "").toLowerCase();
+    if (base) names.add(base);
+  };
+  resourcePacks.assets.value.forEach((a) => add(a.filename));
+  shaderPacks.assets.value.forEach((a) => add(a.filename));
+  return names;
+});
 const installedSideFilter = ref<"all" | "server" | "client">("all");
 const clientSearchQuery = ref("");
 const librarySideFilter = ref<"all" | "server" | "client">("all");
@@ -865,6 +894,8 @@ onMounted(async () => {
   await Promise.all([
     refresh(),
     refreshClient(),
+    resourcePacks.refresh(),
+    shaderPacks.refresh(),
     modrinth.search(serverEngine.value, serverGameVersion.value),
   ]);
 });

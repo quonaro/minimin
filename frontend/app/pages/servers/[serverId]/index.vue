@@ -169,7 +169,7 @@
                   <p
                     class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                   >
-                    Game Port
+                    Game Port (host)
                   </p>
                   <div v-if="!editingPort" class="flex items-center gap-2">
                     <p
@@ -533,6 +533,74 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Path (host) -->
+              <div
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+              >
+                <div
+                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-neutral-600/50 flex items-center justify-center text-gray-600 dark:text-gray-400"
+                >
+                  <FolderOpen class="w-4 h-4" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  >
+                    Path (host)
+                  </p>
+                  <div class="flex items-center gap-2">
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
+                      :title="server.hostPath"
+                    >
+                      {{ server.hostPath || "-" }}
+                    </p>
+                    <button
+                      v-if="server.hostPath"
+                      class="text-gray-400 hover:text-primary transition-colors shrink-0"
+                      :title="'Copy path'"
+                      @click="copyToClipboard(server.hostPath!)"
+                    >
+                      <Copy class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Path (container) -->
+              <div
+                class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+              >
+                <div
+                  class="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-neutral-600/50 flex items-center justify-center text-gray-600 dark:text-gray-400"
+                >
+                  <FolderOpen class="w-4 h-4" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                  >
+                    Path (container)
+                  </p>
+                  <div class="flex items-center gap-2">
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
+                      :title="server.volumePath"
+                    >
+                      {{ server.volumePath || "-" }}
+                    </p>
+                    <button
+                      v-if="server.volumePath"
+                      class="text-gray-400 hover:text-primary transition-colors shrink-0"
+                      :title="'Copy path'"
+                      @click="copyToClipboard(server.volumePath!)"
+                    >
+                      <Copy class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Actions -->
@@ -795,7 +863,9 @@ import {
   Activity,
   Check,
   Clock,
+  Copy,
   Cpu,
+  FolderOpen,
   Globe,
   Hash,
   MemoryStick,
@@ -960,6 +1030,15 @@ function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("info", "Path copied to clipboard");
+  } catch {
+    showToast("error", "Failed to copy path");
+  }
 }
 
 function sparklinePoints(

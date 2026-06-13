@@ -155,6 +155,9 @@ func main() {
 	hub := events.NewHub()
 
 	instance.Broadcast = func(serverID string, s state.ServerState) {
+		if s.HostPath == "" && s.VolumePath != "" {
+			s.HostPath = runner.HostPathForDocker(s.VolumePath, serversDir, serversHostDir)
+		}
 		hub.BroadcastJSON("server", s)
 	}
 

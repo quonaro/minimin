@@ -6,6 +6,7 @@ import (
 
 	"orchestrator/internal/events"
 	"orchestrator/internal/modrinth"
+	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
 
 	"github.com/docker/docker/client"
@@ -87,6 +88,14 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 	jsonResponse(w, map[string]bool{"success": true})
+}
+
+// resolveHostPath fills HostPath for legacy servers that don't have it persisted.
+func (h *Handler) resolveHostPath(s state.ServerState) state.ServerState {
+	if s.HostPath == "" && s.VolumePath != "" {
+		s.HostPath = runner.HostPathForDocker(s.VolumePath, h.ServersDir, h.ServersHostDir)
+	}
+	return s
 }
 
 func jsonError(w http.ResponseWriter, msg string, code int) {

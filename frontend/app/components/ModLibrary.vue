@@ -98,11 +98,37 @@
             <Box class="w-5 h-5" />
           </div>
           <div class="flex-1 min-w-0">
-            <p
-              class="text-sm font-semibold text-gray-900 dark:text-white truncate"
-            >
-              {{ project.title }}
-            </p>
+            <div class="flex items-center gap-2">
+              <p
+                class="text-sm font-semibold text-gray-900 dark:text-white truncate"
+              >
+                {{ project.title }}
+              </p>
+              <span
+                v-if="installStatus(project) === 'server'"
+                class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+              >
+                Server
+              </span>
+              <span
+                v-else-if="installStatus(project) === 'client'"
+                class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+              >
+                Client
+              </span>
+              <span
+                v-else-if="installStatus(project) === 'both'"
+                class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+              >
+                Both
+              </span>
+              <span
+                v-else-if="installStatus(project) === 'asset'"
+                class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-200 dark:bg-neutral-600 text-gray-700 dark:text-neutral-300"
+              >
+                Installed
+              </span>
+            </div>
             <p class="text-xs text-gray-500 dark:text-neutral-400 line-clamp-2">
               {{ project.description }}
             </p>
@@ -211,12 +237,19 @@ interface Props {
   versionDetails?: Record<string, ModrinthVersion>;
   depProjects?: Record<string, ModrinthProject>;
   projectType?: "mod" | "resourcepack" | "shader";
+  installedModBasenames?: { server: Set<string>; client: Set<string> };
+  installedAssetBasenames?: Set<string>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   versions: () => ({}),
   sideFilter: "all",
   projectType: "mod",
+  installedModBasenames: () => ({
+    server: new Set<string>(),
+    client: new Set<string>(),
+  }),
+  installedAssetBasenames: () => new Set<string>(),
 });
 const emit = defineEmits<{
   search: [];
@@ -366,6 +399,31 @@ function isInstalling(projectId: string, versionId: string): boolean {
 function install(project: ModrinthProject, versionId: string) {
   if (!versionId) return;
   openConfirm(project, versionId);
+}
+
+function hasMatch(set: Set<string> | undefined, slug: string): boolean {
+  if (!set?.size) return false;
+  for (const name of set) {
+    if (name.includes(slug) || slug.includes(name)) return true;
+  }
+  return false;
+}
+
+function installStatus(
+  project: ModrinthProject,
+): "server" | "client" | "both" | "asset" | null {
+  const slug = project.slug.toLowerCase();
+  if (props.projectType === "mod") {
+    const inServer = hasMatch(props.installedModBasenames?.server, slug);
+    const inClient = hasMatch(props.installedModBasenames?.client, slug);
+    if (inServer && inClient) return "both";
+    if (inServer) return "server";
+    if (inClient) return "client";
+    return null;
+  }
+  // resourcepack / shader
+  if (hasMatch(props.installedAssetBasenames, slug)) return "asset";
+  return null;
 }
 
 function formatDownloads(n: number): string {

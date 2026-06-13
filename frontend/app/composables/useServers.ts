@@ -14,6 +14,8 @@ export interface Server {
   gameVersion: string;
   ramBytes?: number;
   cpus?: number;
+  volumePath?: string;
+  hostPath?: string;
 }
 
 export function useServers() {

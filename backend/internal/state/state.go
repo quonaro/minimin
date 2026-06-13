@@ -17,6 +17,7 @@ type ServerState struct {
 	ServerID           string            `json:"serverId"     yaml:"server_id"`
 	VolumeID           string            `json:"volumeId"     yaml:"volume_id"`
 	VolumePath         string            `json:"volumePath"   yaml:"volume_path"`
+	HostPath           string            `json:"hostPath"     yaml:"host_path"`
 	ContainerID        string            `json:"containerId"  yaml:"container_id"`
 	RamBytes           int64             `json:"ramBytes"     yaml:"ram_bytes"`
 	CPUs               float64           `json:"cpus"          yaml:"cpus"`
@@ -260,6 +261,22 @@ func ReadServerJSON(s ServerState, filename string) ([]map[string]any, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// IsPortUsed reports whether the given port is already assigned to any stored server.
+// If excludeServerID is non-empty, that server is ignored.
+func (i *InstanceFile) IsPortUsed(port uint16, excludeServerID string) bool {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	for id, s := range i.Servers {
+		if id == excludeServerID {
+			continue
+		}
+		if s.GamePort == port || s.RconPort == port {
+			return true
+		}
+	}
+	return false
 }
 
 // All returns a snapshot of every stored server state.

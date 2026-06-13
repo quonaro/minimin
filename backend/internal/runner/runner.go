@@ -455,7 +455,13 @@ func IsPortFree(host string, port uint16) bool {
 // otherwise it searches for the next free port starting from preferred+1,
 // wrapping around at 65535 to 1024.
 func FindFreePort(host string, preferred uint16) (uint16, error) {
-	if preferred != 0 && IsPortFree(host, preferred) {
+	return FindFreePortExcluding(host, preferred, func(uint16) bool { return false })
+}
+
+// FindFreePortExcluding returns preferred if it is free on the given host
+// and not excluded by the filter; otherwise it searches for the next free port.
+func FindFreePortExcluding(host string, preferred uint16, exclude func(uint16) bool) (uint16, error) {
+	if preferred != 0 && IsPortFree(host, preferred) && !exclude(preferred) {
 		return preferred, nil
 	}
 	start := uint16(1024)
@@ -463,12 +469,12 @@ func FindFreePort(host string, preferred uint16) (uint16, error) {
 		start = preferred + 1
 	}
 	for p := start; p < 65535; p++ {
-		if IsPortFree(host, p) {
+		if IsPortFree(host, p) && !exclude(p) {
 			return p, nil
 		}
 	}
 	for p := uint16(1024); p < start; p++ {
-		if IsPortFree(host, p) {
+		if IsPortFree(host, p) && !exclude(p) {
 			return p, nil
 		}
 	}
@@ -479,9 +485,9 @@ func FindFreePort(host string, preferred uint16) (uint16, error) {
 // creates a unique servers/<volume_id> directory, builds configuration and runs the container.
 // It returns the Docker container ID, the generated volume ID, and the absolute host path of the volume.
 // If existingVolumePath is non-empty and the directory exists, it is reused instead of creating a new one.
-// hostPathForDocker translates a local path inside the backend container to the
+// HostPathForDocker translates a local path inside the backend container to the
 // corresponding host path so that Docker daemon binds the correct directory.
-func hostPathForDocker(localPath, serversDir, serversHostDir string) string {
+func HostPathForDocker(localPath, serversDir, serversHostDir string) string {
 	rel, err := filepath.Rel(serversDir, localPath)
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return localPath
@@ -564,7 +570,7 @@ func StartServerContainer(
 		slog.Warn("failed to chmod server data directory", "path", localPath, "error", err)
 	}
 
-	dockerHostPath := hostPathForDocker(localPath, serversDir, serversHostDir)
+	dockerHostPath := HostPathForDocker(localPath, serversDir, serversHostDir)
 
 	// Leave ~20 % headroom for JVM off-heap / native / container overhead.
 	heapBytes := int64(float64(ramBytes) * 0.8)
