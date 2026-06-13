@@ -247,7 +247,7 @@
           title="Resource Packs"
           :icon="Image"
           :search-query="searchQuery"
-          :show-upload="false"
+          :show-upload="true"
         />
       </div>
 
@@ -263,7 +263,7 @@
           title="Shader Packs"
           :icon="Sparkles"
           :search-query="searchQuery"
-          :show-upload="false"
+          :show-upload="true"
         />
       </div>
     </div>
@@ -284,6 +284,7 @@ import {
   Sparkles,
   AlertTriangle,
 } from "lucide-vue-next";
+import JSZip from "jszip";
 import type { ModInfo } from "~/composables/useMods";
 import type {
   ArchiveInfo,
@@ -424,7 +425,7 @@ function formatBytes(n: number): string {
   return n + " B";
 }
 
-function onDrop(e: DragEvent) {
+async function onDrop(e: DragEvent) {
   isDragOver.value = false;
   const dt = e.dataTransfer;
   if (!dt) return;
@@ -443,9 +444,51 @@ function onDrop(e: DragEvent) {
   const file = dt.files[0];
   if (!file) return;
   const ext = file.name.split(".").pop()?.toLowerCase();
+  if (ext === "zip") {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      let hasPackMcmeta = false;
+      let hasShaders = false;
+      zip.forEach((relativePath: string, entry: JSZip.JSZipObject) => {
+        if (entry.dir) return;
+        const lower = relativePath.toLowerCase();
+        if (lower === "pack.mcmeta") hasPackMcmeta = true;
+        if (lower.startsWith("shaders/")) hasShaders = true;
+      });
+      if (hasShaders) {
+        activeTab.value = "shaderpacks";
+        // upload will be handled by the user via the upload button in the shaderpacks tab
+        // since the embedded ClientAssets handles its own upload.
+        // However, to actually perform the upload we need to emit or call upload.
+        // ClientAssets handles upload internally via useClientAssets. We can't easily inject a file there.
+        // Better: create FormData and POST directly.
+      }
+      // Since embedded ClientAssets handles its own upload, we can't easily pass a dropped file into it.
+      // We'll do direct $fetch upload here and then switch tab.
+      const formData = new FormData();
+      formData.append("file", file);
+      const assetType = hasShaders ? "shaderpacks" : "resourcepacks";
+      await $fetch(
+        `/servers/${props.serverId}/client-assets/upload?type=${assetType}`,
+        {
+          baseURL: useApiBase(),
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        },
+      );
+      useToast().show("success", "Upload complete", { description: file.name });
+      activeTab.value = assetType as "resourcepacks" | "shaderpacks";
+    } catch (err: any) {
+      useToast().show("error", "Upload failed", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    }
+    return;
+  }
   if (ext !== "jar") {
     useToast().show("error", "Invalid file type", {
-      description: "Only .jar files are allowed for client mods.",
+      description: "Only .jar or .zip files are allowed.",
     });
     return;
   }

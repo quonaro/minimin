@@ -61,8 +61,13 @@ watch(
         }
       }
       selectedDepIds.value = ids;
-      installToServer.value = true;
-      installToClient.value = false;
+      if (props.projectType !== "mod") {
+        installToServer.value = false;
+        installToClient.value = true;
+      } else {
+        installToServer.value = true;
+        installToClient.value = false;
+      }
     }
   },
 );

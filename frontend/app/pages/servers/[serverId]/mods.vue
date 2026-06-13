@@ -586,13 +586,39 @@ async function handleUploadConfirm() {
   showUploadModal.value = false;
 }
 
+async function downloadResourcePackFromURL(url: string, filename?: string) {
+  await $fetch(
+    `/servers/${serverId}/client-assets/download?type=resourcepacks`,
+    {
+      baseURL: useApiBase(),
+      method: "POST",
+      credentials: "include",
+      body: { url, filename },
+    },
+  );
+}
+
+async function downloadShaderPackFromURL(url: string, filename?: string) {
+  await $fetch(`/servers/${serverId}/client-assets/download?type=shaderpacks`, {
+    baseURL: useApiBase(),
+    method: "POST",
+    credentials: "include",
+    body: { url, filename },
+  });
+}
+
 async function handleDownloadFromURL() {
   if (!modUrl.value) return;
   if (downloadTarget.value === "server") {
     await downloadFromURL(modUrl.value);
   } else {
-    await downloadClientFromURL(modUrl.value);
-    await refreshClient();
+    if (modUrl.value.toLowerCase().endsWith(".zip")) {
+      await downloadResourcePackFromURL(modUrl.value);
+      triggerClientAssetsRefresh();
+    } else {
+      await downloadClientFromURL(modUrl.value);
+      await refreshClient();
+    }
   }
   modUrl.value = "";
   showDownloadModal.value = false;
@@ -701,6 +727,10 @@ async function handleInstall(
   const file = await modrinth.install(projectId, versionId);
   if (!file) return;
 
+  const projectType = modrinth.projectType.value;
+  const isAsset = projectType === "resourcepack" || projectType === "shader";
+  const assetType = projectType === "shader" ? "shaderpacks" : "resourcepacks";
+
   const allDeps = file.dependencies.filter(
     (d) => d.dependency_type !== "incompatible",
   );
@@ -732,6 +762,20 @@ async function handleInstall(
     }
     await doDownload(modFile.url, modFile.filename);
     await doRefresh();
+  }
+
+  if (isAsset) {
+    const doDownload =
+      assetType === "shaderpacks"
+        ? downloadShaderPackFromURL
+        : downloadResourcePackFromURL;
+    await installDepsAndMod(file, doDownload, async () => {
+      triggerClientAssetsRefresh();
+    });
+    useToast().show("success", "Installed to client", {
+      description: file.filename,
+    });
+    return;
   }
 
   if (installTarget === "both") {

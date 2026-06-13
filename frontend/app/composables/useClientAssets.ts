@@ -10,6 +10,7 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
   const assets = ref<ClientAsset[]>([]);
   const loading = ref(false);
   const uploadLoading = ref(false);
+  const downloadLoading = ref(false);
 
   const url = computed(() => `/servers/${serverId}/client-assets?type=${type}`);
 
@@ -72,6 +73,31 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
     }
   }
 
+  async function downloadFromURL(url: string, filename?: string) {
+    downloadLoading.value = true;
+    try {
+      const result = await $fetch<{
+        body?: { success: boolean; filename?: string };
+        filename?: string;
+      }>(`/servers/${serverId}/client-assets/download?type=${type}`, {
+        baseURL: useApiBase(),
+        method: "POST",
+        credentials: "include",
+        body: { url, filename },
+      });
+      const fn =
+        (result as any).body?.filename || result?.filename || filename || "file";
+      show("success", "Download complete", { description: fn });
+      await refresh();
+    } catch (err: any) {
+      show("error", "Download failed", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    } finally {
+      downloadLoading.value = false;
+    }
+  }
+
   async function toggleAsset(filename: string) {
     try {
       const res = await $fetch<{
@@ -99,9 +125,11 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
     assets,
     loading,
     uploadLoading,
+    downloadLoading,
     refresh,
     deleteAsset,
     uploadFile,
+    downloadFromURL,
     toggleAsset,
   };
 }

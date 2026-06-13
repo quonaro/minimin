@@ -29,6 +29,7 @@
       </div>
       <div class="flex items-center gap-2">
         <div
+          v-if="projectType === 'mod'"
           class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
         >
           <button
@@ -48,8 +49,8 @@
         <div
           class="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400 ml-auto"
         >
-          <span>Loader: {{ loader }}</span>
-          <span>&middot;</span>
+          <span v-if="projectType === 'mod'">Loader: {{ loader }}</span>
+          <span v-if="projectType === 'mod'">&middot;</span>
           <span>Version: {{ gameVersion }}</span>
         </div>
       </div>

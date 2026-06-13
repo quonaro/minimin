@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"orchestrator/internal/runner"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func (h *Handler) getClientAssetsDir(serverID string, assetType string) (string, error) {
@@ -156,6 +158,105 @@ func (h *Handler) HandleUploadClientAsset(w http.ResponseWriter, r *http.Request
 	}
 	_ = out.Close()
 	jsonResponse(w, map[string]any{"success": true, "filename": filename})
+}
+
+// HandleDownloadClientAssetFromURL downloads a .zip from a remote URL and saves it into the server's resourcepacks or shaderpacks directory.
+func (h *Handler) HandleDownloadClientAssetFromURL(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("panic in HandleDownloadClientAssetFromURL", "error", rec)
+			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
+		}
+	}()
+	id := r.PathValue("id")
+	assetType := r.URL.Query().Get("type")
+	if assetType == "" {
+		assetType = "resourcepacks"
+	}
+	switch assetType {
+	case "resourcepacks", "shaderpacks":
+	default:
+		jsonError(w, "invalid asset type", http.StatusBadRequest)
+		return
+	}
+	s, ok := h.Instance.Get(id)
+	if !ok {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	dir, err := h.getClientAssetsDir(id, assetType)
+	if err != nil {
+		jsonError(w, "failed to access directory", http.StatusInternalServerError)
+		return
+	}
+	if dir == "" {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	var req struct {
+		URL      string `json:"url"`
+		Filename string `json:"filename"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.URL == "" {
+		jsonError(w, "url is required", http.StatusBadRequest)
+		return
+	}
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Get(req.URL)
+	if err != nil {
+		slog.Error("failed to download client asset", "url", req.URL, "error", err)
+		jsonError(w, fmt.Sprintf("failed to download: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		jsonError(w, fmt.Sprintf("upstream returned %d", resp.StatusCode), http.StatusBadGateway)
+		return
+	}
+
+	filename := req.Filename
+	if filename == "" {
+		filename = filepath.Base(req.URL)
+	}
+	if filename == "" || filename == "." {
+		filename = "asset.zip"
+	}
+	if !strings.HasSuffix(strings.ToLower(filename), ".zip") {
+		jsonError(w, "only .zip files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	uid, gid := runner.ContainerUIDGID()
+	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
+		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
+	}
+	if err := os.MkdirAll(dir, 0o775); err != nil {
+		if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
+			jsonError(w, "failed to create directory: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	targetPath := filepath.Join(dir, filename)
+	out, err := os.Create(targetPath)
+	if err != nil {
+		jsonError(w, "failed to create file", http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = out.Close() }()
+
+	if _, err := io.Copy(out, resp.Body); err != nil {
+		jsonError(w, "failed to save file", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, map[string]string{"success": "true", "filename": filename})
 }
 
 // HandleDeleteClientAsset removes a file from resourcepacks or shaderpacks directory.

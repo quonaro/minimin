@@ -80,6 +80,10 @@ func (h *Handler) HandleDownloadClientModFromURL(w http.ResponseWriter, r *http.
 	if filename == "" || filename == "." {
 		filename = "mod.jar"
 	}
+	if !strings.HasSuffix(strings.ToLower(filename), ".jar") {
+		jsonError(w, "only .jar files are allowed", http.StatusBadRequest)
+		return
+	}
 
 	targetPath := filepath.Join(modsDir, filename)
 	out, err := os.Create(targetPath)

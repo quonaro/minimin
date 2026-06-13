@@ -101,6 +101,7 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	// Client assets (resourcepacks / shaderpacks) (protected)
 	mux.HandleFunc("GET /api/servers/{id}/client-assets", middleware.WithAuth(apiKey, h.HandleListClientAssets))
 	mux.HandleFunc("POST /api/servers/{id}/client-assets/upload", middleware.WithAuth(apiKey, h.HandleUploadClientAsset))
+	mux.HandleFunc("POST /api/servers/{id}/client-assets/download", middleware.WithAuth(apiKey, h.HandleDownloadClientAssetFromURL))
 	mux.HandleFunc("DELETE /api/servers/{id}/client-assets/{filename}", middleware.WithAuth(apiKey, h.HandleDeleteClientAsset))
 	mux.HandleFunc("POST /api/servers/{id}/client-assets/{filename}/toggle", middleware.WithAuth(apiKey, h.HandleToggleClientAsset))
 
