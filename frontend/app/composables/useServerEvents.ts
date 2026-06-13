@@ -39,6 +39,8 @@ export interface MetricsPayload {
   online: number;
   max: number;
   tps?: number;
+  rxRate: number;
+  txRate: number;
   timestamp: string;
 }
 

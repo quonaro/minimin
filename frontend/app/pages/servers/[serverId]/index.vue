@@ -662,6 +662,106 @@
                       </div>
                     </div>
                   </div>
+                  <!-- Total Volume -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-neutral-600/50 flex items-center justify-center text-gray-600 dark:text-gray-400"
+                    >
+                      <FolderOpen class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Total Volume
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{
+                          serverDisk ? formatBytes(serverDisk.totalBytes) : "—"
+                        }}
+                      </p>
+                    </div>
+                  </div>
+                  <!-- World -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400"
+                    >
+                      <Globe class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        World
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{
+                          serverDisk ? formatBytes(serverDisk.worldBytes) : "—"
+                        }}
+                      </p>
+                    </div>
+                  </div>
+                  <!-- Nether -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400"
+                    >
+                      <Zap class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Nether
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{
+                          serverDisk
+                            ? formatBytes(serverDisk.worldNetherBytes)
+                            : "—"
+                        }}
+                      </p>
+                    </div>
+                  </div>
+                  <!-- The End -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"
+                    >
+                      <Zap class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        The End
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{
+                          serverDisk
+                            ? formatBytes(serverDisk.worldEndBytes)
+                            : "—"
+                        }}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -761,78 +861,294 @@
         </div>
       </div>
 
+      <!-- Crash Reports Alert -->
+      <div
+        v-if="hasCrashReports"
+        class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3"
+      >
+        <AlertTriangle
+          class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+        />
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">
+            {{ crashReports.length }} crash report{{
+              crashReports.length === 1 ? "" : "s"
+            }}
+            found
+          </p>
+          <p class="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+            Latest: {{ formatTimestamp(latestCrashReportDate || undefined) }}
+          </p>
+        </div>
+        <NuxtLink
+          :to="`/servers/${serverId}/crash-reports`"
+          class="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline flex-shrink-0"
+        >
+          View →
+        </NuxtLink>
+      </div>
+
+      <!-- Quick Console -->
+      <div
+        v-if="server?.serverStatus === 'running'"
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
+      >
+        <button
+          class="w-full flex items-center justify-between p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          @click="quickConsoleExpanded = !quickConsoleExpanded"
+        >
+          <div class="flex items-center gap-3">
+            <Terminal class="w-5 h-5 text-gray-500 dark:text-neutral-400" />
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+              Quick Console
+            </h2>
+          </div>
+          <ChevronDown
+            class="w-5 h-5 text-gray-500 dark:text-neutral-400 transition-transform"
+            :class="{ 'rotate-180': quickConsoleExpanded }"
+          />
+        </button>
+        <div v-show="quickConsoleExpanded" class="px-4 pb-4 md:px-6 md:pb-6">
+          <div class="flex items-center gap-2">
+            <input
+              v-model="quickConsoleCommand"
+              type="text"
+              placeholder="Enter command (e.g. /say Hello)"
+              class="flex-1 bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+              @keyup.enter="sendQuickConsole"
+            />
+            <button
+              :disabled="quickConsoleLoading || !quickConsoleCommand.trim()"
+              class="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="sendQuickConsole"
+            >
+              <Loader2
+                v-if="quickConsoleLoading"
+                class="w-4 h-4 animate-spin"
+              />
+              <Send v-else class="w-4 h-4" />
+              Send
+            </button>
+          </div>
+          <pre
+            v-if="quickConsoleOutput"
+            class="mt-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 text-xs text-gray-700 dark:text-neutral-300 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto"
+            >{{ quickConsoleOutput }}</pre
+          >
+        </div>
+      </div>
+
       <!-- Real-time Metrics -->
       <div
         v-if="serverMetrics.length > 0"
+        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
+      >
+        <button
+          class="w-full flex items-center justify-between p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
+          @click="liveMetricsExpanded = !liveMetricsExpanded"
+        >
+          <div class="flex items-center gap-3">
+            <Activity class="w-5 h-5 text-gray-500 dark:text-neutral-400" />
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+              Live Metrics
+            </h2>
+          </div>
+          <ChevronDown
+            class="w-5 h-5 text-gray-500 dark:text-neutral-400 transition-transform"
+            :class="{ 'rotate-180': liveMetricsExpanded }"
+          />
+        </button>
+        <div v-show="liveMetricsExpanded" class="px-4 pb-4 md:px-6 md:pb-6">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <!-- RAM -->
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+                RAM
+              </div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ latestMetric ? formatBytes(latestMetric.ramUsage) : "—" }}
+              </div>
+              <div class="text-xs text-gray-400 dark:text-neutral-500">
+                / {{ latestMetric ? formatBytes(latestMetric.ramLimit) : "—" }}
+              </div>
+              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="text-indigo-500"
+                  :points="sparklinePoints(serverMetrics, 'ramUsage')"
+                />
+              </svg>
+            </div>
+            <!-- CPU -->
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+                CPU
+              </div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ latestMetric ? latestMetric.cpu.toFixed(1) + "%" : "—" }}
+              </div>
+              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="text-emerald-500"
+                  :points="sparklinePoints(serverMetrics, 'cpu')"
+                />
+              </svg>
+            </div>
+            <!-- Online -->
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+                Online
+              </div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{
+                  latestMetric
+                    ? latestMetric.online + "/" + latestMetric.max
+                    : "—"
+                }}
+              </div>
+              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="text-sky-500"
+                  :points="sparklinePoints(serverMetrics, 'online')"
+                />
+              </svg>
+            </div>
+            <!-- TPS -->
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
+                TPS
+              </div>
+              <div
+                class="text-lg font-semibold"
+                :class="
+                  latestMetric?.tps == null
+                    ? 'text-gray-900 dark:text-white'
+                    : latestMetric.tps >= 18
+                      ? 'text-green-600 dark:text-green-400'
+                      : latestMetric.tps >= 15
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : 'text-red-600 dark:text-red-400'
+                "
+              >
+                {{
+                  latestMetric?.tps != null ? latestMetric.tps.toFixed(1) : "—"
+                }}
+              </div>
+              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="text-purple-500"
+                  :points="sparklinePoints(serverMetrics, 'tps')"
+                />
+              </svg>
+            </div>
+            <!-- Network RX -->
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+              <div
+                class="text-xs text-gray-500 dark:text-neutral-400 mb-1 flex items-center gap-1"
+              >
+                <ArrowDown class="w-3 h-3" />
+                Net RX
+              </div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{
+                  latestMetric
+                    ? (latestMetric.rxRate / 1024).toFixed(2) + " MB/s"
+                    : "—"
+                }}
+              </div>
+              <div class="text-xs text-gray-400 dark:text-neutral-500">
+                {{
+                  latestMetric ? latestMetric.rxRate.toFixed(1) + " KB/s" : ""
+                }}
+              </div>
+              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="text-blue-500"
+                  :points="sparklinePoints(serverMetrics, 'rxRate')"
+                />
+              </svg>
+            </div>
+            <!-- Network TX -->
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
+              <div
+                class="text-xs text-gray-500 dark:text-neutral-400 mb-1 flex items-center gap-1"
+              >
+                <ArrowUp class="w-3 h-3" />
+                Net TX
+              </div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{
+                  latestMetric
+                    ? (latestMetric.txRate / 1024).toFixed(2) + " MB/s"
+                    : "—"
+                }}
+              </div>
+              <div class="text-xs text-gray-400 dark:text-neutral-500">
+                {{
+                  latestMetric ? latestMetric.txRate.toFixed(1) + " KB/s" : ""
+                }}
+              </div>
+              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="text-teal-500"
+                  :points="sparklinePoints(serverMetrics, 'txRate')"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Players Online -->
+      <div
+        v-if="
+          server?.serverStatus === 'running' && onlinePlayers.players.length > 0
+        "
         class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-4 md:p-6 shadow-sm"
       >
-        <h2
-          class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
-        >
-          <Activity class="w-5 h-5 text-primary" />
-          Live Metrics
-        </h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <!-- RAM -->
-          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-              RAM
-            </div>
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ latestMetric ? formatBytes(latestMetric.ramUsage) : "—" }}
-            </div>
-            <div class="text-xs text-gray-400 dark:text-neutral-500">
-              / {{ latestMetric ? formatBytes(latestMetric.ramLimit) : "—" }}
-            </div>
-            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="text-indigo-500"
-                :points="sparklinePoints(serverMetrics, 'ramUsage')"
-              />
-            </svg>
-          </div>
-          <!-- CPU -->
-          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-              CPU
-            </div>
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ latestMetric ? latestMetric.cpu.toFixed(1) + "%" : "—" }}
-            </div>
-            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="text-emerald-500"
-                :points="sparklinePoints(serverMetrics, 'cpu')"
-              />
-            </svg>
-          </div>
-          <!-- Online -->
-          <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-              Online
-            </div>
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{
-                latestMetric
-                  ? latestMetric.online + "/" + latestMetric.max
-                  : "—"
-              }}
-            </div>
-            <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="text-sky-500"
-                :points="sparklinePoints(serverMetrics, 'online')"
-              />
-            </svg>
+        <div class="flex items-center justify-between mb-4">
+          <h2
+            class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"
+          >
+            <Users class="w-5 h-5 text-primary" />
+            Players Online
+          </h2>
+          <span class="text-sm text-gray-500 dark:text-neutral-400">
+            {{ onlinePlayers.players.length }} / {{ onlinePlayers.max }}
+          </span>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <div
+            v-for="name in onlinePlayers.players"
+            :key="name"
+            class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+          >
+            <img
+              :src="`https://mc-heads.net/avatar/${name}/32`"
+              alt=""
+              class="w-6 h-6 rounded"
+              loading="lazy"
+            />
+            <span class="text-sm font-medium text-gray-900 dark:text-white">{{
+              name
+            }}</span>
           </div>
         </div>
       </div>
@@ -933,7 +1249,11 @@
 import { formatDuration } from "~/composables/useDuration";
 import {
   Activity,
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Check,
+  ChevronDown,
   Clock,
   Copy,
   Cpu,
@@ -947,14 +1267,16 @@ import {
   Play,
   RefreshCw,
   RotateCcw,
+  Send,
   Server as ServerIcon,
   Square,
   Tag,
-  ChevronDown,
-  Loader2,
   Terminal,
   Trash2,
+  Users,
   X as XIcon,
+  Zap,
+  Loader2,
 } from "lucide-vue-next";
 import { nextTick, onMounted, onBeforeUnmount, watch } from "vue";
 import type { Server } from "~/composables/useServers";
@@ -971,7 +1293,8 @@ const route = useRoute();
 const { show: showToast } = useToast();
 const serverId = route.params.serverId as string;
 const { servers, refresh: refreshServers } = useServers();
-const { metricsMap } = useServerEvents();
+const { metricsMap, playersMap } = useServerEvents();
+const { disk: serverDisk } = useServerDisk(serverId);
 const server = computed<Server | null>(
   () => servers.value.find((s: Server) => s.serverId === serverId) ?? null,
 );
@@ -1001,6 +1324,8 @@ const showIconEditor = ref(false);
 const selectedIconFile = ref<File | null>(null);
 const logsExpanded = ref(false);
 const propertiesExpanded = ref(false);
+const quickConsoleExpanded = ref(true);
+const liveMetricsExpanded = ref(true);
 const serverLogsRef = ref<{
   scrollToBottom: () => void;
   reconnect: (tail?: number) => void;
@@ -1012,6 +1337,16 @@ const editingCpu = ref(false);
 const tempCpu = ref<number | null>(null);
 const cpuLoading = ref(false);
 
+const quickConsoleCommand = ref("");
+const quickConsoleOutput = ref("");
+const quickConsoleLoading = ref(false);
+
+const crashReports = ref<{ name: string; size: number; modifiedAt: string }[]>(
+  [],
+);
+const crashReportsLoading = ref(false);
+const crashReportsFetched = ref(false);
+
 const showPortConflictDialog = ref(false);
 const portConflictChecked = ref(false);
 
@@ -1021,6 +1356,70 @@ const hasPortConflict = computed(() => {
   return servers.value.some(
     (s) => s.serverId !== serverId && s.gamePort === server.value!.gamePort,
   );
+});
+
+const onlinePlayers = computed(() => {
+  return playersMap.value[serverId] ?? { players: [], max: 0 };
+});
+
+const hasCrashReports = computed(() => crashReports.value.length > 0);
+
+const latestCrashReportDate = computed(() => {
+  if (!crashReports.value.length) return null;
+  return crashReports.value[0]?.modifiedAt ?? null;
+});
+
+async function fetchCrashReports() {
+  if (crashReportsFetched.value) return;
+  crashReportsLoading.value = true;
+  try {
+    const res = await $fetch<
+      | { reports?: { name: string; size: number; modifiedAt: string }[] }
+      | {
+          body?: {
+            reports?: { name: string; size: number; modifiedAt: string }[];
+          };
+        }
+    >(`/servers/${serverId}/crash-reports`, {
+      baseURL: useApiBase(),
+      credentials: "include",
+    });
+    const body = (res as any).body ?? (res as any);
+    crashReports.value = body?.reports ?? [];
+    crashReportsFetched.value = true;
+  } catch {
+    crashReports.value = [];
+  } finally {
+    crashReportsLoading.value = false;
+  }
+}
+
+async function sendQuickConsole() {
+  const cmd = quickConsoleCommand.value.trim();
+  if (!cmd) return;
+  quickConsoleLoading.value = true;
+  try {
+    const res = await $fetch<
+      { response?: string } | { body?: { response?: string } }
+    >(`/servers/${serverId}/rcon`, {
+      baseURL: useApiBase(),
+      method: "POST",
+      credentials: "include",
+      body: { command: cmd },
+    });
+    const body = (res as any).body ?? (res as any);
+    quickConsoleOutput.value = body?.response ?? "No response";
+    quickConsoleCommand.value = "";
+  } catch (err: any) {
+    const msg = err?.data?.detail || err?.message || "Command failed";
+    quickConsoleOutput.value = `Error: ${msg}`;
+  } finally {
+    quickConsoleLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  fetchCrashReports();
 });
 
 watch(
@@ -1147,6 +1546,13 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
+function formatNetworkRate(kbps: number): string {
+  if (kbps >= 1024) {
+    return (kbps / 1024).toFixed(1) + " MB/s";
+  }
+  return kbps.toFixed(1) + " KB/s";
+}
+
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -1158,11 +1564,13 @@ async function copyToClipboard(text: string) {
 
 function sparklinePoints(
   data: MetricsPayload[],
-  key: "ramUsage" | "cpu" | "online",
+  key: "ramUsage" | "cpu" | "online" | "tps" | "rxRate" | "txRate",
 ): string {
   let values: number[];
   if (key === "online") {
     values = data.map((d) => (d.max > 0 ? (d.online / d.max) * 100 : 0));
+  } else if (key === "tps") {
+    values = data.map((d) => d.tps ?? 0);
   } else {
     values = data.map((d) => (d as any)[key] ?? 0);
   }

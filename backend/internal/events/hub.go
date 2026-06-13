@@ -143,6 +143,8 @@ type MetricsPayload struct {
 	Online    int       `json:"online"`
 	Max       int       `json:"max"`
 	TPS       *float64  `json:"tps,omitempty"`
+	RxRate    float64   `json:"rxRate"`
+	TxRate    float64   `json:"txRate"`
 	Timestamp time.Time `json:"timestamp"`
 }
 

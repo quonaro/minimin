@@ -56,6 +56,9 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("GET /api/servers/{id}/config", middleware.WithAuth(apiKey, h.HandleGetServerConfig))
 	mux.HandleFunc("PATCH /api/servers/{id}/config", middleware.WithAuth(apiKey, h.HandleUpdateServerConfig))
 
+	// Disk usage (protected)
+	mux.HandleFunc("GET /api/servers/{id}/disk", middleware.WithAuth(apiKey, h.HandleGetServerDisk))
+
 	// RCON / Logs / Players / Bans / Ops / Whitelist (protected)
 	mux.HandleFunc("POST /api/servers/{id}/rcon", middleware.WithAuth(apiKey, h.HandleSendRconCommand))
 	mux.HandleFunc("POST /api/servers/{id}/offline-action", middleware.WithAuth(apiKey, h.HandleOfflineAction))

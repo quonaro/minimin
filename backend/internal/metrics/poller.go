@@ -23,6 +23,8 @@ type Poller struct {
 	hub       *events.Hub
 	interval  time.Duration
 	prevStats map[string]container.StatsResponse // keyed by containerID
+	prevNetRx map[string]uint64                  // keyed by containerID
+	prevNetTx map[string]uint64                  // keyed by containerID
 	rconCache map[string]*runner.RCONClient      // keyed by serverID
 	mu        sync.Mutex
 }
@@ -35,6 +37,8 @@ func NewPoller(cli *client.Client, instance *state.InstanceFile, hub *events.Hub
 		hub:       hub,
 		interval:  2 * time.Second,
 		prevStats: make(map[string]container.StatsResponse),
+		prevNetRx: make(map[string]uint64),
+		prevNetTx: make(map[string]uint64),
 		rconCache: make(map[string]*runner.RCONClient),
 	}
 }
@@ -106,6 +110,24 @@ func (p *Poller) poll(ctx context.Context) {
 			}
 		}
 
+		var rxTotal, txTotal uint64
+		for _, net := range stats.Networks {
+			rxTotal += net.RxBytes
+			txTotal += net.TxBytes
+		}
+		rxRate := 0.0
+		txRate := 0.0
+		p.mu.Lock()
+		if prevRx, ok := p.prevNetRx[s.ContainerID]; ok && rxTotal >= prevRx {
+			rxRate = float64(rxTotal-prevRx) / p.interval.Seconds() / 1024
+		}
+		if prevTx, ok := p.prevNetTx[s.ContainerID]; ok && txTotal >= prevTx {
+			txRate = float64(txTotal-prevTx) / p.interval.Seconds() / 1024
+		}
+		p.prevNetRx[s.ContainerID] = rxTotal
+		p.prevNetTx[s.ContainerID] = txTotal
+		p.mu.Unlock()
+
 		online := 0
 		maxPlayers := 0
 		var tps *float64
@@ -138,6 +160,8 @@ func (p *Poller) poll(ctx context.Context) {
 			Online:    online,
 			Max:       maxPlayers,
 			TPS:       tps,
+			RxRate:    rxRate,
+			TxRate:    txRate,
 			Timestamp: time.Now().UTC(),
 		}
 
@@ -151,6 +175,12 @@ func (p *Poller) poll(ctx context.Context) {
 	for cid := range p.prevStats {
 		if !runningIDs[cid] {
 			delete(p.prevStats, cid)
+		}
+	}
+	for cid := range p.prevNetRx {
+		if !runningIDs[cid] {
+			delete(p.prevNetRx, cid)
+			delete(p.prevNetTx, cid)
 		}
 	}
 	for sid, client := range p.rconCache {
