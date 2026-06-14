@@ -115,11 +115,13 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("GET /api/client-archive/{token}/manifest", h.HandleGetClientArchiveManifest)
 	mux.HandleFunc("GET /api/client-archive/{token}/file/{path...}", h.HandleDownloadClientArchiveFile)
 
-	// Modrinth proxy (protected)
-	mux.HandleFunc("GET /api/modrinth/search", middleware.WithAuth(apiKey, h.HandleModrinthSearch))
-	mux.HandleFunc("GET /api/modrinth/project/{id}", middleware.WithAuth(apiKey, h.HandleModrinthGetProject))
-	mux.HandleFunc("GET /api/modrinth/project/{id}/versions", middleware.WithAuth(apiKey, h.HandleModrinthGetVersions))
-	mux.HandleFunc("GET /api/modrinth/version/{id}", middleware.WithAuth(apiKey, h.HandleModrinthGetVersion))
+	// Content source proxy (protected)
+	mux.HandleFunc("GET /api/mm/sources", middleware.WithAuth(apiKey, h.HandleMMSources))
+	mux.HandleFunc("GET /api/mm/{source}/search", middleware.WithAuth(apiKey, h.HandleMMSearch))
+	mux.HandleFunc("GET /api/mm/{source}/content/{id}", middleware.WithAuth(apiKey, h.HandleMMGetContent))
+	mux.HandleFunc("GET /api/mm/{source}/content/{id}/versions", middleware.WithAuth(apiKey, h.HandleMMGetVersions))
+	mux.HandleFunc("GET /api/mm/{source}/version/{id}", middleware.WithAuth(apiKey, h.HandleMMGetVersion))
+	mux.HandleFunc("GET /api/mm/{source}/version/{id}/download", middleware.WithAuth(apiKey, h.HandleMMDownload))
 
 	return middleware.RequestLogger(mux)
 }

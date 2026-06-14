@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"orchestrator/external/mm"
 	"orchestrator/internal/events"
-	"orchestrator/internal/modrinth"
 	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
 
@@ -21,7 +21,7 @@ type Handler struct {
 	ServersDir     string
 	ServersHostDir string
 	ModUploadMaxMB int
-	ModrinthClient *modrinth.Client
+	ContentSources map[string]mm.ContentSource
 	EventsHub      *events.Hub
 	NetworkName    string
 	SecureCookie   bool
@@ -29,12 +29,11 @@ type Handler struct {
 }
 
 // NewHandler creates a new Handler.
-func NewHandler(cli *client.Client, instance *state.InstanceFile, apiKey string, modrinthBaseURL string) *Handler {
+func NewHandler(cli *client.Client, instance *state.InstanceFile, apiKey string) *Handler {
 	return &Handler{
-		Cli:            cli,
-		Instance:       instance,
-		APIKey:         apiKey,
-		ModrinthClient: modrinth.NewClient(modrinthBaseURL),
+		Cli:      cli,
+		Instance: instance,
+		APIKey:   apiKey,
 	}
 }
 

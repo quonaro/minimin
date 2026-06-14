@@ -674,7 +674,7 @@ function onSearchInput(v: string) {
   debouncedSearch();
 }
 
-function onProjectTypeChange(v: "mod" | "resourcepack" | "shader") {
+function onProjectTypeChange(v: "mod" | "resourcepack" | "shaderpack") {
   modrinth.projectType.value = v;
   debouncedSearch();
 }
@@ -757,8 +757,10 @@ async function handleInstall(
   if (!file) return;
 
   const projectType = modrinth.projectType.value;
-  const isAsset = projectType === "resourcepack" || projectType === "shader";
-  const assetType = projectType === "shader" ? "shaderpacks" : "resourcepacks";
+  const isAsset =
+    projectType === "resourcepack" || projectType === "shaderpack";
+  const assetType =
+    projectType === "shaderpack" ? "shaderpacks" : "resourcepacks";
 
   const allDeps = file.dependencies.filter(
     (d) => d.dependency_type !== "incompatible",

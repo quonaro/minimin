@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"orchestrator/external/mm"
+	"orchestrator/external/mm/modrinth"
 	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/health"
@@ -123,7 +125,6 @@ func main() {
 		hub.BroadcastJSON("server", s)
 	}
 
-	modrinthCustomURL := os.Getenv("MODRINTH_CUSTOM_URL")
 	secureCookie := os.Getenv("ORCHESTRATOR_SECURE_COOKIE") == "true"
 	wsOrigin := os.Getenv("ORCHESTRATOR_WS_ORIGIN")
 	if wsOrigin == "" {
@@ -137,10 +138,13 @@ func main() {
 		}
 	}
 
-	h := handlers.NewHandler(cli, instance, apiKey, modrinthCustomURL)
+	h := handlers.NewHandler(cli, instance, apiKey)
 	h.ServersDir = serversDir
 	h.ServersHostDir = serversHostDir
 	h.ModUploadMaxMB = modUploadMaxMB
+	h.ContentSources = map[string]mm.ContentSource{
+		"modrinth": modrinth.NewAdapter(os.Getenv("MODRINTH_CUSTOM_URL")),
+	}
 	h.EventsHub = hub
 	h.NetworkName = networkName
 	h.SecureCookie = secureCookie

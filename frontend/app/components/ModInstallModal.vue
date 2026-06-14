@@ -11,7 +11,7 @@ const props = defineProps<{
   versionId: string;
   versionDetails?: Record<string, ModrinthVersion>;
   depProjects?: Record<string, ModrinthProject>;
-  projectType?: "mod" | "resourcepack" | "shader";
+  projectType?: "mod" | "resourcepack" | "shaderpack";
   installLoading?: boolean;
 }>();
 

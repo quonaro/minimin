@@ -8,6 +8,8 @@ export interface ModrinthProject {
   downloads: number;
   server_side?: string;
   client_side?: string;
+  versions?: string[];
+  latest_version?: string;
 }
 
 export interface ModrinthDependency {
@@ -90,7 +92,7 @@ export function useModrinth() {
   const { show } = useToast();
 
   const searchQuery = ref("");
-  const projectType = ref<"mod" | "resourcepack" | "shader">("mod");
+  const projectType = ref<"mod" | "resourcepack" | "shaderpack">("mod");
   const searchResults = ref<ModrinthProject[]>([]);
   const searchLoading = ref(false);
   const searchOffset = ref(0);
@@ -121,25 +123,21 @@ export function useModrinth() {
     }
 
     try {
-      const facets: string[] = [];
-      facets.push(`["project_type:${projectType.value}"]`);
-      if (projectType.value !== "resourcepack") {
-        facets.push(`["categories:${loader.toLowerCase()}"]`);
-      }
-      facets.push(`["versions:${gameVersion}"]`);
-      const res = await $fetch<any>(`/modrinth/search`, {
+      const res = await $fetch<any>(`/api/mm/modrinth/search`, {
         baseURL: useApiBase(),
         credentials: "include",
         query: {
+          type: projectType.value,
           query: searchQuery.value,
-          facets: `[${facets.join(",")}]`,
+          game_version: gameVersion,
+          loader: loader.toLowerCase(),
           offset: 0,
           limit: searchLimit,
         },
       });
-      const hits = res?.hits || [];
-      const results = hits.map((h: any) => ({
-        project_id: h.project_id,
+      const items = res?.items || [];
+      const results = items.map((h: any) => ({
+        project_id: h.id,
         slug: h.slug,
         title: h.title,
         description: h.description,
@@ -148,9 +146,11 @@ export function useModrinth() {
         downloads: h.downloads,
         server_side: h.server_side,
         client_side: h.client_side,
+        versions: h.versions,
+        latest_version: h.latest_version,
       }));
       searchResults.value = results;
-      hasMore.value = hits.length === searchLimit;
+      hasMore.value = items.length === searchLimit;
       searchCache.set(key, {
         results,
         offset: 0,
@@ -190,25 +190,21 @@ export function useModrinth() {
     }
 
     try {
-      const facets: string[] = [];
-      facets.push(`["project_type:${projectType.value}"]`);
-      if (projectType.value !== "resourcepack") {
-        facets.push(`["categories:${loader.toLowerCase()}"]`);
-      }
-      facets.push(`["versions:${gameVersion}"]`);
-      const res = await $fetch<any>(`/modrinth/search`, {
+      const res = await $fetch<any>(`/api/mm/modrinth/search`, {
         baseURL: useApiBase(),
         credentials: "include",
         query: {
+          type: projectType.value,
           query: searchQuery.value,
-          facets: `[${facets.join(",")}]`,
+          game_version: gameVersion,
+          loader: loader.toLowerCase(),
           offset: nextOffset,
           limit: searchLimit,
         },
       });
-      const hits = res?.hits || [];
-      const results = hits.map((h: any) => ({
-        project_id: h.project_id,
+      const items = res?.items || [];
+      const results = items.map((h: any) => ({
+        project_id: h.id,
         slug: h.slug,
         title: h.title,
         description: h.description,
@@ -217,10 +213,12 @@ export function useModrinth() {
         downloads: h.downloads,
         server_side: h.server_side,
         client_side: h.client_side,
+        versions: h.versions,
+        latest_version: h.latest_version,
       }));
       searchResults.value.push(...results);
       searchOffset.value = nextOffset;
-      hasMore.value = hits.length === searchLimit;
+      hasMore.value = items.length === searchLimit;
       searchCache.set(key, {
         results,
         offset: nextOffset,
@@ -255,7 +253,7 @@ export function useModrinth() {
         query.loaders = loader.toLowerCase();
       }
       const res = await $fetch<any[]>(
-        `/modrinth/project/${projectId}/versions`,
+        `/api/mm/modrinth/content/${projectId}/versions`,
         {
           baseURL: useApiBase(),
           credentials: "include",
@@ -292,7 +290,7 @@ export function useModrinth() {
       return cached.version;
     }
     try {
-      const v = await $fetch<any>(`/modrinth/version/${versionId}`, {
+      const v = await $fetch<any>(`/api/mm/modrinth/version/${versionId}`, {
         baseURL: useApiBase(),
         credentials: "include",
       });
@@ -392,7 +390,7 @@ export function useModrinth() {
       return cached.project;
     }
     try {
-      const p = await $fetch<any>(`/modrinth/project/${projectId}`, {
+      const p = await $fetch<any>(`/api/mm/modrinth/content/${projectId}`, {
         baseURL: useApiBase(),
         credentials: "include",
       });

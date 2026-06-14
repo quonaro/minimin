@@ -20,7 +20,7 @@ frontend/.nitro/
 frontend/.cache/
 frontend/.pnpm-store/
 
-
+backend/main
 # Environment
 .env
 .env.local

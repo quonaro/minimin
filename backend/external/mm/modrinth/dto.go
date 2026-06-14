@@ -10,15 +10,17 @@ type SearchResponse struct {
 
 // Hit represents a single search result from Modrinth.
 type Hit struct {
-	ProjectID   string `json:"project_id"`
-	Slug        string `json:"slug"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	IconURL     string `json:"icon_url"`
-	Author      string `json:"author"`
-	Downloads   int    `json:"downloads"`
-	ServerSide  string `json:"server_side"`
-	ClientSide  string `json:"client_side"`
+	ProjectID     string   `json:"project_id"`
+	Slug          string   `json:"slug"`
+	Title         string   `json:"title"`
+	Description   string   `json:"description"`
+	IconURL       string   `json:"icon_url"`
+	Author        string   `json:"author"`
+	Downloads     int      `json:"downloads"`
+	ServerSide    string   `json:"server_side"`
+	ClientSide    string   `json:"client_side"`
+	Versions      []string `json:"versions"`
+	LatestVersion string   `json:"latest_version"`
 }
 
 // Project represents detailed project info from Modrinth.

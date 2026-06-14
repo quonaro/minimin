@@ -17,7 +17,7 @@
         >
           <option value="mod">Mods</option>
           <option value="resourcepack">Resource Packs</option>
-          <option value="shader">Shaders</option>
+          <option value="shaderpack">Shaders</option>
         </select>
         <button
           class="px-3 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
@@ -158,10 +158,13 @@
           <button
             class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium transition-colors disabled:opacity-50"
             :disabled="
-              !selectedVersion[project.project_id] ||
+              (!selectedVersion[project.project_id] &&
+                !project.latest_version) ||
               isInstalling(
                 project.project_id,
-                selectedVersion[project.project_id] || '',
+                selectedVersion[project.project_id] ||
+                  project.latest_version ||
+                  '',
               )
             "
             @click="install(project, selectedVersion[project.project_id] || '')"
@@ -170,7 +173,9 @@
               v-if="
                 isInstalling(
                   project.project_id,
-                  selectedVersion[project.project_id] || '',
+                  selectedVersion[project.project_id] ||
+                    project.latest_version ||
+                    '',
                 )
               "
               >...</span
@@ -236,7 +241,7 @@ interface Props {
   sideFilter?: "all" | "server" | "client";
   versionDetails?: Record<string, ModrinthVersion>;
   depProjects?: Record<string, ModrinthProject>;
-  projectType?: "mod" | "resourcepack" | "shader";
+  projectType?: "mod" | "resourcepack" | "shaderpack";
   installedModBasenames?: { server: Set<string>; client: Set<string> };
   installedAssetBasenames?: Set<string>;
 }
@@ -254,7 +259,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   search: [];
   "update:searchQuery": [value: string];
-  "update:projectType": [value: "mod" | "resourcepack" | "shader"];
+  "update:projectType": [value: "mod" | "resourcepack" | "shaderpack"];
   install: [
     projectId: string,
     versionId: string,
@@ -336,6 +341,9 @@ function openConfirm(project: ModrinthProject, versionId: string) {
   confirmProjectId.value = project.project_id;
   confirmVersionId.value = versionId;
   showConfirm.value = true;
+  if (!props.versionDetails?.[versionId]) {
+    emit("load-version-details", versionId);
+  }
 }
 
 function onModalInstall(
@@ -382,7 +390,10 @@ function onSearch() {
 function onProjectTypeChange(e: Event) {
   emit(
     "update:projectType",
-    (e.target as HTMLSelectElement).value as "mod" | "resourcepack" | "shader",
+    (e.target as HTMLSelectElement).value as
+      | "mod"
+      | "resourcepack"
+      | "shaderpack",
   );
 }
 
@@ -397,8 +408,9 @@ function isInstalling(projectId: string, versionId: string): boolean {
 }
 
 function install(project: ModrinthProject, versionId: string) {
-  if (!versionId) return;
-  openConfirm(project, versionId);
+  const vid = versionId || project.latest_version;
+  if (!vid) return;
+  openConfirm(project, vid);
 }
 
 function hasMatch(set: Set<string> | undefined, slug: string): boolean {
