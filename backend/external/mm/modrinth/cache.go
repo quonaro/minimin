@@ -1,104 +1,86 @@
 package modrinth
 
 import (
-	"sync"
 	"time"
+
+	"orchestrator/internal/persistent"
 )
 
-const cacheTTL = 5 * time.Minute
+const cacheTTL = 72 * time.Hour
 
-type cacheEntry[T any] struct {
-	value     T
-	timestamp time.Time
-}
+const (
+	bucketSearch   = "modrinth/search"
+	bucketProject  = "modrinth/project"
+	bucketVersion  = "modrinth/version"
+	bucketVersions = "modrinth/versions"
+)
 
-func (e cacheEntry[T]) valid() bool {
-	return time.Since(e.timestamp) < cacheTTL
-}
-
-// Cache provides a generic in-memory TTL cache.
+// Cache provides a persistent bbolt-backed TTL cache for Modrinth DTOs.
 type Cache struct {
-	mu       sync.RWMutex
-	search   map[string]cacheEntry[SearchResponse]
-	project  map[string]cacheEntry[Project]
-	version  map[string]cacheEntry[Version]
-	versions map[string]cacheEntry[[]Version]
+	db *persistent.DB
 }
 
-// NewCache creates a new Cache.
-func NewCache() *Cache {
-	return &Cache{
-		search:   make(map[string]cacheEntry[SearchResponse]),
-		project:  make(map[string]cacheEntry[Project]),
-		version:  make(map[string]cacheEntry[Version]),
-		versions: make(map[string]cacheEntry[[]Version]),
-	}
+// NewCache creates a Cache backed by the given persistent DB.
+func NewCache(db *persistent.DB) *Cache {
+	return &Cache{db: db}
 }
 
 // GetSearch returns a cached search response.
 func (c *Cache) GetSearch(key string) (SearchResponse, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if e, ok := c.search[key]; ok && e.valid() {
-		return e.value, true
+	var v SearchResponse
+	ok, err := c.db.Get(bucketSearch, key, &v)
+	if err != nil || !ok {
+		return SearchResponse{}, false
 	}
-	return SearchResponse{}, false
+	return v, true
 }
 
 // SetSearch stores a search response in the cache.
 func (c *Cache) SetSearch(key string, v SearchResponse) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.search[key] = cacheEntry[SearchResponse]{value: v, timestamp: time.Now()}
+	_ = c.db.Set(bucketSearch, key, v, cacheTTL)
 }
 
 // GetProject returns a cached project.
 func (c *Cache) GetProject(id string) (Project, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if e, ok := c.project[id]; ok && e.valid() {
-		return e.value, true
+	var v Project
+	ok, err := c.db.Get(bucketProject, id, &v)
+	if err != nil || !ok {
+		return Project{}, false
 	}
-	return Project{}, false
+	return v, true
 }
 
 // SetProject stores a project in the cache.
 func (c *Cache) SetProject(id string, v Project) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.project[id] = cacheEntry[Project]{value: v, timestamp: time.Now()}
+	_ = c.db.Set(bucketProject, id, v, cacheTTL)
 }
 
 // GetVersion returns a cached version.
 func (c *Cache) GetVersion(id string) (Version, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if e, ok := c.version[id]; ok && e.valid() {
-		return e.value, true
+	var v Version
+	ok, err := c.db.Get(bucketVersion, id, &v)
+	if err != nil || !ok {
+		return Version{}, false
 	}
-	return Version{}, false
+	return v, true
 }
 
 // SetVersion stores a version in the cache.
 func (c *Cache) SetVersion(id string, v Version) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.version[id] = cacheEntry[Version]{value: v, timestamp: time.Now()}
+	_ = c.db.Set(bucketVersion, id, v, cacheTTL)
 }
 
 // GetVersions returns a cached version list.
 func (c *Cache) GetVersions(key string) ([]Version, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if e, ok := c.versions[key]; ok && e.valid() {
-		return e.value, true
+	var v []Version
+	ok, err := c.db.Get(bucketVersions, key, &v)
+	if err != nil || !ok {
+		return nil, false
 	}
-	return nil, false
+	return v, true
 }
 
 // SetVersions stores a version list in the cache.
 func (c *Cache) SetVersions(key string, v []Version) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.versions[key] = cacheEntry[[]Version]{value: v, timestamp: time.Now()}
+	_ = c.db.Set(bucketVersions, key, v, cacheTTL)
 }

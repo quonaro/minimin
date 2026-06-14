@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"orchestrator/external/mm"
+	"orchestrator/internal/persistent"
 )
 
 const defaultBaseURL = "https://api.modrinth.com/v2"
@@ -22,13 +23,13 @@ type Adapter struct {
 }
 
 // NewAdapter creates a new Modrinth adapter.
-func NewAdapter(baseURL string) *Adapter {
+func NewAdapter(baseURL string, db *persistent.DB) *Adapter {
 	if baseURL == "" {
 		baseURL = defaultBaseURL
 	}
 	return &Adapter{
 		httpClient: &http.Client{Timeout: 15 * time.Second},
-		cache:      NewCache(),
+		cache:      NewCache(db),
 		baseURL:    baseURL,
 	}
 }

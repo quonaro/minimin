@@ -52,7 +52,9 @@ If a source supports only mods, `Capabilities()` returns `[]mm.ContentType{mm.Co
 ## Caching
 
 - Cache **raw DTOs**, not mapped domain objects. Mapping is cheap; cache hit saves JSON parsing and HTTP round-trip.
-- Use an in-memory TTL cache (see `external/mm/modrinth/cache.go` as reference).
+- Use the shared `internal/persistent.DB` (bbolt-backed) with TTL eviction. Default TTL: **72 hours**.
+- Each source gets its own buckets: `<source>/search`, `<source>/project`, `<source>/version`, `<source>/versions`.
+- The adapter receives `*persistent.DB` via its constructor; `cache.go` wraps typed get/set methods around it.
 - Cache key must include all request parameters that affect the response.
 
 ## Error handling
@@ -83,12 +85,19 @@ Backend exposes these generic endpoints (all under auth):
 
 ## Registration
 
-Add the adapter in `backend/cmd/main.go`:
+Add the adapter in `backend/cmd/main.go`. Open `persistent.DB` before adapters and inject it:
 
 ```go
+cacheDB, err := persistent.Open("./data/mm-cache.db")
+if err != nil {
+    slog.Error("failed to open persistent cache", "error", err)
+    os.Exit(1)
+}
+defer func() { _ = cacheDB.Close() }()
+
 h.ContentSources = map[string]mm.ContentSource{
-    "modrinth": modrinth.NewAdapter(os.Getenv("MODRINTH_CUSTOM_URL")),
-    // "curseforge": curseforge.NewAdapter(...),
+    "modrinth": modrinth.NewAdapter(os.Getenv("MODRINTH_CUSTOM_URL"), cacheDB),
+    // "curseforge": curseforge.NewAdapter(..., cacheDB),
 }
 ```
 

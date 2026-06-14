@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/health"
 	"orchestrator/internal/metrics"
+	"orchestrator/internal/persistent"
 	"orchestrator/internal/routes"
 	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
@@ -74,6 +76,15 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	slog.Info("initializing persistent cache")
+	cacheDBPath := filepath.Join(filepath.Dir(instanceFile), "mm-cache.db")
+	cacheDB, err := persistent.Open(cacheDBPath)
+	if err != nil {
+		slog.Error("failed to open persistent cache", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = cacheDB.Close() }()
 
 	slog.Info("initializing docker client")
 	cli, err := runner.GetClient()
@@ -143,7 +154,7 @@ func main() {
 	h.ServersHostDir = serversHostDir
 	h.ModUploadMaxMB = modUploadMaxMB
 	h.ContentSources = map[string]mm.ContentSource{
-		"modrinth": modrinth.NewAdapter(os.Getenv("MODRINTH_CUSTOM_URL")),
+		"modrinth": modrinth.NewAdapter(os.Getenv("MODRINTH_CUSTOM_URL"), cacheDB),
 	}
 	h.EventsHub = hub
 	h.NetworkName = networkName
