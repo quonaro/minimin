@@ -15,7 +15,6 @@ const form = reactive({
   gameVersion: "",
   loaderVersion: "",
   ramGb: 2,
-  cpus: 1,
   gamePort: 25565,
   publicRcon: false,
   rconPort: 25575,
@@ -82,7 +81,6 @@ async function submit() {
       gameVersion: form.gameVersion,
       loaderVersion: form.loaderVersion || undefined,
       ramBytes: form.ramGb * 1024 * 1024 * 1024,
-      cpus: form.cpus,
       gamePort: form.gamePort,
       publicRcon: form.publicRcon,
     };
@@ -200,28 +198,13 @@ async function submit() {
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              RAM (GB)
-            </label>
-            <number-input v-model="form.ramGb" :min="1" class="w-full" />
-          </div>
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              CPUs
-            </label>
-            <number-input
-              v-model="form.cpus"
-              :min="0.5"
-              :step="0.5"
-              class="w-full"
-            />
-          </div>
+        <div>
+          <label
+            class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+          >
+            RAM (GB)
+          </label>
+          <number-input v-model="form.ramGb" :min="1" class="w-full" />
         </div>
 
         <div class="grid grid-cols-2 gap-4">

@@ -89,7 +89,7 @@ func (h *Handler) doStart(id string) {
 		}
 		containerID, volumeID, volumePath, err := runner.StartServerContainer(
 			context.Background(), h.Cli, s.ServerID,
-			s.RamBytes, s.CPUs, s.GamePort,
+			s.RamBytes, s.GamePort,
 			s.EngineType, s.GameVersion, s.LoaderVersion,
 			h.ServersDir, h.ServersHostDir,
 			s.RconPort, s.RconPassword, s.PublicRcon,
@@ -97,6 +97,7 @@ func (h *Handler) doStart(id string) {
 			nil,
 			s.RestartPolicy,
 			h.NetworkName,
+			s.ExternalJavaArgs,
 		)
 		if err != nil {
 			slog.Error("failed to start server container", "server_id", id, "error", err)

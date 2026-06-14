@@ -557,62 +557,117 @@
                     </div>
                   </div>
 
-                  <!-- CPUs -->
+                  <!-- External Java Args -->
                   <div
-                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                    class="col-span-full flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
                     <div
-                      class="w-9 h-9 shrink-0 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400"
+                      class="w-9 h-9 shrink-0 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400"
                     >
-                      <Cpu class="w-4 h-4" />
+                      <Code class="w-4 h-4" />
                     </div>
                     <div class="min-w-0 flex-1">
                       <p
                         class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                       >
-                        CPUs
+                        External Java Args
                       </p>
-                      <div v-if="!editingCpu" class="flex items-center gap-2">
-                        <p
-                          class="text-sm font-semibold text-gray-900 dark:text-white"
-                        >
-                          {{ server.cpus ?? "-" }}
-                        </p>
+                      <div
+                        v-if="!editingExternalJavaArgs"
+                        class="flex items-center gap-2"
+                      >
+                        <div class="flex flex-wrap gap-1">
+                          <span
+                            v-if="
+                              !server.externalJavaArgs ||
+                              server.externalJavaArgs.length === 0
+                            "
+                            class="text-sm font-semibold text-gray-900 dark:text-white"
+                          >
+                            None
+                          </span>
+                          <span
+                            v-for="(arg, idx) in server.externalJavaArgs"
+                            :key="idx"
+                            class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800"
+                          >
+                            {{ arg }}
+                          </span>
+                        </div>
                         <button
                           v-if="server.containerStatus !== 'running'"
                           class="text-gray-400 hover:text-primary transition-colors"
-                          :disabled="cpuLoading"
+                          :disabled="externalJavaArgsLoading"
                           @click="
-                            tempCpu = server.cpus ?? 1;
-                            editingCpu = true;
+                            tempExternalJavaArgs = server.externalJavaArgs
+                              ? [...server.externalJavaArgs]
+                              : [];
+                            newExternalArg = '';
+                            editingExternalJavaArgs = true;
                           "
                         >
                           <Pencil class="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <div v-else class="flex items-center gap-2">
-                        <number-input
-                          v-model="tempCpu"
-                          :min="0.5"
-                          :step="0.5"
-                          size="sm"
-                          class="w-24"
-                          @keyup.enter="saveCpu"
-                        />
-                        <button
-                          class="text-green-500 hover:text-green-600 transition-colors"
-                          :disabled="cpuLoading"
-                          @click="saveCpu"
-                        >
-                          <Check class="w-4 h-4" />
-                        </button>
-                        <button
-                          class="text-red-500 hover:text-red-600 transition-colors"
-                          :disabled="cpuLoading"
-                          @click="editingCpu = false"
-                        >
-                          <XIcon class="w-4 h-4" />
-                        </button>
+                      <div v-else class="flex flex-col gap-2">
+                        <div class="flex flex-wrap gap-1">
+                          <span
+                            v-for="(arg, idx) in tempExternalJavaArgs"
+                            :key="idx"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800"
+                          >
+                            {{ arg }}
+                            <button
+                              class="hover:text-red-500 transition-colors"
+                              @click="tempExternalJavaArgs.splice(idx, 1)"
+                            >
+                              <XIcon class="w-3 h-3" />
+                            </button>
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <input
+                            v-model="newExternalArg"
+                            type="text"
+                            class="flex-1 min-w-0 text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none font-mono"
+                            placeholder="-XX:+UseG1GC"
+                            @keyup.enter.prevent="
+                              if (newExternalArg.trim()) {
+                                tempExternalJavaArgs.push(
+                                  newExternalArg.trim(),
+                                );
+                                newExternalArg = '';
+                              }
+                            "
+                          />
+                          <button
+                            class="text-primary hover:text-primary/80 transition-colors"
+                            @click="
+                              if (newExternalArg.trim()) {
+                                tempExternalJavaArgs.push(
+                                  newExternalArg.trim(),
+                                );
+                                newExternalArg = '';
+                              }
+                            "
+                          >
+                            <Plus class="w-4 h-4" />
+                          </button>
+                          <button
+                            class="text-green-500 hover:text-green-600 transition-colors"
+                            :disabled="externalJavaArgsLoading"
+                            @click="saveExternalJavaArgs"
+                          >
+                            <Check class="w-4 h-4" />
+                          </button>
+                          <button
+                            class="text-red-500 hover:text-red-600 transition-colors"
+                            :disabled="externalJavaArgsLoading"
+                            @click="editingExternalJavaArgs = false"
+                          >
+                            <XIcon class="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1194,8 +1249,8 @@ import {
   Check,
   ChevronDown,
   Clock,
+  Code,
   Copy,
-  Cpu,
   FolderOpen,
   Globe,
   Hash,
@@ -1204,6 +1259,7 @@ import {
   Package,
   Pencil,
   Play,
+  Plus,
   RefreshCw,
   RotateCcw,
   Server as ServerIcon,
@@ -1270,9 +1326,10 @@ const serverLogsRef = ref<{
 const editingRam = ref(false);
 const tempRamGb = ref<number | null>(null);
 const ramLoading = ref(false);
-const editingCpu = ref(false);
-const tempCpu = ref<number | null>(null);
-const cpuLoading = ref(false);
+const editingExternalJavaArgs = ref(false);
+const tempExternalJavaArgs = ref<string[]>([]);
+const newExternalArg = ref("");
+const externalJavaArgsLoading = ref(false);
 
 const crashReports = ref<{ name: string; size: number; modifiedAt: string }[]>(
   [],
@@ -1709,44 +1766,45 @@ async function saveRam() {
   }
 }
 
-async function saveCpu() {
-  if (!server.value || tempCpu.value == null) {
-    editingCpu.value = false;
+async function saveExternalJavaArgs() {
+  if (!server.value) {
+    editingExternalJavaArgs.value = false;
     return;
   }
-  if (tempCpu.value === server.value.cpus) {
-    editingCpu.value = false;
+  const args = tempExternalJavaArgs.value.filter((s) => s.trim().length > 0);
+  const current = server.value.externalJavaArgs ?? [];
+  const same =
+    args.length === current.length && args.every((a, i) => a === current[i]);
+  if (same) {
+    editingExternalJavaArgs.value = false;
     return;
   }
-  if (tempCpu.value < 0.5 || tempCpu.value > 128) {
-    showToast("error", "Invalid CPUs", {
-      description: "CPUs must be between 0.5 and 128.",
-    });
-    return;
-  }
-  cpuLoading.value = true;
+  externalJavaArgsLoading.value = true;
   try {
     await $fetch(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       method: "PATCH",
       credentials: "include",
-      body: { cpus: tempCpu.value },
+      body: { externalJavaArgs: args },
     });
-    showToast("success", "CPUs updated", {
-      description: `CPUs changed to ${tempCpu.value}.`,
+    showToast("success", "External Java args updated", {
+      description: args.length > 0 ? args.join(" ") : "Cleared",
     });
-    editingCpu.value = false;
+    editingExternalJavaArgs.value = false;
     await refreshServers();
   } catch (err: any) {
     const status = err?.status || err?.statusCode;
-    const msg = err?.data?.detail || err?.message || "Failed to update CPUs";
+    const msg =
+      err?.data?.detail ||
+      err?.message ||
+      "Failed to update external Java args";
     if (status === 409) {
       showToast("error", "Server running", { description: msg });
     } else {
       showToast("error", "Update failed", { description: msg });
     }
   } finally {
-    cpuLoading.value = false;
+    externalJavaArgsLoading.value = false;
   }
 }
 

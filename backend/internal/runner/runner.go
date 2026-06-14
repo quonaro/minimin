@@ -158,8 +158,6 @@ type ContainerConfigBuilder struct {
 	image         string
 	env           []string
 	labels        map[string]string
-	ramLimit      int64
-	cpuCount      int64
 	portBindings  nat.PortMap
 	exposedPorts  nat.PortSet
 	bindMounts    []string
@@ -176,13 +174,6 @@ func NewContainerBuilder(imageName string) *ContainerConfigBuilder {
 		exposedPorts: make(nat.PortSet),
 		env:          []string{"EULA=TRUE"},
 	}
-}
-
-// WithResources sets memory and CPU limits for the container.
-func (b *ContainerConfigBuilder) WithResources(ramBytes int64, cpus float64) *ContainerConfigBuilder {
-	b.ramLimit = ramBytes
-	b.cpuCount = int64(cpus * 1e9) // Docker API processes CPU limits in NanoCPUs
-	return b
 }
 
 // WithPort exposes an internal container port and binds it to an external host port.
@@ -292,10 +283,6 @@ func (b *ContainerConfigBuilder) Build() (*container.Config, *container.HostConf
 	hostConfig := &container.HostConfig{
 		Binds:        b.bindMounts,
 		PortBindings: b.portBindings,
-		Resources: container.Resources{
-			Memory:   b.ramLimit,
-			NanoCPUs: b.cpuCount,
-		},
 		LogConfig: container.LogConfig{
 			Type: "json-file",
 			Config: map[string]string{
@@ -477,7 +464,6 @@ func StartServerContainer(
 	cli *client.Client,
 	serverID string,
 	ramBytes int64,
-	cpus float64,
 	gamePort uint16,
 	engineType string,
 	gameVersion string,
@@ -491,6 +477,7 @@ func StartServerContainer(
 	worldGenEnv map[string]string,
 	restartPolicy string,
 	networkName string,
+	externalJavaArgs []string,
 ) (string, string, string, error) {
 	if err := PullImageIfNeeded(ctx, cli); err != nil {
 		return "", "", "", err
@@ -540,7 +527,6 @@ func StartServerContainer(
 	memoryVal := fmt.Sprintf("%dM", heapBytes/1024/1024)
 
 	b := NewContainerBuilder(ImageName).
-		WithResources(ramBytes, cpus).
 		WithEnv("MEMORY", memoryVal).
 		WithEnv("INIT_MEMORY", memoryVal).
 		WithPort(25565, gamePort, "0.0.0.0").
@@ -562,6 +548,10 @@ func StartServerContainer(
 		case "FORGE":
 			b.WithEnv("FORGE_VERSION", loaderVersion)
 		}
+	}
+
+	if len(externalJavaArgs) > 0 {
+		b.WithEnv("JVM_OPTS", strings.Join(externalJavaArgs, " "))
 	}
 
 	if worldGenEnv != nil {

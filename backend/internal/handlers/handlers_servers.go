@@ -20,19 +20,19 @@ func isValidServerID(id string) bool {
 // handleCreateServer spawns a new Minecraft server container.
 func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ServerID      string  `json:"serverId,omitempty"`
-		RamBytes      int64   `json:"ramBytes,omitempty"`
-		CPUs          float64 `json:"cpus,omitempty"`
-		GamePort      uint16  `json:"gamePort,omitempty"`
-		EngineType    string  `json:"engineType,omitempty"`
-		GameVersion   string  `json:"gameVersion,omitempty"`
-		LoaderVersion string  `json:"loaderVersion,omitempty"`
-		RconPort      uint16  `json:"rconPort,omitempty"`
-		PublicRcon    bool    `json:"publicRcon,omitempty"`
-		RestartPolicy string  `json:"restartPolicy,omitempty"`
-		LevelName     string  `json:"levelName,omitempty"`
-		LevelSeed     string  `json:"levelSeed,omitempty"`
-		LevelType     string  `json:"levelType,omitempty"`
+		ServerID         string   `json:"serverId,omitempty"`
+		RamBytes         int64    `json:"ramBytes,omitempty"`
+		GamePort         uint16   `json:"gamePort,omitempty"`
+		EngineType       string   `json:"engineType,omitempty"`
+		GameVersion      string   `json:"gameVersion,omitempty"`
+		LoaderVersion    string   `json:"loaderVersion,omitempty"`
+		RconPort         uint16   `json:"rconPort,omitempty"`
+		PublicRcon       bool     `json:"publicRcon,omitempty"`
+		RestartPolicy    string   `json:"restartPolicy,omitempty"`
+		LevelName        string   `json:"levelName,omitempty"`
+		LevelSeed        string   `json:"levelSeed,omitempty"`
+		LevelType        string   `json:"levelType,omitempty"`
+		ExternalJavaArgs []string `json:"externalJavaArgs,omitempty"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
@@ -52,9 +52,6 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.RamBytes == 0 {
 		req.RamBytes = 2 * 1024 * 1024 * 1024
-	}
-	if req.CPUs == 0 {
-		req.CPUs = 1.0
 	}
 	if req.GamePort == 0 {
 		req.GamePort = 25565
@@ -115,7 +112,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 
 	containerID, volumeID, volumePath, err := runner.StartServerContainer(
 		r.Context(), h.Cli, req.ServerID,
-		req.RamBytes, req.CPUs, req.GamePort,
+		req.RamBytes, req.GamePort,
 		req.EngineType, req.GameVersion, req.LoaderVersion,
 		h.ServersDir, h.ServersHostDir,
 		req.RconPort, rconPassword, req.PublicRcon,
@@ -123,6 +120,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		worldGenEnv,
 		req.RestartPolicy,
 		h.NetworkName,
+		req.ExternalJavaArgs,
 	)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -137,7 +135,6 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		ContainerPath:      "/data",
 		ContainerID:        containerID,
 		RamBytes:           req.RamBytes,
-		CPUs:               req.CPUs,
 		GamePort:           req.GamePort,
 		EngineType:         req.EngineType,
 		GameVersion:        req.GameVersion,
@@ -146,6 +143,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		RconPort:           req.RconPort,
 		PublicRcon:         req.PublicRcon,
 		RestartPolicy:      req.RestartPolicy,
+		ExternalJavaArgs:   req.ExternalJavaArgs,
 		ContainerStatus:    "running",
 		ContainerStartedAt: time.Now().UTC(),
 		ServerStatus:       "starting",
@@ -250,13 +248,13 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		RamBytes      int64   `json:"ramBytes,omitempty"`
-		CPUs          float64 `json:"cpus,omitempty"`
-		GamePort      uint16  `json:"gamePort,omitempty"`
-		RconPort      uint16  `json:"rconPort,omitempty"`
-		PublicRcon    bool    `json:"publicRcon,omitempty"`
-		RestartPolicy string  `json:"restartPolicy,omitempty"`
-		EngineType    string  `json:"engineType,omitempty"`
+		RamBytes         int64    `json:"ramBytes,omitempty"`
+		GamePort         uint16   `json:"gamePort,omitempty"`
+		RconPort         uint16   `json:"rconPort,omitempty"`
+		PublicRcon       bool     `json:"publicRcon,omitempty"`
+		RestartPolicy    string   `json:"restartPolicy,omitempty"`
+		EngineType       string   `json:"engineType,omitempty"`
+		ExternalJavaArgs []string `json:"externalJavaArgs,omitempty"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
@@ -267,7 +265,7 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "cannot change port while server is running", http.StatusConflict)
 		return
 	}
-	if s.ContainerStatus == "running" && ((req.RamBytes > 0 && req.RamBytes != s.RamBytes) || (req.CPUs > 0 && req.CPUs != s.CPUs)) {
+	if s.ContainerStatus == "running" && ((req.RamBytes > 0 && req.RamBytes != s.RamBytes) || (len(req.ExternalJavaArgs) > 0 && !slicesEqual(req.ExternalJavaArgs, s.ExternalJavaArgs))) {
 		jsonError(w, "cannot change resources while server is running", http.StatusConflict)
 		return
 	}
@@ -294,10 +292,6 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 			st.RamBytes = req.RamBytes
 			st.ContainerID = ""
 		}
-		if req.CPUs > 0 && req.CPUs != st.CPUs {
-			st.CPUs = req.CPUs
-			st.ContainerID = ""
-		}
 		if req.GamePort > 0 && req.GamePort != st.GamePort {
 			st.GamePort = req.GamePort
 			st.ContainerID = ""
@@ -316,6 +310,12 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 		}
 		if req.EngineType != "" {
 			st.EngineType = req.EngineType
+		}
+		if len(req.ExternalJavaArgs) > 0 || st.ExternalJavaArgs != nil {
+			if !slicesEqual(req.ExternalJavaArgs, st.ExternalJavaArgs) {
+				st.ExternalJavaArgs = req.ExternalJavaArgs
+				st.ContainerID = ""
+			}
 		}
 	})
 	if !updated {

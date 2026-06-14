@@ -13,11 +13,11 @@ export interface Server {
   engineType: string;
   gameVersion: string;
   ramBytes?: number;
-  cpus?: number;
   volumePath?: string;
   hostPath?: string;
   containerPath?: string;
   modCount?: number;
+  externalJavaArgs?: string[];
 }
 
 export function useServers() {

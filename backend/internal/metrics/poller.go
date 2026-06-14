@@ -156,7 +156,6 @@ func (p *Poller) poll(ctx context.Context) {
 			RAMUsage:  ramUsage,
 			RAMLimit:  ramLimit,
 			CPU:       cpuPercent,
-			CPUs:      s.CPUs,
 			Online:    online,
 			Max:       maxPlayers,
 			TPS:       tps,

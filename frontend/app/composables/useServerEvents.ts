@@ -35,7 +35,6 @@ export interface MetricsPayload {
   ramUsage: number;
   ramLimit: number;
   cpu: number;
-  cpus: number;
   online: number;
   max: number;
   tps?: number;

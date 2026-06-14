@@ -22,7 +22,6 @@ type ServerState struct {
 	ContainerPath      string            `json:"containerPath" yaml:"container_path"`
 	ContainerID        string            `json:"containerId"  yaml:"container_id"`
 	RamBytes           int64             `json:"ramBytes"     yaml:"ram_bytes"`
-	CPUs               float64           `json:"cpus"          yaml:"cpus"`
 	GamePort           uint16            `json:"gamePort"     yaml:"game_port"`
 	EngineType         string            `json:"engineType"   yaml:"engine_type"`
 	GameVersion        string            `json:"gameVersion"  yaml:"game_version"`
@@ -41,6 +40,7 @@ type ServerState struct {
 	UpdatedAt          time.Time         `json:"updatedAt"      yaml:"updated_at"`
 	DesiredStatus      string            `json:"desiredStatus"      yaml:"desired_status,omitempty"`
 	ModCount           int               `json:"modCount"       yaml:"mod_count"`
+	ExternalJavaArgs   []string          `json:"externalJavaArgs"   yaml:"external_java_args,omitempty"`
 	PendingProperties  map[string]string `json:"pendingProperties"  yaml:"pending_properties,omitempty"`
 }
 
