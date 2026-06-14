@@ -165,6 +165,7 @@ func (p *Poller) poll(ctx context.Context) {
 		}
 
 		if p.hub != nil {
+			p.hub.StoreMetrics(s.ServerID, payload)
 			p.hub.BroadcastJSON("metrics", payload)
 		}
 	}
@@ -186,6 +187,9 @@ func (p *Poller) poll(ctx context.Context) {
 		if !runningServerIDs[sid] {
 			_ = client.Close()
 			delete(p.rconCache, sid)
+			if p.hub != nil {
+				p.hub.DeleteMetrics(sid)
+			}
 		}
 	}
 	p.mu.Unlock()

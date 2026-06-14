@@ -50,6 +50,40 @@ const opsMap = ref<Record<string, PlayerEntry[]>>({});
 const bansMap = ref<Record<string, PlayerEntry[]>>({});
 const whitelistMap = ref<Record<string, PlayerEntry[]>>({});
 const metricsMap = ref<Record<string, MetricsPayload[]>>({});
+const METRICS_CACHE_KEY = "minimin_metrics_cache";
+
+function loadMetricsCache() {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = sessionStorage.getItem(METRICS_CACHE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, MetricsPayload[]>;
+    for (const [sid, arr] of Object.entries(parsed)) {
+      if (Array.isArray(arr) && arr.length > 0) {
+        metricsMap.value[sid] = arr;
+      }
+    }
+  } catch {
+    // ignore corrupt cache
+  }
+}
+
+function saveMetricsCache() {
+  if (typeof window === "undefined") return;
+  try {
+    const toSave: Record<string, MetricsPayload[]> = {};
+    for (const [sid, arr] of Object.entries(metricsMap.value)) {
+      toSave[sid] = arr.slice(-300); // keep last ~10 min for storage
+    }
+    sessionStorage.setItem(METRICS_CACHE_KEY, JSON.stringify(toSave));
+  } catch {
+    // ignore quota exceeded
+  }
+}
+
+if (typeof window !== "undefined") {
+  loadMetricsCache();
+}
 
 const servers = computed<Server[]>(() =>
   Object.values(serverMap.value).sort(
@@ -63,6 +97,7 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let unmounted = false;
 let initStarted = false;
 let initialFetchDone = false;
+let metricsSaveInterval: ReturnType<typeof setInterval> | null = null;
 
 async function doInitialFetch() {
   if (initialFetchDone) return;
@@ -89,6 +124,11 @@ function initEventSource() {
   if (typeof window === "undefined") return;
   if (es || initStarted) return;
   initStarted = true;
+
+  if (!metricsSaveInterval) {
+    metricsSaveInterval = setInterval(saveMetricsCache, 3000);
+    window.addEventListener("beforeunload", saveMetricsCache);
+  }
 
   doInitialFetch().then(() => {
     initialized.value = true;

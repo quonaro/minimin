@@ -980,7 +980,11 @@
               <div class="text-xs text-gray-400 dark:text-neutral-500">
                 / {{ latestMetric ? formatBytes(latestMetric.ramLimit) : "—" }}
               </div>
-              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <svg
+                class="w-full h-8 mt-2"
+                viewBox="0 0 100 32"
+                preserveAspectRatio="none"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -998,7 +1002,11 @@
               <div class="text-lg font-semibold text-gray-900 dark:text-white">
                 {{ latestMetric ? latestMetric.cpu.toFixed(1) + "%" : "—" }}
               </div>
-              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <svg
+                class="w-full h-8 mt-2"
+                viewBox="0 0 100 32"
+                preserveAspectRatio="none"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -1020,7 +1028,11 @@
                     : "—"
                 }}
               </div>
-              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <svg
+                class="w-full h-8 mt-2"
+                viewBox="0 0 100 32"
+                preserveAspectRatio="none"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -1051,7 +1063,11 @@
                   latestMetric?.tps != null ? latestMetric.tps.toFixed(1) : "—"
                 }}
               </div>
-              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <svg
+                class="w-full h-8 mt-2"
+                viewBox="0 0 100 32"
+                preserveAspectRatio="none"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -1074,7 +1090,11 @@
                   latestMetric ? latestMetric.rxRate.toFixed(1) + " KB/s" : "—"
                 }}
               </div>
-              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <svg
+                class="w-full h-8 mt-2"
+                viewBox="0 0 100 32"
+                preserveAspectRatio="none"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"
@@ -1097,7 +1117,11 @@
                   latestMetric ? latestMetric.txRate.toFixed(1) + " KB/s" : "—"
                 }}
               </div>
-              <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
+              <svg
+                class="w-full h-8 mt-2"
+                viewBox="0 0 100 32"
+                preserveAspectRatio="none"
+              >
                 <polyline
                   fill="none"
                   stroke="currentColor"

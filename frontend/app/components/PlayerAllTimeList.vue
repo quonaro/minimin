@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
+function onAvatarError(e: Event) {
+  const img = e.target as HTMLImageElement | null;
+  if (img) {
+    img.src = "/img/steve-head-32.png";
+  }
+}
+
 export interface AllTimePlayer {
   name: string;
   lastSeen: number;
@@ -61,6 +68,7 @@ function formatLastSeen(ts: number): string {
         :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(p.name)}/32.png`"
         alt=""
         class="w-8 h-8 rounded"
+        @error="onAvatarError"
       />
       <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white">
         {{ p.name }}

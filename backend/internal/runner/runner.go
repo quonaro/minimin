@@ -568,6 +568,25 @@ func StartServerContainer(
 
 	config, hostConfig, netConfig := b.Build()
 
+	// Check if a container with this name already exists (orphaned or exited).
+	existing, err := cli.ContainerInspect(ctx, containerName)
+	if err == nil {
+		cid := existing.ID
+		if existing.State != nil && existing.State.Running {
+			slog.Info("container already running", "server_id", serverID, "container_id", cid[:12])
+			return cid, volumeID, localPath, nil
+		}
+		slog.Info("container exists but not running, starting", "server_id", serverID, "container_id", cid[:12])
+		if err := cli.ContainerStart(ctx, cid, container.StartOptions{}); err != nil {
+			return "", "", "", fmt.Errorf("failed to start existing container: %w", err)
+		}
+		slog.Info("container started", "server_id", serverID, "container_id", cid[:12])
+		return cid, volumeID, localPath, nil
+	}
+	if !client.IsErrNotFound(err) {
+		return "", "", "", fmt.Errorf("failed to inspect container: %w", err)
+	}
+
 	resp, err := cli.ContainerCreate(ctx, config, hostConfig, netConfig, nil, containerName)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to create container: %w", err)

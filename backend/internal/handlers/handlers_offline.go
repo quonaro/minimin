@@ -129,7 +129,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		_, _ = sendRcon(s, id, "whitelist reload")
+		go func() { _, _ = sendRcon(s, id, "whitelist reload") }()
 		jsonResponse(w, map[string]any{"ok": true, "uuid": uuid})
 
 	case "op":
@@ -190,7 +190,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		_, _ = sendRcon(s, id, "banlist reload")
+		go func() { _, _ = sendRcon(s, id, "banlist reload") }()
 		jsonResponse(w, map[string]any{"ok": true, "uuid": uuid})
 
 	case "unban":
@@ -209,7 +209,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		_, _ = sendRcon(s, id, "banlist reload")
+		go func() { _, _ = sendRcon(s, id, "banlist reload") }()
 		jsonResponse(w, map[string]any{"ok": true})
 
 	case "deop":
@@ -246,7 +246,7 @@ func (h *Handler) HandleOfflineAction(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		_, _ = sendRcon(s, id, "whitelist reload")
+		go func() { _, _ = sendRcon(s, id, "whitelist reload") }()
 		jsonResponse(w, map[string]any{"ok": true})
 
 	default:

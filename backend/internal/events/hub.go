@@ -20,10 +20,11 @@ type client struct {
 
 // Hub manages a set of SSE client channels.
 type Hub struct {
-	mu      sync.RWMutex
-	clients map[int]*client
-	nextID  int
-	closed  bool
+	mu          sync.RWMutex
+	clients     map[int]*client
+	nextID      int
+	closed      bool
+	lastMetrics sync.Map // map[string]MetricsPayload
 }
 
 // NewHub creates a new event hub.
@@ -101,6 +102,23 @@ func (h *Hub) Close() {
 // BroadcastJSON is a convenience helper that marshals a payload and broadcasts it.
 func (h *Hub) BroadcastJSON(eventType string, payload any) {
 	h.Broadcast(Event{Type: eventType, Payload: payload})
+}
+
+// StoreMetrics saves the latest metrics for a server.
+func (h *Hub) StoreMetrics(serverID string, payload MetricsPayload) {
+	h.lastMetrics.Store(serverID, payload)
+}
+
+// DeleteMetrics removes cached metrics for a server.
+func (h *Hub) DeleteMetrics(serverID string) {
+	h.lastMetrics.Delete(serverID)
+}
+
+// RangeMetrics iterates over the last known metrics for each server.
+func (h *Hub) RangeMetrics(f func(serverID string, payload MetricsPayload) bool) {
+	h.lastMetrics.Range(func(key, value any) bool {
+		return f(key.(string), value.(MetricsPayload))
+	})
 }
 
 // ServerStatusPayload is broadcast when a server's state changes.

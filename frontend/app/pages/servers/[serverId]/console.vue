@@ -148,6 +148,7 @@
                     :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(item as string)}/24.png`"
                     alt=""
                     class="w-6 h-6 rounded"
+                    @error="onAvatarError"
                   />
                   <span class="font-medium">{{ item }}</span>
                 </div>
@@ -177,6 +178,13 @@ import minecraftCommandsRaw from "~/data/minecraft-commands.json";
 definePageMeta({
   middleware: "auth",
 });
+
+function onAvatarError(e: Event) {
+  const img = e.target as HTMLImageElement | null;
+  if (img) {
+    img.src = "/img/steve-head-32.png";
+  }
+}
 
 const route = useRoute();
 const serverId = route.params.serverId as string;

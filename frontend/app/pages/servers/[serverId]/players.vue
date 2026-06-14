@@ -96,7 +96,7 @@
           placeholder="Player name..."
           class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
           @keydown.enter.prevent="
-            sendOfflineAction('ban', offlineName.trim(), offlineMode.value)
+            sendOfflineAction('ban', offlineName.trim(), offlineMode)
           "
         />
         <label
@@ -112,37 +112,27 @@
         <div class="flex items-center gap-2 shrink-0">
           <button
             class="text-sm px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-            @click="
-              openReasonModal('ban', offlineName.trim(), offlineMode.value)
-            "
+            @click="openReasonModal('ban', offlineName.trim(), offlineMode)"
           >
             Ban
           </button>
           <button
             class="text-sm px-3 py-2 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50"
-            @click="
-              sendOfflineAction('op', offlineName.trim(), offlineMode.value)
-            "
+            @click="sendOfflineAction('op', offlineName.trim(), offlineMode)"
           >
             Op
           </button>
           <button
             class="text-sm px-3 py-2 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
             @click="
-              sendOfflineAction(
-                'whitelist',
-                offlineName.trim(),
-                offlineMode.value,
-              )
+              sendOfflineAction('whitelist', offlineName.trim(), offlineMode)
             "
           >
             Whitelist
           </button>
           <button
             class="text-sm px-3 py-2 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
-            @click="
-              sendOfflineAction('unban', offlineName.trim(), offlineMode.value)
-            "
+            @click="sendOfflineAction('unban', offlineName.trim(), offlineMode)"
           >
             Unban
           </button>
@@ -193,6 +183,7 @@
               :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(name)}/32.png`"
               alt=""
               class="w-8 h-8 rounded"
+              @error="onAvatarError"
             />
             <span
               class="flex-1 text-sm font-medium text-gray-900 dark:text-white"
@@ -267,6 +258,7 @@
               :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(op.name)}/32.png`"
               alt=""
               class="w-8 h-8 rounded"
+              @error="onAvatarError"
             />
             <span
               class="flex-1 text-sm font-medium text-gray-900 dark:text-white"
@@ -318,6 +310,7 @@
               :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(entry.name)}/32.png`"
               alt=""
               class="w-8 h-8 rounded"
+              @error="onAvatarError"
             />
             <span
               class="flex-1 text-sm font-medium text-gray-900 dark:text-white"
@@ -326,7 +319,7 @@
             </span>
             <button
               class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600"
-              @click="sendRcon(`whitelist remove ${entry.name}`)"
+              @click="sendOfflineAction('whitelist-remove', entry.name, true)"
             >
               Remove
             </button>
@@ -372,6 +365,7 @@
               :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(ban.name)}/32.png`"
               alt=""
               class="w-8 h-8 rounded mt-0.5"
+              @error="onAvatarError"
             />
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -444,7 +438,7 @@
         @op="sendRcon(`op ${$event}`)"
         @deop="sendRcon(`deop ${$event}`)"
         @wladd="sendRcon(`whitelist add ${$event}`)"
-        @wlremove="sendRcon(`whitelist remove ${$event}`)"
+        @wlremove="sendOfflineAction('whitelist-remove', $event, true)"
       />
     </div>
 
@@ -634,6 +628,13 @@ function addEvent(ev: Omit<PlayerEvent, "id">) {
   eventLog.value.unshift({ ...ev, id: `${ev.ts}-${++eventCounter}` });
   if (eventLog.value.length > 200) {
     eventLog.value = eventLog.value.slice(0, 200);
+  }
+}
+
+function onAvatarError(e: Event) {
+  const img = e.target as HTMLImageElement | null;
+  if (img) {
+    img.src = "/img/steve-head-32.png";
   }
 }
 
@@ -975,8 +976,44 @@ function confirmModal() {
   sendRcon(cmd);
 }
 
+async function loadInitialLists() {
+  try {
+    const [wlRes, opsRes, bansRes, playersRes] = await Promise.all([
+      $fetch<{ whitelist?: PlayerEntry[] }>(`/servers/${serverId}/whitelist`, {
+        baseURL: apiBase,
+        credentials: "include",
+      }).catch(() => null),
+      $fetch<{ ops?: PlayerEntry[] }>(`/servers/${serverId}/ops`, {
+        baseURL: apiBase,
+        credentials: "include",
+      }).catch(() => null),
+      $fetch<{ bans?: PlayerEntry[] }>(`/servers/${serverId}/bans`, {
+        baseURL: apiBase,
+        credentials: "include",
+      }).catch(() => null),
+      $fetch<{ online?: number; max?: number; players?: string[] }>(
+        `/servers/${serverId}/players`,
+        {
+          baseURL: apiBase,
+          credentials: "include",
+        },
+      ).catch(() => null),
+    ]);
+    if (wlRes?.whitelist) wlList.value = wlRes.whitelist;
+    if (opsRes?.ops) opsList.value = opsRes.ops;
+    if (bansRes?.bans) bansList.value = bansRes.bans;
+    if (playersRes?.players) {
+      onlinePlayers.value = playersRes.players;
+      maxPlayers.value = playersRes.max || 0;
+    }
+  } catch {
+    // silently fail; SSE will eventually catch up
+  }
+}
+
 onMounted(() => {
   loadAllPlayers();
+  loadInitialLists();
   connectLogsWS();
 });
 

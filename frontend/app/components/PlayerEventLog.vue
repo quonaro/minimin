@@ -14,6 +14,13 @@ import {
   Package,
 } from "lucide-vue-next";
 
+function onAvatarError(e: Event) {
+  const img = e.target as HTMLImageElement | null;
+  if (img) {
+    img.src = "/img/steve-head-32.png";
+  }
+}
+
 export interface PlayerEvent {
   id: string;
   ts: number;
@@ -152,6 +159,7 @@ function formatTime(ts: number): string {
         :src="`https://cravatar.eu/helmavatar/${encodeURIComponent(ev.player)}/16.png`"
         alt=""
         class="w-4 h-4 rounded"
+        @error="onAvatarError"
       />
       <span class="text-sm text-gray-900 dark:text-white font-medium">
         {{ ev.player }}

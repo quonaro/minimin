@@ -44,6 +44,23 @@ func (h *Handler) SSEEvents(w http.ResponseWriter, r *http.Request) {
 		slog.Info("SSE: client disconnected", "client_id", clientID)
 	}()
 
+	// Send cached last metrics so the client sees data immediately.
+	h.EventsHub.RangeMetrics(func(serverID string, payload events.MetricsPayload) bool {
+		data, err := events.MarshalEvent(events.Event{Type: "metrics", Payload: payload})
+		if err != nil {
+			slog.Error("SSE: failed to marshal cached metrics", "error", err)
+			return true
+		}
+		if _, writeErr := w.Write(data); writeErr != nil {
+			slog.Error("SSE: client write failed for cached metrics", "client_id", clientID, "error", writeErr)
+			return false
+		}
+		if ok {
+			flusher.Flush()
+		}
+		return true
+	})
+
 	// Send an initial ping so the browser knows the connection is alive.
 	_, _ = fmt.Fprintf(w, ":ping\n\n")
 	if ok {
