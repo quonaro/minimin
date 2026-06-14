@@ -631,6 +631,7 @@
                             type="text"
                             class="flex-1 min-w-0 text-sm bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-lg px-2 py-1 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none font-mono"
                             placeholder="-XX:+UseG1GC"
+                            @paste="handlePasteExternalJavaArgs($event)"
                             @keyup.enter.prevent="
                               if (newExternalArg.trim()) {
                                 tempExternalJavaArgs.push(
@@ -1763,6 +1764,19 @@ async function saveRam() {
     }
   } finally {
     ramLoading.value = false;
+  }
+}
+
+function handlePasteExternalJavaArgs(event: ClipboardEvent) {
+  const text = event.clipboardData?.getData("text") || "";
+  const args = text
+    .split(/\r?\n|\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (args.length > 1) {
+    event.preventDefault();
+    args.forEach((arg) => tempExternalJavaArgs.value.push(arg));
+    newExternalArg.value = "";
   }
 }
 
