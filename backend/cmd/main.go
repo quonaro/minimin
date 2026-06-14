@@ -91,48 +91,6 @@ func main() {
 	}
 	slog.Info("using docker network", "name", networkName)
 
-	// Scan existing containers and import into instance.yml
-	slog.Info("scanning for managed containers")
-	scanned, scanErr := runner.ScanManagedContainers(ctx, cli, serversDir)
-	if scanErr != nil {
-		slog.Warn("scan warning", "error", scanErr)
-	} else {
-		imported := 0
-		for _, s := range scanned {
-			existing, ok := instance.Get(s.ServerID)
-			if !ok {
-				instance.Set(s)
-				imported++
-				slog.Info("imported external container",
-					"server_id", s.ServerID,
-					"container", s.ContainerID[:12],
-					"volume", s.VolumeID)
-			} else if existing.ContainerID != s.ContainerID || existing.Status != s.Status {
-				existing.ContainerID = s.ContainerID
-				existing.ContainerStatus = s.ContainerStatus
-				existing.ServerStatus = s.ServerStatus
-				existing.ContainerStartedAt = s.ContainerStartedAt
-				existing.ServerStartedAt = s.ServerStartedAt
-				if s.VolumePath != "" {
-					existing.VolumePath = s.VolumePath
-					existing.VolumeID = s.VolumeID
-				}
-				instance.Set(existing)
-				imported++
-				slog.Info("updated container record",
-					"server_id", s.ServerID,
-					"container", s.ContainerID[:12],
-					"status", s.Status)
-			}
-		}
-		if imported == 0 {
-			slog.Info("no new or changed containers found")
-		}
-		if err := instance.Save(); err != nil {
-			slog.Warn("failed to save state after scan", "error", err)
-		}
-	}
-
 	// Reconcile stale container IDs
 	for _, existing := range instance.All() {
 		if existing.ContainerID == "" {

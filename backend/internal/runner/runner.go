@@ -12,13 +12,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
-
-	"orchestrator/internal/state"
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
@@ -28,10 +24,8 @@ import (
 
 // Clean, neutral constants for the system namespace
 const (
-	ImageName     = "itzg/minecraft-server:latest"
-	NetworkName   = "mc-agent-mesh"       // Shared isolated network for the agent and containers
-	LabelManaged  = "mc-agent.managed-by" // Marker identifying that the container belongs to this agent
-	LabelServerID = "mc-agent.server-id"  // Unique server ID from the central database mapping
+	ImageName   = "itzg/minecraft-server:latest"
+	NetworkName = "mc-agent-mesh" // Shared isolated network for the agent and containers
 )
 
 // ContainerUIDGID returns the host uid/gid that the Minecraft container should run as.
@@ -394,23 +388,6 @@ func EnsureNetwork(ctx context.Context, cli *client.Client, netName string) erro
 	return fmt.Errorf("failed to inspect network: %w", err)
 }
 
-// FindContainersByServerID returns Docker container IDs that match the given server label.
-func FindContainersByServerID(ctx context.Context, cli *client.Client, id string) ([]string, error) {
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=%s", LabelServerID, id))
-
-	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true, Filters: filter})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list containers by server id: %w", err)
-	}
-
-	var ids []string
-	for _, c := range containers {
-		ids = append(ids, c.ID)
-	}
-	return ids, nil
-}
-
 // GenerateRconPassword creates a 16-character random alphanumeric string.
 func GenerateRconPassword() (string, error) {
 	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -548,20 +525,6 @@ func StartServerContainer(
 		}
 	}
 
-	// Auto-cleanup stale containers with the same server ID before spawning a new one
-	existingIDs, err := FindContainersByServerID(ctx, cli, serverID)
-	if err == nil && len(existingIDs) > 0 {
-		for _, id := range existingIDs {
-			removeOpts := container.RemoveOptions{
-				Force:         true,
-				RemoveVolumes: true,
-			}
-			if remErr := cli.ContainerRemove(ctx, id, removeOpts); remErr != nil {
-				return "", "", "", fmt.Errorf("failed to remove residual container %s: %w", id[:12], remErr)
-			}
-		}
-	}
-
 	uid, gid := ContainerUIDGID()
 	if err := os.Chown(localPath, uid, gid); err != nil {
 		slog.Warn("failed to chown server data directory", "path", localPath, "uid", uid, "gid", gid, "error", err)
@@ -589,8 +552,6 @@ func StartServerContainer(
 		WithEnv("OVERRIDE_SERVER_PROPERTIES", "false").
 		WithVolume(dockerHostPath, "/data").
 		WithRcon(rconPassword, rconHostPort, publicRcon).
-		WithLabel(LabelManaged, "mc-agent").
-		WithLabel(LabelServerID, serverID).
 		WithProxyFromEnv().
 		WithRestartPolicy(restartPolicy)
 
@@ -629,130 +590,6 @@ func StartServerContainer(
 	slog.Info("container started", "server_id", serverID, "container_id", resp.ID[:12])
 
 	return resp.ID, volumeID, localPath, nil
-}
-
-// ScanManagedContainers discovers every Docker container that carries our agent labels,
-// inspects each one, and returns a slice of ServerState suitable for importing into instance.yml.
-func ScanManagedContainers(ctx context.Context, cli *client.Client, serversDir string) ([]state.ServerState, error) {
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=%s", LabelManaged, "mc-agent"))
-
-	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true, Filters: filter})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list managed containers: %w", err)
-	}
-
-	absServersDir, err := filepath.Abs(serversDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve servers directory: %w", err)
-	}
-
-	var results []state.ServerState
-	for _, c := range containers {
-		serverID := c.Labels[LabelServerID]
-		if serverID == "" {
-			continue
-		}
-
-		info, err := cli.ContainerInspect(ctx, c.ID)
-		if err != nil {
-			continue // skip containers we can't inspect
-		}
-
-		s := state.ServerState{
-			ServerID:        serverID,
-			ContainerID:     c.ID,
-			ContainerStatus: info.State.Status,
-		}
-		if t, parseErr := time.Parse(time.RFC3339Nano, info.State.StartedAt); parseErr == nil {
-			s.ContainerStartedAt = t
-		}
-		if s.ContainerStatus == "running" {
-			port := s.GamePort
-			if port == 0 {
-				port = 25565
-			}
-			if ok, _ := TryPingServer(s.ServerID, port, 2*time.Second); ok {
-				s.ServerStatus = "running"
-			} else {
-				s.ServerStatus = "starting"
-			}
-		} else {
-			s.ServerStatus = "stopped"
-		}
-
-		// Extract bind volume path for /data
-		for _, m := range info.Mounts {
-			if m.Type == "bind" && m.Destination == "/data" {
-				s.VolumePath = m.Source
-				// Derive volume_id from path only if it sits inside our servers directory
-				if rel, err := filepath.Rel(absServersDir, m.Source); err == nil && filepath.IsLocal(rel) {
-					s.VolumeID = filepath.Base(m.Source)
-				}
-				break
-			}
-		}
-
-		// Parse resources from HostConfig
-		if info.HostConfig != nil {
-			s.RamBytes = info.HostConfig.Memory
-			if info.HostConfig.NanoCPUs > 0 {
-				s.CPUs = float64(info.HostConfig.NanoCPUs) / 1e9
-			}
-		}
-
-		// Parse env variables and port from Config
-		if info.Config != nil {
-			for _, e := range info.Config.Env {
-				key, value, ok := SplitEnv(e)
-				if !ok {
-					continue
-				}
-				switch key {
-				case "TYPE":
-					s.EngineType = value
-				case "VERSION":
-					s.GameVersion = value
-				case "FABRIC_LOADER_VERSION":
-					if s.EngineType == "FABRIC" {
-						s.LoaderVersion = value
-					}
-				case "FORGE_VERSION":
-					if s.EngineType == "FORGE" {
-						s.LoaderVersion = value
-					}
-				case "RCON_PASSWORD":
-					s.RconPassword = value
-				}
-			}
-		}
-
-		// Derive game port and rcon port from port bindings
-		if info.NetworkSettings != nil && info.NetworkSettings.Ports != nil {
-			for containerPort, bindings := range info.NetworkSettings.Ports {
-				if len(bindings) == 0 {
-					continue
-				}
-				p, err := strconv.ParseUint(bindings[0].HostPort, 10, 16)
-				if err != nil {
-					continue
-				}
-				switch containerPort {
-				case "25565/tcp":
-					s.GamePort = uint16(p)
-				case "25575/tcp":
-					s.RconPort = uint16(p)
-					if len(bindings) > 0 {
-						s.PublicRcon = bindings[0].HostIP != "127.0.0.1"
-					}
-				}
-			}
-		}
-
-		results = append(results, s)
-	}
-
-	return results, nil
 }
 
 // SplitEnv splits a KEY=VALUE string into its components.
