@@ -272,6 +272,23 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.GamePort > 0 && req.GamePort != s.GamePort {
+		if h.Instance.IsPortUsed(req.GamePort, id) || !runner.IsPortFree("", req.GamePort) {
+			jsonError(w, "game port unavailable", http.StatusConflict)
+			return
+		}
+	}
+	if req.RconPort > 0 && req.RconPort != s.RconPort {
+		rconHost := "127.0.0.1"
+		if req.PublicRcon {
+			rconHost = ""
+		}
+		if h.Instance.IsPortUsed(req.RconPort, id) || !runner.IsPortFree(rconHost, req.RconPort) {
+			jsonError(w, "rcon port unavailable", http.StatusConflict)
+			return
+		}
+	}
+
 	updated := h.Instance.UpdateMeta(id, func(st *state.ServerState) {
 		if req.RamBytes > 0 && req.RamBytes != st.RamBytes {
 			st.RamBytes = req.RamBytes
@@ -282,20 +299,10 @@ func (h *Handler) HandleUpdateServer(w http.ResponseWriter, r *http.Request) {
 			st.ContainerID = ""
 		}
 		if req.GamePort > 0 && req.GamePort != st.GamePort {
-			if h.Instance.IsPortUsed(req.GamePort, id) || !runner.IsPortFree("", req.GamePort) {
-				return
-			}
 			st.GamePort = req.GamePort
 			st.ContainerID = ""
 		}
 		if req.RconPort > 0 && req.RconPort != st.RconPort {
-			rconHost := "127.0.0.1"
-			if req.PublicRcon {
-				rconHost = ""
-			}
-			if h.Instance.IsPortUsed(req.RconPort, id) || !runner.IsPortFree(rconHost, req.RconPort) {
-				return
-			}
 			st.RconPort = req.RconPort
 			st.ContainerID = ""
 		}

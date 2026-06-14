@@ -144,16 +144,17 @@ func (h *Handler) HandleReadServerFile(w http.ResponseWriter, r *http.Request) {
 // handleWriteServerFile writes text content to a file.
 func (h *Handler) HandleWriteServerFile(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	_, absPath, err := h.resolveServerPath(id, r.URL.Query().Get("path"), false)
-	if err != nil {
-		jsonError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 	var req struct {
+		Path    string `json:"path"`
 		Content string `json:"content"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	_, absPath, err := h.resolveServerPath(id, req.Path, false)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
