@@ -45,7 +45,6 @@ export function useFilesExplorer() {
   const { show: showToast } = useToast();
   const serverId = route.params.serverId as string;
 
-  const warningModalOpen = ref(true);
   const uploadInput = ref<HTMLInputElement | null>(null);
 
   const currentPath = ref("");
@@ -671,7 +670,6 @@ export function useFilesExplorer() {
   });
 
   return {
-    warningModalOpen,
     uploadInput,
     currentPath,
     search,

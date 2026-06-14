@@ -4,7 +4,6 @@ usePageTitle("Files");
 definePageMeta({ middleware: "auth" });
 
 const {
-  warningModalOpen,
   uploadInput,
   currentPath,
   search,
@@ -426,33 +425,6 @@ const {
               Refresh
             </button>
           </template>
-        </div>
-      </div>
-
-      <div
-        v-if="warningModalOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      >
-        <div
-          class="bg-white dark:bg-neutral-800 rounded-2xl border border-gray-200 dark:border-neutral-700 shadow-xl w-full max-w-lg p-6"
-        >
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-            Warning
-          </h2>
-          <p
-            class="text-sm text-gray-700 dark:text-neutral-300 leading-relaxed"
-          >
-            Any accidental file change may damage saves, world data, or server
-            configuration. Continue only if you understand the risk.
-          </p>
-          <div class="mt-5 flex justify-end">
-            <button
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-medium shadow-sm hover:shadow-md active:scale-95 transition-all hover:bg-red-700"
-              @click="warningModalOpen = false"
-            >
-              I understand the risk
-            </button>
-          </div>
         </div>
       </div>
 
