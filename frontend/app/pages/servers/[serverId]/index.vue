@@ -888,56 +888,6 @@
         </NuxtLink>
       </div>
 
-      <!-- Quick Console -->
-      <div
-        v-if="server?.serverStatus === 'running'"
-        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
-      >
-        <button
-          class="w-full flex items-center justify-between p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
-          @click="quickConsoleExpanded = !quickConsoleExpanded"
-        >
-          <div class="flex items-center gap-3">
-            <Terminal class="w-5 h-5 text-gray-500 dark:text-neutral-400" />
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-              Quick Console
-            </h2>
-          </div>
-          <ChevronDown
-            class="w-5 h-5 text-gray-500 dark:text-neutral-400 transition-transform"
-            :class="{ 'rotate-180': quickConsoleExpanded }"
-          />
-        </button>
-        <div v-show="quickConsoleExpanded" class="px-4 pb-4 md:px-6 md:pb-6">
-          <div class="flex items-center gap-2">
-            <input
-              v-model="quickConsoleCommand"
-              type="text"
-              placeholder="Enter command (e.g. /say Hello)"
-              class="flex-1 bg-white dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-              @keyup.enter="sendQuickConsole"
-            />
-            <button
-              :disabled="quickConsoleLoading || !quickConsoleCommand.trim()"
-              class="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              @click="sendQuickConsole"
-            >
-              <Loader2
-                v-if="quickConsoleLoading"
-                class="w-4 h-4 animate-spin"
-              />
-              <Send v-else class="w-4 h-4" />
-              Send
-            </button>
-          </div>
-          <pre
-            v-if="quickConsoleOutput"
-            class="mt-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 text-xs text-gray-700 dark:text-neutral-300 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto"
-            >{{ quickConsoleOutput }}</pre
-          >
-        </div>
-      </div>
-
       <!-- Real-time Metrics -->
       <div
         v-if="serverMetrics.length > 0"
@@ -958,7 +908,10 @@
             :class="{ 'rotate-180': liveMetricsExpanded }"
           />
         </button>
-        <div v-show="liveMetricsExpanded" class="px-4 pb-4 md:px-6 md:pb-6">
+        <div
+          v-show="liveMetricsExpanded"
+          class="px-4 pt-2 pb-4 md:px-6 md:pt-3 md:pb-6"
+        >
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             <!-- RAM -->
             <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
@@ -1062,14 +1015,7 @@
               </div>
               <div class="text-lg font-semibold text-gray-900 dark:text-white">
                 {{
-                  latestMetric
-                    ? (latestMetric.rxRate / 1024).toFixed(2) + " MB/s"
-                    : "—"
-                }}
-              </div>
-              <div class="text-xs text-gray-400 dark:text-neutral-500">
-                {{
-                  latestMetric ? latestMetric.rxRate.toFixed(1) + " KB/s" : ""
+                  latestMetric ? latestMetric.rxRate.toFixed(1) + " KB/s" : "—"
                 }}
               </div>
               <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
@@ -1092,14 +1038,7 @@
               </div>
               <div class="text-lg font-semibold text-gray-900 dark:text-white">
                 {{
-                  latestMetric
-                    ? (latestMetric.txRate / 1024).toFixed(2) + " MB/s"
-                    : "—"
-                }}
-              </div>
-              <div class="text-xs text-gray-400 dark:text-neutral-500">
-                {{
-                  latestMetric ? latestMetric.txRate.toFixed(1) + " KB/s" : ""
+                  latestMetric ? latestMetric.txRate.toFixed(1) + " KB/s" : "—"
                 }}
               </div>
               <svg class="w-full h-8 mt-2" preserveAspectRatio="none">
@@ -1267,7 +1206,6 @@ import {
   Play,
   RefreshCw,
   RotateCcw,
-  Send,
   Server as ServerIcon,
   Square,
   Tag,
@@ -1324,7 +1262,6 @@ const showIconEditor = ref(false);
 const selectedIconFile = ref<File | null>(null);
 const logsExpanded = ref(false);
 const propertiesExpanded = ref(false);
-const quickConsoleExpanded = ref(true);
 const liveMetricsExpanded = ref(true);
 const serverLogsRef = ref<{
   scrollToBottom: () => void;
@@ -1336,10 +1273,6 @@ const ramLoading = ref(false);
 const editingCpu = ref(false);
 const tempCpu = ref<number | null>(null);
 const cpuLoading = ref(false);
-
-const quickConsoleCommand = ref("");
-const quickConsoleOutput = ref("");
-const quickConsoleLoading = ref(false);
 
 const crashReports = ref<{ name: string; size: number; modifiedAt: string }[]>(
   [],
@@ -1391,30 +1324,6 @@ async function fetchCrashReports() {
     crashReports.value = [];
   } finally {
     crashReportsLoading.value = false;
-  }
-}
-
-async function sendQuickConsole() {
-  const cmd = quickConsoleCommand.value.trim();
-  if (!cmd) return;
-  quickConsoleLoading.value = true;
-  try {
-    const res = await $fetch<
-      { response?: string } | { body?: { response?: string } }
-    >(`/servers/${serverId}/rcon`, {
-      baseURL: useApiBase(),
-      method: "POST",
-      credentials: "include",
-      body: { command: cmd },
-    });
-    const body = (res as any).body ?? (res as any);
-    quickConsoleOutput.value = body?.response ?? "No response";
-    quickConsoleCommand.value = "";
-  } catch (err: any) {
-    const msg = err?.data?.detail || err?.message || "Command failed";
-    quickConsoleOutput.value = `Error: ${msg}`;
-  } finally {
-    quickConsoleLoading.value = false;
   }
 }
 

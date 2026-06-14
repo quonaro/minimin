@@ -86,6 +86,15 @@ async function deleteReport(name: string) {
   }
 }
 
+async function copyContent() {
+  try {
+    await navigator.clipboard.writeText(content.value);
+    showToast("success", "Copied to clipboard");
+  } catch {
+    showToast("error", "Failed to copy");
+  }
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -237,15 +246,23 @@ fetchReports();
               >
                 {{ selected }}
               </span>
-              <button
-                class="text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white text-xs px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                @click="
-                  selected = null;
-                  content = '';
-                "
-              >
-                Close
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  class="text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white text-xs px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                  @click="copyContent"
+                >
+                  Copy
+                </button>
+                <button
+                  class="text-gray-600 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white text-xs px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                  @click="
+                    selected = null;
+                    content = '';
+                  "
+                >
+                  Close
+                </button>
+              </div>
             </div>
             <pre
               class="flex-1 min-h-0 overflow-auto p-4 text-xs font-mono whitespace-pre-wrap bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-200"
