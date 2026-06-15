@@ -18,6 +18,12 @@ const props = defineProps<{
 
 const serverId = computed(() => props.server.serverId);
 
+const serverStatus = computed(() => props.server.serverStatus);
+const { percentage: pullPercentage } = useImagePullProgress(
+  serverId,
+  serverStatus,
+);
+
 const {
   editingPort,
   tempPort,
@@ -136,6 +142,19 @@ function formatServerStatus(status: string): string {
                 &middot; {{ serverUptime }}
               </span>
             </p>
+            <div v-if="server.serverStatus === 'pulling_image'" class="mt-1.5">
+              <div
+                class="w-full bg-gray-100 dark:bg-neutral-700 rounded-full h-1.5"
+              >
+                <div
+                  class="h-1.5 rounded-full bg-blue-500 transition-all duration-300"
+                  :style="{ width: pullPercentage + '%' }"
+                />
+              </div>
+              <p class="text-[10px] text-gray-400 dark:text-neutral-500 mt-0.5">
+                {{ pullPercentage }}%
+              </p>
+            </div>
           </div>
         </div>
       </div>

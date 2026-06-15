@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -22,6 +23,8 @@ type Service struct {
 	serversDir     string
 	serversHostDir string
 	networkName    string
+	pullMu         sync.RWMutex
+	pullProgress   map[string]*runner.ImagePullProgress
 }
 
 // NewService creates a new actions service.
@@ -32,7 +35,15 @@ func NewService(instance *state.InstanceFile, cli *client.Client, serversDir, se
 		serversDir:     serversDir,
 		serversHostDir: serversHostDir,
 		networkName:    networkName,
+		pullProgress:   make(map[string]*runner.ImagePullProgress),
 	}
+}
+
+// GetPullProgress returns the current image pull progress for a server.
+func (s *Service) GetPullProgress(id string) *runner.ImagePullProgress {
+	s.pullMu.RLock()
+	defer s.pullMu.RUnlock()
+	return s.pullProgress[id]
 }
 
 // Start launches or restarts the server container.
@@ -120,6 +131,27 @@ func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 		}
 		srv.ServerStatus = "pulling_image"
 		s.instance.Set(srv)
+
+		s.pullMu.Lock()
+		s.pullProgress[id] = &runner.ImagePullProgress{}
+		s.pullMu.Unlock()
+		defer func() {
+			s.pullMu.Lock()
+			delete(s.pullProgress, id)
+			s.pullMu.Unlock()
+		}()
+
+		if err := runner.PullImageWithProgress(ctx, s.cli, runner.ImageName, func(current, total int64) {
+			s.pullMu.Lock()
+			s.pullProgress[id] = &runner.ImagePullProgress{Current: current, Total: total}
+			s.pullMu.Unlock()
+		}); err != nil {
+			slog.Error("failed to pull image", "server_id", id, "error", err)
+			s.instance.ClearDesired(id, prevStatus)
+			_ = s.instance.Save()
+			return
+		}
+
 		containerID, volumeID, volumePath, err := runner.StartServerContainer(
 			ctx, s.cli, srv.ServerID,
 			srv.RamBytes, srv.GamePort,

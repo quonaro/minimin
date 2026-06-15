@@ -105,3 +105,14 @@ func (h *Handler) HandleRecreateWorld(w http.ResponseWriter, r *http.Request) {
 	go h.Actions.RecreateWorld(context.Background(), id)
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// HandleGetPullProgress returns the current image pull progress for a server.
+func (h *Handler) HandleGetPullProgress(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	prog := h.Actions.GetPullProgress(id)
+	if prog == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	jsonResponse(w, prog)
+}

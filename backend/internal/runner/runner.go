@@ -46,9 +46,6 @@ func StartServerContainer(
 	networkName string,
 	externalJavaArgs []string,
 ) (string, string, string, error) {
-	if err := PullImageIfNeeded(ctx, cli); err != nil {
-		return "", "", "", err
-	}
 	if err := EnsureNetwork(ctx, cli, networkName); err != nil {
 		return "", "", "", err
 	}
