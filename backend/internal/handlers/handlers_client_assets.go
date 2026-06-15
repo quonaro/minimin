@@ -113,10 +113,15 @@ func (h *Handler) HandleUploadClientAsset(w http.ResponseWriter, r *http.Request
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
-	const maxSize = 128 << 20
+	maxMB := h.ModUploadMaxMB
+	if maxMB <= 0 {
+		maxMB = 1024
+	}
+	maxSize := int64(maxMB) << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 	if err := r.ParseMultipartForm(maxSize); err != nil {
-		jsonError(w, "invalid multipart form or file too large", http.StatusBadRequest)
+		slog.Warn("multipart parse failed", "error", err)
+		jsonError(w, fmt.Sprintf("invalid multipart form or file too large: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 	defer func() {

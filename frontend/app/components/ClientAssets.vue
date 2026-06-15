@@ -1,5 +1,15 @@
 <template>
-  <div class="flex flex-col flex-1 min-h-0">
+  <div
+    class="flex flex-col flex-1 min-h-0"
+    :class="
+      isDragOver
+        ? 'border-2 border-dashed border-primary rounded-xl bg-primary/5'
+        : ''
+    "
+    @dragover.prevent="isDragOver = true"
+    @dragleave="isDragOver = false"
+    @drop.prevent="onDrop"
+  >
     <div
       v-if="filteredAssets.length === 0 && !loading"
       class="flex-1 flex flex-col items-center justify-center text-center"
@@ -15,9 +25,7 @@
         {{ title }}
       </p>
       <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1 max-w-xs">
-        No
-        {{ type === "resourcepacks" ? "resource packs" : "shader packs" }}
-        installed.
+        Drag & drop .zip files here, or use the Upload button above.
       </p>
     </div>
     <div v-else-if="loading" class="flex-1 flex items-center justify-center">
@@ -103,8 +111,11 @@ const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
 });
 const emit = defineEmits<{
+  upload: [file: File];
   "show-in-files": [filename: string];
 }>();
+
+const isDragOver = ref(false);
 
 const filteredAssets = computed(() => {
   const q = props.searchQuery.trim().toLowerCase();
@@ -125,6 +136,18 @@ watch(refreshKey, () => {
 onMounted(() => {
   refresh();
 });
+
+function onDrop(e: DragEvent) {
+  isDragOver.value = false;
+  const dt = e.dataTransfer;
+  if (!dt) return;
+  const files = [...dt.files].filter((f) =>
+    f.name.toLowerCase().endsWith(".zip"),
+  );
+  for (const file of files) {
+    emit("upload", file);
+  }
+}
 
 function formatBytes(n: number): string {
   if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";

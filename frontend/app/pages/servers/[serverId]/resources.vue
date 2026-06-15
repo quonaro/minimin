@@ -483,6 +483,7 @@
             title="Resource Packs"
             :icon="Image"
             :search-query="searchQuery"
+            @upload="handleAssetUpload"
             @show-in-files="(f) => openFileInManager(f, 'resourcepacks')"
           />
           <client-assets
@@ -492,6 +493,7 @@
             title="Shader Packs"
             :icon="Sparkles"
             :search-query="searchQuery"
+            @upload="handleAssetUpload"
             @show-in-files="(f) => openFileInManager(f, 'shaderpacks')"
           />
         </div>
@@ -1248,6 +1250,15 @@ async function handleClientMove(filename: string, target: "server" | "client") {
   await refresh();
   await refreshClient();
 }
+async function handleAssetUpload(file: File) {
+  if (activeClientSubTab.value === "resourcepacks") {
+    await resourcePacks.uploadFile(file);
+  } else if (activeClientSubTab.value === "shaderpacks") {
+    await shaderPacks.uploadFile(file);
+  }
+  triggerClientAssetsRefresh();
+}
+
 async function handleCopy(
   filename: string,
   source: "server" | "client",
