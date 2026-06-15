@@ -97,6 +97,8 @@ func (h *Handler) doStart(id string, removeExisting bool) {
 				slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
 			}
 		}
+		s.ServerStatus = "pulling_image"
+		h.Instance.Set(s)
 		containerID, volumeID, volumePath, err := runner.StartServerContainer(
 			context.Background(), h.Cli, s.ServerID,
 			s.RamBytes, s.GamePort,

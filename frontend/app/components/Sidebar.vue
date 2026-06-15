@@ -291,6 +291,8 @@ function getServerStatusColor(status: string) {
       return "bg-green-500";
     case "starting":
       return "bg-yellow-500";
+    case "pulling_image":
+      return "bg-blue-500";
     case "exited":
       return "bg-red-500";
     default:

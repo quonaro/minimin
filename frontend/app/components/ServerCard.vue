@@ -28,12 +28,17 @@
         <span
           :class="[
             getStatusColor(server.serverStatus),
-            server.serverStatus === 'running' &&
+            (server.serverStatus === 'running' ||
+              server.serverStatus === 'pulling_image') &&
               'animate-heartbeat dark:animate-heartbeat-dark',
           ]"
           class="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
         >
           <Activity v-if="server.serverStatus === 'running'" class="w-3 h-3" />
+          <CloudDownload
+            v-else-if="server.serverStatus === 'pulling_image'"
+            class="w-3 h-3"
+          />
           server: {{ server.serverStatus }}
         </span>
         <span
@@ -109,11 +114,12 @@ import { useUptime } from "~/composables/useDuration";
 import type { Server } from "~/composables/useServers";
 import {
   Activity,
+  ChevronRight,
   Clock,
+  CloudDownload,
   Network,
   Package,
   Tag,
-  ChevronRight,
 } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -126,6 +132,8 @@ function getStatusColor(status: string) {
       return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "starting":
       return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "pulling_image":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "exited":
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:

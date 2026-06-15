@@ -38,9 +38,11 @@
                     ? 'bg-green-500'
                     : server.serverStatus === 'starting'
                       ? 'bg-yellow-500'
-                      : server.containerStatus === 'exited'
-                        ? 'bg-red-500'
-                        : 'bg-gray-400',
+                      : server.serverStatus === 'pulling_image'
+                        ? 'bg-blue-500'
+                        : server.containerStatus === 'exited'
+                          ? 'bg-red-500'
+                          : 'bg-gray-400',
                 ]"
               />
             </div>
@@ -176,30 +178,13 @@
               </h1>
               <div class="flex items-center gap-3 flex-wrap">
                 <span
-                  v-if="containerUptime"
-                  class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
-                  :title="`Started at: ${formatTimestamp(containerStartedAt)}`"
-                >
-                  <Clock
-                    class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400"
-                  />
-                  Container: {{ containerUptime }}
-                </span>
-                <span
-                  v-if="serverUptime"
-                  class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
-                  :title="`Started at: ${formatTimestamp(serverStartedAt)}`"
-                >
-                  <Clock
-                    class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400"
-                  />
-                  Server: {{ serverUptime }}
-                </span>
-                <span
                   v-if="isPending"
                   class="text-xs text-gray-500 dark:text-neutral-400 italic"
                 >
-                  ({{ server.desiredStatus }}…)
+                  <template v-if="server.serverStatus === 'pulling_image'"
+                    >Pulling image…</template
+                  >
+                  <template v-else>({{ server.desiredStatus }}…)</template>
                 </span>
               </div>
             </div>
@@ -246,6 +231,12 @@
                         class="text-sm font-semibold text-gray-900 dark:text-white"
                       >
                         {{ server.containerStatus }}
+                        <span
+                          v-if="containerUptime"
+                          class="text-gray-500 dark:text-neutral-400 font-normal"
+                        >
+                          · {{ containerUptime }}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -260,12 +251,18 @@
                           ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                           : server.serverStatus === 'starting'
                             ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
-                            : 'bg-gray-100 dark:bg-neutral-600/50 text-gray-600 dark:text-gray-400',
+                            : server.serverStatus === 'pulling_image'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-gray-100 dark:bg-neutral-600/50 text-gray-600 dark:text-gray-400',
                       ]"
                     >
                       <Activity
                         v-if="server.serverStatus === 'running'"
                         class="w-4 h-4 animate-pulse-icon"
+                      />
+                      <CloudDownload
+                        v-else-if="server.serverStatus === 'pulling_image'"
+                        class="w-4 h-4 animate-bounce"
                       />
                       <Activity v-else class="w-4 h-4" />
                     </div>
@@ -279,6 +276,12 @@
                         class="text-sm font-semibold text-gray-900 dark:text-white"
                       >
                         {{ server.serverStatus }}
+                        <span
+                          v-if="serverUptime"
+                          class="text-gray-500 dark:text-neutral-400 font-normal"
+                        >
+                          · {{ serverUptime }}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -953,10 +956,10 @@
                 >
                   Live Metrics
                 </p>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-2 gap-3">
                   <!-- RAM -->
                   <div
-                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                    class="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
                   >
                     <div
                       class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
@@ -977,17 +980,9 @@
                         >
                           {{
                             latestMetric
-                              ? formatBytes(latestMetric.ramUsage)
-                              : "—"
-                          }}
-                        </p>
-                        <p
-                          class="text-[10px] text-gray-400 dark:text-neutral-500"
-                        >
-                          /
-                          {{
-                            latestMetric
-                              ? formatBytes(latestMetric.ramLimit)
+                              ? formatBytes(latestMetric.ramUsage) +
+                                " \u00B7 " +
+                                formatBytes(latestMetric.ramLimit)
                               : "—"
                           }}
                         </p>
@@ -1021,7 +1016,7 @@
                   </div>
                   <!-- CPU -->
                   <div
-                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                    class="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
                   >
                     <div
                       class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
@@ -1076,7 +1071,7 @@
                   </div>
                   <!-- Online -->
                   <div
-                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                    class="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
                   >
                     <div
                       class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
@@ -1131,7 +1126,7 @@
                   </div>
                   <!-- TPS -->
                   <div
-                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                    class="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
                   >
                     <div
                       class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
@@ -1195,7 +1190,7 @@
                   </div>
                   <!-- Net RX -->
                   <div
-                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                    class="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
                   >
                     <div
                       class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
@@ -1250,7 +1245,7 @@
                   </div>
                   <!-- Net TX -->
                   <div
-                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                    class="relative flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
                   >
                     <div
                       class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
@@ -1476,7 +1471,7 @@ import {
   Camera,
   Check,
   ChevronDown,
-  Clock,
+  CloudDownload,
   Code,
   Coffee,
   Copy,
@@ -1792,6 +1787,8 @@ function getStatusColor(status: string) {
       return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
     case "starting":
       return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "pulling_image":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
     case "exited":
       return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:

@@ -83,7 +83,7 @@
           class="relative flex flex-col p-2 rounded-xl border transition-all cursor-pointer"
           :class="
             selected.has(mod.filename)
-              ? 'ring-2 ring-primary ring-offset-1 dark:ring-offset-neutral-800'
+              ? 'ring-1 ring-primary'
               : mod.corrupted
                 ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
                 : mod.enabled !== false
