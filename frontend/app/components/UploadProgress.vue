@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="uploads.length > 0"
-    class="fixed bottom-0 right-4 z-50 w-80 bg-white dark:bg-neutral-800 rounded-t-xl shadow-2xl border border-gray-200 dark:border-neutral-700 border-b-0 overflow-hidden"
+    class="fixed bottom-0 right-4 z-50 w-96 bg-white dark:bg-neutral-800 rounded-t-xl shadow-2xl border border-gray-200 dark:border-neutral-700 border-b-0 overflow-hidden"
   >
     <div
       class="px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-neutral-700"
@@ -58,6 +58,12 @@
             </div>
             <p class="text-xs mt-0.5" :class="textClassFor(task.status)">
               {{ statusText(task) }}
+              <span
+                v-if="task.total"
+                class="text-gray-400 dark:text-neutral-500"
+              >
+                · {{ formatBytes(task.total) }}
+              </span>
             </p>
           </div>
           <button
@@ -222,6 +228,14 @@ function formatTime(seconds: number): string {
   if (seconds < 60) return Math.ceil(seconds) + " sec left";
   if (seconds < 3600) return Math.ceil(seconds / 60) + " min left";
   return Math.ceil(seconds / 3600) + " hr left";
+}
+
+function formatBytes(n: number): string {
+  if (n >= 1024 * 1024 * 1024)
+    return (n / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+  if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
+  if (n >= 1024) return (n / 1024).toFixed(1) + " KB";
+  return n + " B";
 }
 
 function formatDuration(ms: number): string {

@@ -133,7 +133,31 @@
               @keyup.enter="handleUploadConfirm"
             />
           </div>
-          <p class="text-xs text-gray-500 dark:text-neutral-400">
+          <div v-if="isModUploadContext" class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                v-model="installToServer"
+                type="checkbox"
+                :disabled="activeMainTab === 'server'"
+                class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
+              />
+              <span class="text-sm text-gray-700 dark:text-neutral-300"
+                >Install to Server Mods</span
+              >
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                v-model="installToClient"
+                type="checkbox"
+                :disabled="activeClientSubTab === 'mods'"
+                class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
+              />
+              <span class="text-sm text-gray-700 dark:text-neutral-300"
+                >Install to Client Mods</span
+              >
+            </label>
+          </div>
+          <p v-else class="text-xs text-gray-500 dark:text-neutral-400">
             Will be downloaded to: <strong>{{ downloadTargetLabel }}</strong>
           </p>
 
@@ -221,7 +245,9 @@
           <button
             class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
             :disabled="
-              bulkUploadLoading || (!modUrl && pendingUploadFiles.length === 0)
+              bulkUploadLoading ||
+              (!modUrl && pendingUploadFiles.length === 0) ||
+              (isModUploadContext && !installToServer && !installToClient)
             "
             @click="handleUploadConfirm"
           >
@@ -642,6 +668,26 @@ const pendingUploadFiles = ref<File[]>([]);
 const zipContentsMap = ref<Record<string, string[]>>({});
 const isDraggingOver = ref(false);
 const bulkUploadLoading = ref(false);
+const installToServer = ref(false);
+const installToClient = ref(false);
+
+const isModUploadContext = computed(() =>
+  uploadAllowedExts.value.includes(".jar"),
+);
+
+watch(showUploadModal, (open) => {
+  if (!open) return;
+  if (activeMainTab.value === "server") {
+    installToServer.value = true;
+    installToClient.value = false;
+  } else if (activeClientSubTab.value === "mods") {
+    installToServer.value = false;
+    installToClient.value = true;
+  } else {
+    installToServer.value = false;
+    installToClient.value = false;
+  }
+});
 
 const router = useRouter();
 
@@ -901,10 +947,9 @@ async function handleUploadConfirm() {
       modUrl.value = "";
     }
     for (const file of pendingUploadFiles.value) {
-      if (activeMainTab.value === "server") {
-        await uploadFile(file);
-      } else if (activeClientSubTab.value === "mods") {
-        await uploadClientFile(file);
+      if (isModUploadContext.value) {
+        if (installToServer.value) await uploadFile(file);
+        if (installToClient.value) await uploadClientFile(file);
       } else {
         const assetType = activeClientSubTab.value;
         const formData = new FormData();
@@ -924,16 +969,10 @@ async function handleUploadConfirm() {
         triggerClientAssetsRefresh();
       }
     }
-    if (
-      activeClientSubTab.value === "mods" &&
-      pendingUploadFiles.value.length > 0
-    ) {
+    if (installToClient.value && pendingUploadFiles.value.length > 0) {
       await refreshClient();
     }
-    if (
-      activeMainTab.value === "server" &&
-      pendingUploadFiles.value.length > 0
-    ) {
+    if (installToServer.value && pendingUploadFiles.value.length > 0) {
       await refresh();
     }
   } catch (err: any) {
@@ -969,10 +1008,11 @@ async function downloadShaderPackFromURL(url: string, filename?: string) {
 
 async function performDownloadFromURL() {
   if (!modUrl.value) return;
-  if (activeMainTab.value === "server") await downloadFromURL(modUrl.value);
-  else if (activeClientSubTab.value === "mods") {
-    await downloadClientFromURL(modUrl.value);
-    await refreshClient();
+  if (isModUploadContext.value) {
+    if (installToServer.value) await downloadFromURL(modUrl.value);
+    if (installToClient.value) {
+      await downloadClientFromURL(modUrl.value);
+    }
   } else if (activeClientSubTab.value === "resourcepacks") {
     await downloadResourcePackFromURL(modUrl.value);
     triggerClientAssetsRefresh();
