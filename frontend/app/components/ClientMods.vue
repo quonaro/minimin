@@ -88,7 +88,7 @@
                 ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
                 : mod.enabled !== false
                   ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
-                  : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
+                  : 'bg-gray-200 dark:bg-neutral-700/50 border-gray-400 dark:border-neutral-500'
           "
           :title="`${mod.name || mod.filename}${mod.description ? ' — ' + mod.description : ''}`"
           @click="toggleSelect(mod.filename)"
@@ -136,6 +136,12 @@
             </template>
             <template v-else>
               <span
+                v-if="mod.enabled === false"
+                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-200 dark:bg-neutral-600 text-gray-600 dark:text-neutral-300"
+              >
+                Disabled
+              </span>
+              <span
                 v-if="mod.version"
                 class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 truncate max-w-[4.5rem]"
               >
@@ -155,7 +161,9 @@
               :class="
                 mod.corrupted
                   ? 'text-red-700 dark:text-red-300'
-                  : 'text-gray-900 dark:text-white'
+                  : mod.enabled === false
+                    ? 'text-gray-500 dark:text-neutral-400'
+                    : 'text-gray-900 dark:text-white'
               "
             >
               {{ mod.name || mod.filename }}
