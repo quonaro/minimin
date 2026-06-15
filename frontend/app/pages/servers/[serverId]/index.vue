@@ -201,43 +201,75 @@
                 >
                   Server Status
                 </p>
-                <div class="flex flex-wrap gap-2">
-                  <span
-                    :class="[
-                      getStatusColor(server.containerStatus),
-                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-                      server.containerStatus === 'running' &&
-                        'animate-heartbeat dark:animate-heartbeat-dark',
-                    ]"
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Container -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    <Activity
-                      v-if="server.containerStatus === 'running'"
-                      :class="
-                        server.containerStatus === 'running' &&
-                        'animate-pulse-icon'
-                      "
-                      class="w-3.5 h-3.5"
-                    />
-                    container: {{ server.containerStatus }}
-                  </span>
-                  <span
-                    :class="[
-                      getStatusColor(server.serverStatus),
-                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-                      server.serverStatus === 'running' &&
-                        'animate-heartbeat dark:animate-heartbeat-dark',
-                    ]"
+                    <div
+                      :class="[
+                        'w-9 h-9 shrink-0 rounded-lg flex items-center justify-center',
+                        server.containerStatus === 'running'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                          : server.containerStatus === 'starting'
+                            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                            : server.containerStatus === 'exited'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                              : 'bg-gray-100 dark:bg-neutral-600/50 text-gray-600 dark:text-gray-400',
+                      ]"
+                    >
+                      <Activity
+                        v-if="server.containerStatus === 'running'"
+                        class="w-4 h-4 animate-pulse-icon"
+                      />
+                      <Activity v-else class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Container
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{ server.containerStatus }}
+                      </p>
+                    </div>
+                  </div>
+                  <!-- Server -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
-                    <Activity
-                      v-if="server.serverStatus === 'running'"
-                      :class="
-                        server.serverStatus === 'running' &&
-                        'animate-pulse-icon'
-                      "
-                      class="w-3.5 h-3.5"
-                    />
-                    server: {{ server.serverStatus }}
-                  </span>
+                    <div
+                      :class="[
+                        'w-9 h-9 shrink-0 rounded-lg flex items-center justify-center',
+                        server.serverStatus === 'running'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                          : server.serverStatus === 'starting'
+                            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                            : 'bg-gray-100 dark:bg-neutral-600/50 text-gray-600 dark:text-gray-400',
+                      ]"
+                    >
+                      <Activity
+                        v-if="server.serverStatus === 'running'"
+                        class="w-4 h-4 animate-pulse-icon"
+                      />
+                      <Activity v-else class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Server
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{ server.serverStatus }}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
