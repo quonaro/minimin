@@ -10,8 +10,6 @@
     @dragleave="isDragOver = false"
     @drop.prevent="onDrop"
   >
-    <div class="mb-4"></div>
-
     <div
       v-if="filteredMods.length === 0 && !loading"
       class="flex-1 flex flex-col items-center justify-center text-center"
@@ -27,12 +25,12 @@
 
     <div
       v-else
-      class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start flex-1 min-h-0 overflow-y-auto p-4"
+      class="grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 content-start flex-1 min-h-0 overflow-y-auto p-2"
     >
       <div
         v-for="mod in filteredMods"
         :key="mod.filename"
-        class="flex flex-col p-4 rounded-xl border transition-colors"
+        class="flex flex-col p-2 rounded-xl border transition-colors"
         :class="
           mod.corrupted
             ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
@@ -40,12 +38,13 @@
               ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
               : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
         "
+        :title="mod.description || ''"
         draggable="true"
         @dragstart="onDragStart($event, mod)"
         @contextmenu.prevent="openContextMenu(mod, $event)"
       >
         <div
-          class="self-center relative w-14 h-14 rounded-xl overflow-hidden"
+          class="self-center relative w-10 h-10 rounded-xl overflow-hidden"
           :class="
             mod.corrupted
               ? 'bg-red-100 dark:bg-red-900/30'
@@ -66,13 +65,35 @@
             class="absolute inset-0 flex items-center justify-center"
             :class="mod.corrupted ? 'text-red-500' : 'text-indigo-500'"
           >
-            <AlertTriangle v-if="mod.corrupted" class="w-6 h-6" />
-            <Box v-else class="w-6 h-6" />
+            <AlertTriangle v-if="mod.corrupted" class="w-5 h-5" />
+            <Box v-else class="w-5 h-5" />
           </div>
         </div>
-        <div class="mt-3 text-center min-w-0">
+        <div class="mt-1 flex items-center justify-center gap-1 flex-wrap">
+          <template v-if="mod.corrupted">
+            <span
+              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+              >Corrupted JAR</span
+            >
+          </template>
+          <template v-else>
+            <span
+              v-if="mod.version"
+              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 truncate max-w-[4.5rem]"
+            >
+              {{ mod.version }}
+            </span>
+            <span
+              v-if="mod.size"
+              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-neutral-400"
+            >
+              {{ formatBytes(mod.size) }}
+            </span>
+          </template>
+        </div>
+        <div class="mt-0.5 text-center min-w-0">
           <p
-            class="text-sm font-semibold truncate"
+            class="text-xs font-semibold truncate"
             :class="
               mod.corrupted
                 ? 'text-red-700 dark:text-red-300'
@@ -81,62 +102,36 @@
           >
             {{ mod.name || mod.filename }}
           </p>
-          <p
-            class="text-xs truncate mt-0.5"
-            :class="
-              mod.corrupted
-                ? 'text-red-500 dark:text-red-400'
-                : 'text-gray-500 dark:text-neutral-400'
-            "
-          >
-            <template v-if="mod.corrupted"> Corrupted JAR </template>
-            <template v-else>
-              {{ mod.version }} &middot; {{ mod.modid }}
-              <span v-if="mod.authors">&middot; {{ mod.authors }}</span>
-            </template>
-          </p>
-          <p
-            v-if="mod.size"
-            class="text-[11px] text-gray-400 dark:text-neutral-500 mt-0.5"
-          >
-            {{ formatBytes(mod.size) }}
-          </p>
-          <p
-            v-if="mod.description && !mod.corrupted"
-            class="text-xs text-gray-400 dark:text-neutral-500 line-clamp-2 mt-1"
-          >
-            {{ mod.description }}
-          </p>
         </div>
-        <div class="mt-3 flex items-center justify-center gap-1">
+        <div class="mt-1.5 flex items-center justify-center gap-0.5">
           <button
             class="text-gray-400 hover:text-primary transition-colors p-1"
             title="Show in File Manager"
             @click="emit('show-in-files', mod.filename)"
           >
-            <FolderOpen class="w-4 h-4" />
+            <FolderOpen class="w-3.5 h-3.5" />
           </button>
           <button
             class="text-gray-400 hover:text-primary transition-colors p-1"
             :title="mod.enabled !== false ? 'Disable mod' : 'Enable mod'"
             @click="emit('toggle', mod.filename)"
           >
-            <Eye v-if="mod.enabled !== false" class="w-4 h-4" />
-            <EyeOff v-else class="w-4 h-4" />
+            <Eye v-if="mod.enabled !== false" class="w-3.5 h-3.5" />
+            <EyeOff v-else class="w-3.5 h-3.5" />
           </button>
           <button
             class="text-gray-400 hover:text-amber-500 transition-colors p-1"
             title="Move to server mods"
             @click="emit('move', mod.filename, 'server')"
           >
-            <Server class="w-4 h-4" />
+            <Server class="w-3.5 h-3.5" />
           </button>
           <button
             class="text-gray-400 hover:text-red-500 transition-colors p-1"
             :disabled="loading"
             @click="emit('delete', mod.filename)"
           >
-            <Trash2 class="w-4 h-4" />
+            <Trash2 class="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

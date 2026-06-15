@@ -39,12 +39,13 @@
               ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
               : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
         "
+        :title="mod.description || ''"
         draggable="true"
         @dragstart="onDragStart($event, mod)"
         @contextmenu.prevent="openContextMenu(mod, $event)"
       >
         <div
-          class="self-center relative w-8 h-8 rounded-lg overflow-hidden"
+          class="self-center relative w-10 h-10 rounded-xl overflow-hidden"
           :class="
             mod.corrupted
               ? 'bg-red-100 dark:bg-red-900/30'
@@ -65,11 +66,33 @@
             class="absolute inset-0 flex items-center justify-center"
             :class="mod.corrupted ? 'text-red-500' : 'text-indigo-500'"
           >
-            <AlertTriangle v-if="mod.corrupted" class="w-4 h-4" />
-            <Box v-else class="w-4 h-4" />
+            <AlertTriangle v-if="mod.corrupted" class="w-5 h-5" />
+            <Box v-else class="w-5 h-5" />
           </div>
         </div>
-        <div class="mt-1.5 text-center min-w-0" :title="mod.description || ''">
+        <div class="mt-1 flex items-center justify-center gap-1 flex-wrap">
+          <template v-if="mod.corrupted">
+            <span
+              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+              >Corrupted JAR</span
+            >
+          </template>
+          <template v-else>
+            <span
+              v-if="mod.version"
+              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 truncate max-w-[4.5rem]"
+            >
+              {{ mod.version }}
+            </span>
+            <span
+              v-if="mod.size"
+              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-neutral-400"
+            >
+              {{ formatBytes(mod.size) }}
+            </span>
+          </template>
+        </div>
+        <div class="mt-0.5 text-center min-w-0">
           <p
             class="text-xs font-semibold truncate"
             :class="
@@ -79,26 +102,6 @@
             "
           >
             {{ mod.name || mod.filename }}
-          </p>
-          <p
-            class="text-[10px] truncate mt-0.5"
-            :class="
-              mod.corrupted
-                ? 'text-red-500 dark:text-red-400'
-                : 'text-gray-500 dark:text-neutral-400'
-            "
-          >
-            <template v-if="mod.corrupted"> Corrupted JAR </template>
-            <template v-else>
-              {{ mod.version }} &middot; {{ mod.modid }}
-              <span v-if="mod.authors">&middot; {{ mod.authors }}</span>
-            </template>
-          </p>
-          <p
-            v-if="mod.size"
-            class="text-[10px] text-gray-400 dark:text-neutral-500 mt-0.5"
-          >
-            {{ formatBytes(mod.size) }}
           </p>
         </div>
         <div class="mt-1.5 flex items-center justify-center gap-0.5">

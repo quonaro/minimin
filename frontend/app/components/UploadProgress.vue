@@ -1,6 +1,5 @@
 <template>
   <div
-    v-if="uploads.length > 0"
     class="fixed bottom-0 right-4 z-50 w-96 bg-white dark:bg-neutral-800 rounded-t-xl shadow-2xl border border-gray-200 dark:border-neutral-700 border-b-0 overflow-hidden"
   >
     <div
@@ -24,57 +23,65 @@
     <Transition name="upload-collapse">
       <div v-if="expanded" class="px-4 py-3 space-y-3 overflow-hidden">
         <div
-          v-if="remainingText && activeCount > 0"
-          class="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-400"
+          v-if="uploads.length === 0"
+          class="flex items-center justify-center text-sm text-gray-400 dark:text-neutral-500 py-4"
         >
-          <span>{{ remainingText }}</span>
-          <button class="text-primary hover:underline" @click="cancelAll">
-            Cancel all
-          </button>
+          No uploads yet
         </div>
-
-        <div
-          v-for="task in uploads"
-          :key="task.id"
-          class="flex items-center gap-3"
-        >
-          <component
-            :is="iconFor(task.status)"
-            class="w-4 h-4 shrink-0"
-            :class="iconClassFor(task.status)"
-          />
-          <div class="flex-1 min-w-0">
-            <p class="text-sm text-gray-900 dark:text-white truncate">
-              {{ task.fileName }}
-            </p>
-            <div
-              class="w-full bg-gray-100 dark:bg-neutral-700 rounded-full h-1.5 mt-1"
-            >
-              <div
-                class="h-1.5 rounded-full transition-all duration-300"
-                :class="barClassFor(task.status)"
-                :style="{ width: task.percentage + '%' }"
-              />
-            </div>
-            <p class="text-xs mt-0.5" :class="textClassFor(task.status)">
-              {{ statusText(task) }}
-              <span
-                v-if="task.total"
-                class="text-gray-400 dark:text-neutral-500"
-              >
-                · {{ formatBytes(task.total) }}
-              </span>
-            </p>
-          </div>
-          <button
-            class="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-700 shrink-0"
-            :class="buttonClassFor(task.status)"
-            @click="handleAction(task)"
+        <template v-else>
+          <div
+            v-if="remainingText && activeCount > 0"
+            class="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-400"
           >
-            <X v-if="isFinished(task.status)" class="w-3.5 h-3.5" />
-            <X v-else class="w-3.5 h-3.5" />
-          </button>
-        </div>
+            <span>{{ remainingText }}</span>
+            <button class="text-primary hover:underline" @click="cancelAll">
+              Cancel all
+            </button>
+          </div>
+
+          <div
+            v-for="task in uploads"
+            :key="task.id"
+            class="flex items-center gap-3"
+          >
+            <component
+              :is="iconFor(task.status)"
+              class="w-4 h-4 shrink-0"
+              :class="iconClassFor(task.status)"
+            />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-900 dark:text-white truncate">
+                {{ task.fileName }}
+              </p>
+              <div
+                class="w-full bg-gray-100 dark:bg-neutral-700 rounded-full h-1.5 mt-1"
+              >
+                <div
+                  class="h-1.5 rounded-full transition-all duration-300"
+                  :class="barClassFor(task.status)"
+                  :style="{ width: task.percentage + '%' }"
+                />
+              </div>
+              <p class="text-xs mt-0.5" :class="textClassFor(task.status)">
+                {{ statusText(task) }}
+                <span
+                  v-if="task.total"
+                  class="text-gray-400 dark:text-neutral-500"
+                >
+                  · {{ formatBytes(task.total) }}
+                </span>
+              </p>
+            </div>
+            <button
+              class="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-700 shrink-0"
+              :class="buttonClassFor(task.status)"
+              @click="handleAction(task)"
+            >
+              <X v-if="isFinished(task.status)" class="w-3.5 h-3.5" />
+              <X v-else class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </template>
       </div>
     </Transition>
   </div>
