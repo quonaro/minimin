@@ -46,16 +46,17 @@ func (h *Handler) HandleGetServerDisk(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
-		parts := strings.SplitN(rel, "/", 2)
-		if len(parts) > 0 {
-			switch parts[0] {
-			case "world":
-				worldBytes += size
-			case "world_nether":
-				netherBytes += size
-			case "world_the_end":
-				endBytes += size
-			}
+		switch {
+		case strings.HasPrefix(rel, "world_nether/"):
+			netherBytes += size
+		case strings.HasPrefix(rel, "world_the_end/"):
+			endBytes += size
+		case strings.HasPrefix(rel, "world/DIM-1/"):
+			netherBytes += size
+		case strings.HasPrefix(rel, "world/DIM1/"):
+			endBytes += size
+		case strings.HasPrefix(rel, "world/"):
+			worldBytes += size
 		}
 		return nil
 	})
