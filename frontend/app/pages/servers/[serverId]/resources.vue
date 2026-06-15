@@ -438,7 +438,7 @@
             @generate-archive="handleGenerateArchive"
             @refresh-archive-links="handleRefreshLinks"
             @delete-archive-link="handleDeleteLink"
-            @show-in-files="(f) => openFileInManager(f, 'client-mods')"
+            @show-in-files="(f) => openFileInManager(f, 'mods-client')"
           />
           <client-assets
             v-else-if="activeClientSubTab === 'resourcepacks'"
@@ -810,7 +810,7 @@ function openCopyAllConfirm() {
 
 function openFileInManager(
   filename: string,
-  folder: "mods" | "client-mods" | "resourcepacks" | "shaderpacks",
+  folder: "mods" | "mods-client" | "resourcepacks" | "shaderpacks",
 ) {
   navigateTo({
     path: `/servers/${serverId}/files`,
