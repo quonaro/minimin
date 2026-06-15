@@ -50,6 +50,19 @@ function formatServerStatus(status: string): string {
       return status;
   }
 }
+
+function formatContainerStatus(status: string): string {
+  switch (status) {
+    case "running":
+      return "Running";
+    case "starting":
+      return "Starting...";
+    case "exited":
+      return "Exited";
+    default:
+      return status || "Created";
+  }
+}
 </script>
 
 <template>
@@ -91,7 +104,7 @@ function formatServerStatus(status: string): string {
               Container
             </p>
             <p class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ server.containerStatus }}
+              {{ formatContainerStatus(server.containerStatus) }}
               <span
                 v-if="containerUptime"
                 class="text-gray-500 dark:text-neutral-400 font-normal"
