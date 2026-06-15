@@ -12,6 +12,7 @@ export interface Server {
   restartPolicy?: string;
   engineType: string;
   gameVersion: string;
+  loaderVersion?: string;
   ramBytes?: number;
   volumePath?: string;
   hostPath?: string;

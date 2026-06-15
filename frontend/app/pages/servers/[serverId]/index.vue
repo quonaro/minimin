@@ -8,9 +8,9 @@
         <div class="flex flex-col md:flex-row gap-8">
           <!-- Avatar column -->
           <div class="flex flex-col items-center gap-4 shrink-0 max-w-[200px]">
-            <div class="relative">
+            <div class="relative w-full">
               <div
-                class="w-24 h-24 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-gray-200 to-gray-300 dark:from-neutral-700 dark:to-neutral-600 flex items-center justify-center ring-4 ring-white dark:ring-neutral-800"
+                class="w-full aspect-square rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-gray-200 to-gray-300 dark:from-neutral-700 dark:to-neutral-600 flex items-center justify-center ring-4 ring-white dark:ring-neutral-800"
               >
                 <img
                   v-if="iconUrl && !iconError"
@@ -24,6 +24,13 @@
                   class="w-10 h-10 text-indigo-500 dark:text-indigo-400"
                 />
               </div>
+              <button
+                v-if="server.hostPath"
+                class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-2xl cursor-pointer"
+                @click="fileInput?.click()"
+              >
+                <Camera class="w-6 h-6 text-white" />
+              </button>
               <span
                 :class="[
                   'absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-neutral-800',
@@ -37,12 +44,6 @@
                 ]"
               />
             </div>
-            <button
-              class="text-xs font-medium text-gray-500 dark:text-neutral-400 hover:text-primary transition-colors"
-              @click="fileInput?.click()"
-            >
-              Change Icon
-            </button>
             <input
               ref="fileInput"
               type="file"
@@ -163,50 +164,6 @@
               </h1>
               <div class="flex items-center gap-3 flex-wrap">
                 <span
-                  :class="[
-                    getStatusColor(server.containerStatus),
-                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-                    server.containerStatus === 'running' &&
-                      'animate-heartbeat dark:animate-heartbeat-dark',
-                  ]"
-                >
-                  <Activity
-                    v-if="server.containerStatus === 'running'"
-                    :class="
-                      server.containerStatus === 'running' &&
-                      'animate-pulse-icon'
-                    "
-                    class="w-3.5 h-3.5"
-                  />
-                  container: {{ server.containerStatus }}
-                </span>
-                <span
-                  :class="[
-                    getStatusColor(server.serverStatus),
-                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-                    server.serverStatus === 'running' &&
-                      'animate-heartbeat dark:animate-heartbeat-dark',
-                  ]"
-                >
-                  <Activity
-                    v-if="server.serverStatus === 'running'"
-                    :class="
-                      server.serverStatus === 'running' && 'animate-pulse-icon'
-                    "
-                    class="w-3.5 h-3.5"
-                  />
-                  server: {{ server.serverStatus }}
-                </span>
-                <span
-                  v-if="server.modCount !== undefined && server.modCount > 0"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                >
-                  <Package class="w-3.5 h-3.5" />
-                  {{ server.modCount }} mod{{
-                    server.modCount === 1 ? "" : "s"
-                  }}
-                </span>
-                <span
                   v-if="containerUptime"
                   class="text-sm text-gray-500 dark:text-neutral-400 flex items-center gap-1.5"
                   :title="`Started at: ${formatTimestamp(containerStartedAt)}`"
@@ -237,6 +194,53 @@
 
             <!-- Info tiles -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <!-- Server Status -->
+              <div class="space-y-2">
+                <p
+                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
+                >
+                  Server Status
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    :class="[
+                      getStatusColor(server.containerStatus),
+                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                      server.containerStatus === 'running' &&
+                        'animate-heartbeat dark:animate-heartbeat-dark',
+                    ]"
+                  >
+                    <Activity
+                      v-if="server.containerStatus === 'running'"
+                      :class="
+                        server.containerStatus === 'running' &&
+                        'animate-pulse-icon'
+                      "
+                      class="w-3.5 h-3.5"
+                    />
+                    container: {{ server.containerStatus }}
+                  </span>
+                  <span
+                    :class="[
+                      getStatusColor(server.serverStatus),
+                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                      server.serverStatus === 'running' &&
+                        'animate-heartbeat dark:animate-heartbeat-dark',
+                    ]"
+                  >
+                    <Activity
+                      v-if="server.serverStatus === 'running'"
+                      :class="
+                        server.serverStatus === 'running' &&
+                        'animate-pulse-icon'
+                      "
+                      class="w-3.5 h-3.5"
+                    />
+                    server: {{ server.serverStatus }}
+                  </span>
+                </div>
+              </div>
+
               <!-- Network -->
               <div class="space-y-2">
                 <p
@@ -505,7 +509,7 @@
                     </div>
                   </div>
 
-                  <!-- Resources -->
+                  <!-- Loader -->
                   <div
                     class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
@@ -518,12 +522,12 @@
                       <p
                         class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                       >
-                        Resources
+                        Loader
                       </p>
                       <p
                         class="text-sm font-semibold text-gray-900 dark:text-white"
                       >
-                        {{ server.modCount ?? 0 }}
+                        {{ server.loaderVersion || "—" }}
                       </p>
                     </div>
                   </div>
@@ -1233,6 +1237,7 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  Camera,
   Check,
   ChevronDown,
   Clock,
