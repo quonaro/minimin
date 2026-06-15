@@ -1,42 +1,16 @@
 package handlers
 
 import (
-	"archive/zip"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
-	"orchestrator/internal/runner"
-	"os"
-	"path/filepath"
+	"orchestrator/internal/mods"
 	"strings"
-	"time"
 )
 
-// HandleDownloadClientModFromURL downloads a mod from a remote URL and saves it into the server's mods-client directory.
+// HandleDownloadClientModFromURL downloads a mod from a remote URL.
 func (h *Handler) HandleDownloadClientModFromURL(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("panic in HandleDownloadClientModFromURL", "error", rec)
-			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
-		}
-	}()
 	id := r.PathValue("id")
-	s, ok := h.Instance.Get(id)
-	if !ok {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-	modsDir, err := h.getClientModsDir(id)
-	if err != nil {
-		jsonError(w, "failed to access client mods directory", http.StatusInternalServerError)
-		return
-	}
-	if modsDir == "" {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-
 	var req struct {
 		URL      string `json:"url"`
 		Filename string `json:"filename"`
@@ -50,255 +24,70 @@ func (h *Handler) HandleDownloadClientModFromURL(w http.ResponseWriter, r *http.
 		return
 	}
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Get(req.URL)
+	filename, err := h.ClientMods.DownloadClientModFromURL(id, req.URL, req.Filename)
 	if err != nil {
-		slog.Error("failed to download client mod", "url", req.URL, "error", err)
-		jsonError(w, fmt.Sprintf("failed to download: %v", err), http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
+		}
+		jsonError(w, err.Error(), status)
 		return
 	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		jsonError(w, fmt.Sprintf("upstream returned %d", resp.StatusCode), http.StatusBadGateway)
-		return
-	}
-
-	uid, gid := runner.ContainerUIDGID()
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
-		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
-	}
-
-	if err := os.MkdirAll(modsDir, 0o775); err != nil {
-		jsonError(w, "failed to create client mods directory", http.StatusInternalServerError)
-		return
-	}
-
-	filename := req.Filename
-	if filename == "" {
-		filename = filepath.Base(req.URL)
-	}
-	if filename == "" || filename == "." {
-		filename = "mod.jar"
-	}
-	if !strings.HasSuffix(strings.ToLower(filename), ".jar") {
-		jsonError(w, "only .jar files are allowed", http.StatusBadRequest)
-		return
-	}
-
-	targetPath := filepath.Join(modsDir, filename)
-	out, err := os.Create(targetPath)
-	if err != nil {
-		jsonError(w, "failed to create file", http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = out.Close() }()
-
-	if _, err := io.Copy(out, resp.Body); err != nil {
-		jsonError(w, "failed to save file", http.StatusInternalServerError)
-		return
-	}
-
 	jsonResponse(w, map[string]string{"success": "true", "filename": filename})
 }
 
-func (h *Handler) getClientModsDir(serverID string) (string, error) {
-	s, ok := h.Instance.Get(serverID)
-	if !ok {
-		return "", nil
-	}
-	if s.VolumePath == "" {
-		return "", nil
-	}
-	return filepath.Join(s.VolumePath, "mods-client"), nil
-}
-
-// HandleListClientMods returns metadata for every .jar in the server's mods-client directory.
+// HandleListClientMods returns metadata for every .jar in mods-client.
 func (h *Handler) HandleListClientMods(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("panic in HandleListClientMods", "error", rec)
-			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
-		}
-	}()
 	id := r.PathValue("id")
-	modsDir, err := h.getClientModsDir(id)
+	m, err := h.ClientMods.ListClientMods(id)
 	if err != nil {
-		slog.Error("getClientModsDir failed", "server", id, "error", err)
-		jsonError(w, "failed to access client mods directory", http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
+		}
+		jsonError(w, err.Error(), status)
 		return
 	}
-	if modsDir == "" {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	entries, err := os.ReadDir(modsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			jsonResponse(w, map[string]any{"mods": []ModInfo{}})
-			return
-		}
-		jsonError(w, "failed to read client mods directory", http.StatusInternalServerError)
-		return
-	}
-
-	var mods []ModInfo
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		lowerName := strings.ToLower(e.Name())
-		isDeactivated := strings.HasSuffix(lowerName, ".deactivated")
-		if !strings.HasSuffix(lowerName, ".jar") && !isDeactivated {
-			continue
-		}
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		modPath := filepath.Join(modsDir, e.Name())
-		modInfo, _ := ParseModInfo(modPath, info.Size())
-		if modInfo == nil {
-			modInfo = &ModInfo{
-				Filename:    e.Name(),
-				Name:        strings.TrimSuffix(e.Name(), ".deactivated"),
-				Size:        info.Size(),
-				Enabled:     !isDeactivated,
-				Corrupted:   true,
-				InstalledAt: info.ModTime().Unix(),
-			}
-		} else {
-			modInfo.Filename = e.Name()
-			modInfo.Enabled = !isDeactivated
-			modInfo.InstalledAt = info.ModTime().Unix()
-			if isDeactivated && strings.HasSuffix(modInfo.Name, ".deactivated") {
-				modInfo.Name = strings.TrimSuffix(modInfo.Name, ".deactivated")
-			}
-		}
-		mods = append(mods, *modInfo)
-	}
-
-	jsonResponse(w, map[string]any{"mods": mods})
+	jsonResponse(w, map[string]any{"mods": m})
 }
 
-// HandleDeleteClientMod removes a single mod .jar from the server's mods-client directory.
+// HandleDeleteClientMod removes a single mod .jar from mods-client.
 func (h *Handler) HandleDeleteClientMod(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("panic in HandleDeleteClientMod", "error", rec)
-			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
-		}
-	}()
 	id := r.PathValue("id")
-	modsDir, err := h.getClientModsDir(id)
-	if err != nil {
-		jsonError(w, "failed to access client mods directory", http.StatusInternalServerError)
-		return
-	}
-	if modsDir == "" {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	filename := filepath.Base(r.PathValue("filename"))
-	if filename == "" || filename == "." || filename == ".." {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	modPath := filepath.Join(modsDir, filename)
-	if !strings.HasPrefix(modPath, modsDir+string(filepath.Separator)) && modPath != modsDir {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	if err := os.Remove(modPath); err != nil {
-		if os.IsNotExist(err) {
-			jsonError(w, "mod not found", http.StatusNotFound)
-			return
+	filename := r.PathValue("filename")
+	if err := h.ClientMods.DeleteClientMod(id, filename); err != nil {
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
 		}
-		jsonError(w, "failed to delete mod", http.StatusInternalServerError)
+		jsonError(w, err.Error(), status)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// HandleToggleClientMod renames a mod file between .jar and .jar.deactivated in mods-client.
+// HandleToggleClientMod renames a mod file in mods-client.
 func (h *Handler) HandleToggleClientMod(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("panic in HandleToggleClientMod", "error", rec)
-			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
-		}
-	}()
 	id := r.PathValue("id")
-	modsDir, err := h.getClientModsDir(id)
+	filename := r.PathValue("filename")
+	newFilename, enabled, err := h.ClientMods.ToggleClientMod(id, filename)
 	if err != nil {
-		jsonError(w, "failed to access client mods directory", http.StatusInternalServerError)
-		return
-	}
-	if modsDir == "" {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	filename := filepath.Base(r.PathValue("filename"))
-	if filename == "" || filename == "." || filename == ".." {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	modPath := filepath.Join(modsDir, filename)
-	if !strings.HasPrefix(modPath, modsDir+string(filepath.Separator)) && modPath != modsDir {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	lowerPath := strings.ToLower(modPath)
-	var newPath string
-	enabled := false
-	if strings.HasSuffix(lowerPath, ".deactivated") {
-		newPath = strings.TrimSuffix(modPath, ".deactivated")
-		enabled = true
-	} else {
-		newPath = modPath + ".deactivated"
-	}
-
-	if err := os.Rename(modPath, newPath); err != nil {
-		if os.IsNotExist(err) {
-			jsonError(w, "mod not found", http.StatusNotFound)
-			return
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
 		}
-		jsonError(w, "failed to toggle mod", http.StatusInternalServerError)
+		jsonError(w, err.Error(), status)
 		return
 	}
-
-	jsonResponse(w, map[string]any{"filename": filepath.Base(newPath), "enabled": enabled})
+	jsonResponse(w, map[string]any{"filename": newFilename, "enabled": enabled})
 }
 
-// HandleMoveMod moves a mod file between mods/ and mods-client/ directories.
+// HandleMoveMod moves a mod file between mods/ and mods-client/.
 func (h *Handler) HandleMoveMod(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("panic in HandleMoveMod", "error", rec)
-			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
-		}
-	}()
 	id := r.PathValue("id")
-	s, ok := h.Instance.Get(id)
-	if !ok {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-	if s.VolumePath == "" {
-		jsonError(w, "server volume not initialized", http.StatusConflict)
-		return
-	}
-
 	var req struct {
 		Filename string `json:"filename"`
-		Target   string `json:"target"` // "server" or "client"
+		Target   string `json:"target"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
@@ -309,78 +98,33 @@ func (h *Handler) HandleMoveMod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serverDir := filepath.Join(s.VolumePath, "mods")
-	clientDir := filepath.Join(s.VolumePath, "mods-client")
-
-	uid, gid := runner.ContainerUIDGID()
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
-		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
-	}
-
-	if err := os.MkdirAll(clientDir, 0o775); err != nil {
-		if info, statErr := os.Stat(clientDir); statErr != nil || !info.IsDir() {
-			jsonError(w, "failed to create client mods directory: "+err.Error(), http.StatusInternalServerError)
-			return
+	if err := h.ClientMods.MoveMod(id, req); err != nil {
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
 		}
-	}
-
-	filename := filepath.Base(req.Filename)
-	var srcDir, dstDir string
-	switch req.Target {
-	case "client":
-		srcDir = serverDir
-		dstDir = clientDir
-	case "server":
-		srcDir = clientDir
-		dstDir = serverDir
-	default:
-		jsonError(w, "target must be 'server' or 'client'", http.StatusBadRequest)
-		return
-	}
-
-	srcPath := filepath.Join(srcDir, filename)
-	dstPath := filepath.Join(dstDir, filename)
-
-	if !strings.HasPrefix(srcPath, srcDir+string(filepath.Separator)) && srcPath != srcDir {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	if err := os.Rename(srcPath, dstPath); err != nil {
-		if os.IsNotExist(err) {
-			jsonError(w, "mod not found", http.StatusNotFound)
-			return
+		if err == mods.ErrVolumeNotInitialized {
+			status = http.StatusConflict
 		}
-		jsonError(w, "failed to move mod", http.StatusInternalServerError)
+		if err == mods.ErrInvalidFilename {
+			status = http.StatusBadRequest
+		}
+		if strings.Contains(err.Error(), "target must be") {
+			status = http.StatusBadRequest
+		}
+		jsonError(w, err.Error(), status)
 		return
 	}
-
 	jsonResponse(w, map[string]bool{"success": true})
 }
 
-// HandleCopyMod copies a mod file between mods/ and mods-client/ directories.
+// HandleCopyMod copies a mod file between mods/ and mods-client/.
 func (h *Handler) HandleCopyMod(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("panic in HandleCopyMod", "error", rec)
-			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
-		}
-	}()
 	id := r.PathValue("id")
-	s, ok := h.Instance.Get(id)
-	if !ok {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-	if s.VolumePath == "" {
-		jsonError(w, "server volume not initialized", http.StatusConflict)
-		return
-	}
-
 	var req struct {
 		Filename string `json:"filename"`
-		Source   string `json:"source"` // "server" or "client"
-		Target   string `json:"target"` // "server" or "client"
+		Source   string `json:"source"`
+		Target   string `json:"target"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
@@ -395,110 +139,29 @@ func (h *Handler) HandleCopyMod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serverDir := filepath.Join(s.VolumePath, "mods")
-	clientDir := filepath.Join(s.VolumePath, "mods-client")
-
-	uid, gid := runner.ContainerUIDGID()
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
-		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
-	}
-
-	if err := os.MkdirAll(clientDir, 0o775); err != nil {
-		if info, statErr := os.Stat(clientDir); statErr != nil || !info.IsDir() {
-			jsonError(w, "failed to create client mods directory: "+err.Error(), http.StatusInternalServerError)
-			return
+	if err := h.ClientMods.CopyMod(id, req); err != nil {
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
 		}
-	}
-	if err := os.MkdirAll(serverDir, 0o775); err != nil {
-		if info, statErr := os.Stat(serverDir); statErr != nil || !info.IsDir() {
-			jsonError(w, "failed to create server mods directory: "+err.Error(), http.StatusInternalServerError)
-			return
+		if err == mods.ErrVolumeNotInitialized {
+			status = http.StatusConflict
 		}
-	}
-
-	filename := filepath.Base(req.Filename)
-	var srcDir, dstDir string
-	switch req.Source {
-	case "server":
-		srcDir = serverDir
-	case "client":
-		srcDir = clientDir
-	default:
-		jsonError(w, "source must be 'server' or 'client'", http.StatusBadRequest)
-		return
-	}
-	switch req.Target {
-	case "server":
-		dstDir = serverDir
-	case "client":
-		dstDir = clientDir
-	default:
-		jsonError(w, "target must be 'server' or 'client'", http.StatusBadRequest)
-		return
-	}
-
-	srcPath := filepath.Join(srcDir, filename)
-	dstPath := filepath.Join(dstDir, filename)
-
-	if !strings.HasPrefix(srcPath, srcDir+string(filepath.Separator)) && srcPath != srcDir {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-	if !strings.HasPrefix(dstPath, dstDir+string(filepath.Separator)) && dstPath != dstDir {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	src, err := os.Open(srcPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			jsonError(w, "mod not found", http.StatusNotFound)
-			return
+		if err == mods.ErrInvalidFilename {
+			status = http.StatusBadRequest
 		}
-		jsonError(w, "failed to open mod", http.StatusInternalServerError)
+		if strings.Contains(err.Error(), "must be 'server' or 'client'") {
+			status = http.StatusBadRequest
+		}
+		jsonError(w, err.Error(), status)
 		return
 	}
-	defer func() { _ = src.Close() }()
-
-	dst, err := os.Create(dstPath)
-	if err != nil {
-		jsonError(w, "failed to create file", http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = dst.Close() }()
-
-	if _, err := io.Copy(dst, src); err != nil {
-		jsonError(w, "failed to copy mod", http.StatusInternalServerError)
-		return
-	}
-
 	jsonResponse(w, map[string]bool{"success": true})
 }
 
-// HandleUploadClientMod uploads a .jar or .zip into the server's mods-client directory.
+// HandleUploadClientMod uploads a .jar or .zip into mods-client.
 func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			slog.Error("panic in HandleUploadClientMod", "error", rec)
-			jsonError(w, fmt.Sprintf("internal error: %v", rec), http.StatusInternalServerError)
-		}
-	}()
 	id := r.PathValue("id")
-	s, ok := h.Instance.Get(id)
-	if !ok {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-	modsDir, err := h.getClientModsDir(id)
-	if err != nil {
-		jsonError(w, "failed to access client mods directory", http.StatusInternalServerError)
-		return
-	}
-	if modsDir == "" {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-
 	maxMB := h.ModUploadMaxMB
 	if maxMB <= 0 {
 		maxMB = 1024
@@ -506,7 +169,6 @@ func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) 
 	maxSize := int64(maxMB) << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 	if err := r.ParseMultipartForm(maxSize); err != nil {
-		slog.Warn("multipart parse failed", "error", err)
 		jsonError(w, fmt.Sprintf("invalid multipart form or file too large: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
@@ -523,70 +185,18 @@ func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) 
 	}
 	defer func() { _ = file.Close() }()
 
-	filename := filepath.Base(header.Filename)
-	isZip := strings.HasSuffix(strings.ToLower(filename), ".zip")
-	isJar := strings.HasSuffix(strings.ToLower(filename), ".jar")
-
-	if !isZip && !isJar {
-		jsonError(w, "only .jar and .zip files are allowed", http.StatusBadRequest)
-		return
-	}
-
-	uid, gid := runner.ContainerUIDGID()
-	if err := runner.FixVolumeOwnership(r.Context(), h.Cli, s.VolumePath, uid, gid); err != nil {
-		slog.Warn("failed to fix volume ownership", "server_id", id, "path", s.VolumePath, "error", err)
-	}
-
-	if err := os.MkdirAll(modsDir, 0o775); err != nil {
-		if info, statErr := os.Stat(modsDir); statErr != nil || !info.IsDir() {
-			jsonError(w, "failed to create client mods directory: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	if isJar {
-		targetPath := filepath.Join(modsDir, filename)
-		out, err := os.Create(targetPath)
-		if err != nil {
-			jsonError(w, "failed to create file", http.StatusInternalServerError)
-			return
-		}
-		if _, err := out.ReadFrom(file); err != nil {
-			_ = out.Close()
-			jsonError(w, "failed to save file", http.StatusInternalServerError)
-			return
-		}
-		_ = out.Close()
-
-		jsonResponse(w, map[string]any{
-			"success":   true,
-			"extracted": []string{filename},
-		})
-		return
-	}
-
-	// .zip: save to temp, extract jars, delete temp
-	tmpPath := filepath.Join(modsDir, ".upload_"+filename)
-	tmp, err := os.Create(tmpPath)
+	extracted, err := h.ClientMods.UploadClientMod(id, file, header.Filename, header.Size)
 	if err != nil {
-		jsonError(w, "failed to create temp file", http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
+		}
+		if strings.Contains(err.Error(), "only .jar and .zip") {
+			status = http.StatusBadRequest
+		}
+		jsonError(w, err.Error(), status)
 		return
 	}
-	if _, err := tmp.ReadFrom(file); err != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmpPath)
-		jsonError(w, "failed to save upload", http.StatusInternalServerError)
-		return
-	}
-	_ = tmp.Close()
-
-	extracted, extractErr := extractZipJars(tmpPath, modsDir)
-	_ = os.Remove(tmpPath)
-	if extractErr != nil {
-		jsonError(w, extractErr.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	jsonResponse(w, map[string]any{
 		"success":   true,
 		"extracted": extracted,
@@ -596,76 +206,21 @@ func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) 
 // GetClientModIcon serves the icon image embedded in a client mod .jar.
 func (h *Handler) GetClientModIcon(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	s, ok := h.Instance.Get(id)
-	if !ok {
-		jsonError(w, "not found", http.StatusNotFound)
-		return
-	}
-	if s.VolumePath == "" {
-		jsonError(w, "server volume not initialized", http.StatusConflict)
-		return
-	}
-
-	filename := filepath.Base(r.PathValue("filename"))
-	if filename == "" || filename == "." || filename == ".." {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	modsDir := filepath.Join(s.VolumePath, "mods-client")
-	modPath := filepath.Join(modsDir, filename)
-	if !strings.HasPrefix(modPath, modsDir+string(filepath.Separator)) && modPath != modsDir {
-		jsonError(w, "invalid filename", http.StatusBadRequest)
-		return
-	}
-
-	info, _ := ParseModInfo(modPath, 0)
-
-	zr, err := zip.OpenReader(modPath)
+	filename := r.PathValue("filename")
+	rc, contentType, err := h.ClientMods.GetClientModIcon(id, filename)
 	if err != nil {
-		jsonError(w, "failed to open jar", http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
+		}
+		if err == mods.ErrInvalidFilename {
+			status = http.StatusBadRequest
+		}
+		jsonError(w, err.Error(), status)
 		return
 	}
-	defer func() { _ = zr.Close() }()
-
-	iconPath := ""
-	if info != nil {
-		iconPath = info.Icon
-	}
-	if iconPath == "" {
-		for _, f := range zr.File {
-			name := strings.ToLower(f.Name)
-			if name == "icon.png" || name == "icon.jpg" || name == "icon.jpeg" {
-				iconPath = f.Name
-				break
-			}
-		}
-	}
-	if iconPath == "" {
-		jsonError(w, "no icon found", http.StatusNotFound)
-		return
-	}
-
-	for _, f := range zr.File {
-		if f.Name == iconPath {
-			rc, err := f.Open()
-			if err != nil {
-				jsonError(w, "failed to read icon", http.StatusInternalServerError)
-				return
-			}
-			defer func() { _ = rc.Close() }()
-
-			contentType := "image/png"
-			lower := strings.ToLower(iconPath)
-			if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") {
-				contentType = "image/jpeg"
-			}
-			w.Header().Set("Content-Type", contentType)
-			w.WriteHeader(http.StatusOK)
-			_, _ = io.Copy(w, rc)
-			return
-		}
-	}
-
-	jsonError(w, "icon not found in jar", http.StatusNotFound)
+	defer func() { _ = rc.Close() }()
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.Copy(w, rc)
 }

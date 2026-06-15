@@ -5,7 +5,10 @@ import (
 	"net/http"
 
 	"orchestrator/external/mm"
+	"orchestrator/internal/actions"
+	"orchestrator/internal/clientmods"
 	"orchestrator/internal/events"
+	"orchestrator/internal/mods"
 	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
 
@@ -17,6 +20,9 @@ import (
 type Handler struct {
 	Cli            *client.Client
 	Instance       *state.InstanceFile
+	Actions        *actions.Service
+	Mods           *mods.Service
+	ClientMods     *clientmods.Service
 	APIKey         string
 	ServersDir     string
 	ServersHostDir string

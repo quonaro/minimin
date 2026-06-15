@@ -145,7 +145,7 @@ function confirmInstall() {
         </div>
       </div>
 
-      <div class="p-6 overflow-y-auto space-y-3">
+      <div v-if="confirmDeps.length" class="p-6 overflow-y-auto space-y-3">
         <div
           v-for="dep in confirmDeps"
           :key="dep.project_id"
@@ -196,7 +196,10 @@ function confirmInstall() {
         </div>
       </div>
 
-      <div class="px-6 pb-3 space-y-2">
+      <div
+        v-if="projectType === 'mod' || confirmDeps.length"
+        class="px-6 pb-3 space-y-2"
+      >
         <label
           v-if="projectType === 'mod'"
           class="flex items-center gap-2 cursor-pointer"
@@ -210,10 +213,18 @@ function confirmInstall() {
             >Install to server mods</span
           >
         </label>
-        <label class="flex items-center gap-2 cursor-pointer">
+        <label
+          class="flex items-center gap-2"
+          :class="
+            projectType !== 'mod'
+              ? 'opacity-60 cursor-not-allowed'
+              : 'cursor-pointer'
+          "
+        >
           <input
             v-model="installToClient"
             type="checkbox"
+            :disabled="projectType !== 'mod'"
             class="rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary"
           />
           <span class="text-sm text-gray-700 dark:text-neutral-300"

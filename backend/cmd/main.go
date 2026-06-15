@@ -15,10 +15,13 @@ import (
 
 	"orchestrator/external/mm"
 	"orchestrator/external/mm/modrinth"
+	"orchestrator/internal/actions"
+	"orchestrator/internal/clientmods"
 	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/health"
 	"orchestrator/internal/metrics"
+	"orchestrator/internal/mods"
 	"orchestrator/internal/persistent"
 	"orchestrator/internal/routes"
 	"orchestrator/internal/runner"
@@ -153,6 +156,9 @@ func main() {
 	h.ServersDir = serversDir
 	h.ServersHostDir = serversHostDir
 	h.ModUploadMaxMB = modUploadMaxMB
+	h.Actions = actions.NewService(instance, cli, serversDir, serversHostDir, networkName)
+	h.Mods = mods.NewService(instance, cli, modUploadMaxMB)
+	h.ClientMods = clientmods.NewService(instance, cli)
 	h.ContentSources = map[string]mm.ContentSource{
 		"modrinth": modrinth.NewAdapter(os.Getenv("MODRINTH_CUSTOM_URL"), cacheDB),
 	}

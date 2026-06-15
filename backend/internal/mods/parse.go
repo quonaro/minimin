@@ -1,4 +1,4 @@
-package handlers
+package mods
 
 import (
 	"archive/zip"
@@ -26,9 +26,9 @@ var (
 	modParseCache   = make(map[modParseCacheKey]*ModInfo)
 )
 
-// parseModInfoCached wraps ParseModInfo with a simple in-memory cache.
+// ParseModInfoCached wraps ParseModInfo with a simple in-memory cache.
 // If the file hasn't changed (same path, size, mtime) the cached result is returned.
-func parseModInfoCached(path string, size int64, mtime time.Time) (*ModInfo, error) {
+func ParseModInfoCached(path string, size int64, mtime time.Time) (*ModInfo, error) {
 	key := modParseCacheKey{path, size, mtime.UnixNano()}
 	modParseCacheMu.RLock()
 	if info, ok := modParseCache[key]; ok {
@@ -222,9 +222,9 @@ func createFile(path string) (*os.File, error) {
 	return os.Create(path)
 }
 
-// extractZipJars extracts every .jar from a zip archive into destDir.
+// ExtractZipJars extracts every .jar from a zip archive into destDir.
 // It validates that each extracted file name ends with .jar.
-func extractZipJars(zipPath, destDir string) ([]string, error) {
+func ExtractZipJars(zipPath, destDir string) ([]string, error) {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open zip: %w", err)
