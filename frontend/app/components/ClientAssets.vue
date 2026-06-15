@@ -1,11 +1,22 @@
 <template>
   <div class="flex flex-col flex-1 min-h-0">
-    <div class="space-y-2 flex-1 min-h-0 overflow-y-auto">
+    <div class="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto">
       <div
         v-if="filteredAssets.length === 0 && !loading"
-        class="text-center text-gray-500 dark:text-neutral-400 py-6 text-sm"
+        class="flex-1 flex flex-col items-center justify-center text-center"
       >
-        No files.
+        <component
+          :is="icon"
+          class="w-12 h-12 text-gray-300 dark:text-neutral-600 mb-3"
+        />
+        <p class="text-gray-900 dark:text-white font-medium text-base">
+          {{ title }}
+        </p>
+        <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1 max-w-xs">
+          No
+          {{ type === "resourcepacks" ? "resource packs" : "shader packs" }}
+          installed.
+        </p>
       </div>
       <div v-else-if="loading" class="py-6 flex justify-center">
         <Loader2 class="w-5 h-5 animate-spin text-primary" />

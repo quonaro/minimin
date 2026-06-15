@@ -1,18 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="mb-4 space-y-2">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-          Server Mods
-        </h2>
-        <span class="text-xs text-gray-500 dark:text-neutral-400">
-          {{ filteredMods.length }} mods
-        </span>
-      </div>
-    </div>
-
     <div
-      class="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1"
+      class="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1"
       :class="
         isDragOver
           ? 'border-2 border-dashed border-primary rounded-xl bg-primary/5'
@@ -25,13 +14,15 @@
     >
       <div
         v-if="filteredMods.length === 0 && !loading"
-        class="text-center text-gray-500 dark:text-neutral-400 py-12 text-sm"
+        class="flex-1 flex flex-col items-center justify-center text-center"
       >
-        No mods installed.
-        <br />
-        <span class="text-xs"
-          >Drag & drop .jar or .zip here, or use the button below.</span
-        >
+        <Box class="w-12 h-12 text-gray-300 dark:text-neutral-600 mb-3" />
+        <p class="text-gray-900 dark:text-white font-medium text-base">
+          No mods installed
+        </p>
+        <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1 max-w-xs">
+          Drag & drop .jar or .zip files here, or use the Upload button above.
+        </p>
       </div>
 
       <div

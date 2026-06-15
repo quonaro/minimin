@@ -1,12 +1,8 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <div class="mb-4 flex items-center justify-end">
-      <span class="text-xs text-gray-500 dark:text-neutral-400">
-        {{ filteredMods.length }} items
-      </span>
-    </div>
+    <div class="mb-4"></div>
 
-    <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+    <div class="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto p-4">
       <div
         class="space-y-2 pr-1"
         :class="
@@ -20,10 +16,13 @@
       >
         <div
           v-if="filteredMods.length === 0 && !loading"
-          class="text-center text-gray-500 dark:text-neutral-400 py-12 text-sm"
+          class="flex-1 flex flex-col items-center justify-center text-center"
         >
-          <p>No client mods.</p>
-          <p class="text-xs mt-1">
+          <Box class="w-12 h-12 text-gray-300 dark:text-neutral-600 mb-3" />
+          <p class="text-gray-900 dark:text-white font-medium text-base">
+            No client mods
+          </p>
+          <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1 max-w-xs">
             Drag server mods here, or drop .jar files to upload.
           </p>
         </div>
@@ -216,6 +215,7 @@ interface Props {
   loading: boolean;
   serverId?: string;
   searchQuery?: string;
+  sideFilter?: "all" | "server" | "client";
   archiveLoading?: boolean;
   archiveResult?: ArchiveInfo | null;
   archiveLinks?: ArchiveLinkEntry[];
@@ -225,6 +225,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
+  sideFilter: "all",
   archiveLoading: false,
   archiveResult: null,
   archiveLinks: () => [],
@@ -311,6 +312,11 @@ const filteredMods = computed(() => {
         (m.filename || "").toLowerCase().includes(q) ||
         (m.modid || "").toLowerCase().includes(q),
     );
+  }
+  if (props.sideFilter === "server") {
+    list = list.filter((m) => m.environment === "server");
+  } else if (props.sideFilter === "client") {
+    list = list.filter((m) => m.environment === "client");
   }
   return list;
 });

@@ -53,29 +53,53 @@
     </div>
 
     <div class="mb-4 flex items-center gap-2">
-      <input
-        v-model="searchQuery"
-        type="text"
-        :placeholder="searchPlaceholder"
-        class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
-      />
       <div
-        v-if="activeMainTab === 'server'"
-        class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
+        class="flex-1 flex items-center rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 overflow-hidden focus-within:ring-2 focus-within:ring-primary"
       >
-        <button
-          v-for="opt in sideOptions"
-          :key="opt.value"
-          class="px-2.5 py-1.5 text-xs font-medium transition-colors"
-          :class="
-            installedSideFilter === opt.value
-              ? 'bg-primary text-white'
-              : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="searchPlaceholder"
+          class="flex-1 px-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 bg-transparent border-none focus:outline-none"
+        />
+        <select
+          v-if="activeMainTab === 'server'"
+          :value="installedSideFilter"
+          class="px-2 py-1.5 text-xs font-medium bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border-l border-gray-300 dark:border-neutral-700 focus:outline-none cursor-pointer"
+          @change="
+            installedSideFilter = ($event.target as HTMLSelectElement).value as
+              | 'all'
+              | 'server'
+              | 'client'
           "
-          @click="installedSideFilter = opt.value"
         >
-          {{ opt.label }}
-        </button>
+          <option
+            v-for="opt in sideOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </option>
+        </select>
+        <select
+          v-if="activeMainTab === 'client' && activeClientSubTab === 'mods'"
+          :value="clientSideFilter"
+          class="px-2 py-1.5 text-xs font-medium bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border-l border-gray-300 dark:border-neutral-700 focus:outline-none cursor-pointer"
+          @change="
+            clientSideFilter = ($event.target as HTMLSelectElement).value as
+              | 'all'
+              | 'server'
+              | 'client'
+          "
+        >
+          <option
+            v-for="opt in sideOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </option>
+        </select>
       </div>
     </div>
 
@@ -391,7 +415,7 @@
       class="flex flex-col flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm"
     >
       <div class="p-4 md:p-6 h-full flex flex-col">
-        <div class="flex-1 min-h-0 overflow-hidden">
+        <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
           <client-mods
             v-if="activeClientSubTab === 'mods'"
             :mods="clientModList"
@@ -403,6 +427,7 @@
             :links-loading="linksLoading"
             :show-archive-modal="showArchiveModal"
             :search-query="searchQuery"
+            :side-filter="clientSideFilter"
             @update:show-archive-modal="showArchiveModal = $event"
             @delete="handleClientDelete"
             @upload="handleClientUpload"
@@ -766,6 +791,7 @@ const installedAssetBasenames = computed(() => {
 });
 
 const installedSideFilter = ref<"all" | "server" | "client">("all");
+const clientSideFilter = ref<"all" | "server" | "client">("all");
 const librarySideFilter = ref<"all" | "server" | "client">("all");
 
 const showCopyAllModal = ref(false);
