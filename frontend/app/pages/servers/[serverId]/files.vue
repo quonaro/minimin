@@ -14,7 +14,6 @@ const {
   selectedEntry,
   selectEntry,
   clearSelection,
-  breadcrumbs,
   openedFilePath,
   openedFileState,
   editorContent,
@@ -34,7 +33,6 @@ const {
   contextMenuY,
   contextTargetType,
   dragOverDirPath,
-  dragOverBreadcrumbPath,
   formatSize,
   formatDate,
   navigateToPath,
@@ -52,9 +50,6 @@ const {
   onEntryDragOver,
   onEntryDragLeave,
   onEntryDrop,
-  onBreadcrumbDragOver,
-  onBreadcrumbDragLeave,
-  onBreadcrumbDrop,
   onUploadSelected,
   contextOpenTarget,
   contextDownloadTarget,
@@ -74,47 +69,6 @@ const {
     <div class="space-y-6">
       <div class="flex items-center justify-between flex-wrap gap-3">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Files</h1>
-      </div>
-
-      <div class="flex items-center gap-2 flex-wrap text-sm">
-        <button
-          class="text-primary hover:underline"
-          :class="
-            dragOverBreadcrumbPath === '' ? 'font-semibold underline' : ''
-          "
-          @click="navigateToPath('')"
-          @dragover="onBreadcrumbDragOver('', $event)"
-          @dragleave="onBreadcrumbDragLeave('')"
-          @drop="onBreadcrumbDrop('', $event)"
-        >
-          /
-        </button>
-        <template
-          v-for="(crumb, idx) in breadcrumbs"
-          :key="crumb.path || 'root'"
-        >
-          <span class="text-gray-400 dark:text-neutral-600">/</span>
-          <button
-            class="text-primary hover:underline"
-            :class="
-              dragOverBreadcrumbPath === crumb.path
-                ? 'font-semibold underline'
-                : ''
-            "
-            @click="navigateToPath(crumb.path)"
-            @dragover="onBreadcrumbDragOver(crumb.path, $event)"
-            @dragleave="onBreadcrumbDragLeave(crumb.path)"
-            @drop="onBreadcrumbDrop(crumb.path, $event)"
-          >
-            📁 {{ crumb.label }}
-          </button>
-          <span
-            v-if="idx === breadcrumbs.length - 1"
-            class="text-xs text-gray-500 dark:text-neutral-400 ml-1"
-          >
-            (current)
-          </span>
-        </template>
       </div>
 
       <div class="flex items-center gap-3 flex-wrap">

@@ -53,6 +53,7 @@
         <div class="mt-1.5 text-center min-w-0">
           <p
             class="text-xs font-semibold truncate text-gray-900 dark:text-white"
+            :title="asset.filename"
           >
             {{ asset.filename }}
           </p>
