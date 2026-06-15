@@ -98,11 +98,6 @@
               />
             </svg>
             <span>{{ item.label }}</span>
-            <span
-              v-if="item.label === 'Overview'"
-              class="w-2 h-2 rounded-full flex-shrink-0 ml-auto"
-              :class="getServerStatusColor(currentServerStatus)"
-            ></span>
           </NuxtLink>
           <div
             v-else
