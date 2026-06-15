@@ -4,8 +4,18 @@ on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
+    paths:
+    - 'backend/**'
+    - 'frontend/**'
+    - 'Dockerfile'
+    - '.github/workflows/docker-build.yml'
   pull_request:
     branches: [ main ]
+    paths:
+    - 'backend/**'
+    - 'frontend/**'
+    - 'Dockerfile'
+    - '.github/workflows/docker-build.yml'
 
 env:
   REGISTRY: ghcr.io

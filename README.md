@@ -1,3 +1,15 @@
+<p align="center">
+  <img src="docs/logo.png" alt="MiniMin Logo" width="462">
+</p>
+
+<p align="center">
+  <a href="https://github.com/quonaro/minimin/actions/workflows/docker-build.yml">
+    <img src="https://github.com/quonaro/minimin/actions/workflows/docker-build.yml/badge.svg" alt="Docker Build and Push">
+  </a>
+  <img src="https://img.shields.io/badge/Go-1.26-blue?logo=go" alt="Go Version">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
+</p>
+
 # MiniMin
 
 A lightweight, web-based control panel for managing multiple Minecraft servers via Docker.
