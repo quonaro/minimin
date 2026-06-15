@@ -2,28 +2,38 @@
   <div class="flex flex-col h-full">
     <div class="mb-4 space-y-2">
       <div class="flex items-center gap-2">
-        <input
-          :value="rawQuery"
-          type="text"
-          placeholder="Search Modrinth..."
-          @input="onInput"
-          class="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
-          @keyup.enter="onSearch"
-        />
-        <span
-          v-if="props.lockedType"
-          class="px-2 py-2 rounded-lg bg-gray-100 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-700 text-sm text-gray-700 dark:text-neutral-300 font-medium"
+        <div
+          class="flex-1 flex items-center rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 overflow-hidden focus-within:ring-2 focus-within:ring-primary"
         >
-          {{
-            props.lockedType === "mod"
-              ? "Mods"
-              : props.lockedType === "resourcepack"
-                ? "Resource Packs"
-                : "Shaders"
-          }}
-        </span>
+          <input
+            :value="rawQuery"
+            type="text"
+            placeholder="Search Modrinth..."
+            @input="onInput"
+            class="flex-1 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 bg-transparent border-none focus:outline-none"
+            @keyup.enter="onSearch"
+          />
+          <div
+            v-if="projectType === 'mod'"
+            class="flex border-l border-gray-300 dark:border-neutral-700"
+          >
+            <button
+              v-for="opt in sideOptions"
+              :key="opt.value"
+              class="px-2.5 py-2 text-xs font-medium transition-colors"
+              :class="
+                sideFilter === opt.value
+                  ? 'bg-primary text-white'
+                  : 'text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
+              "
+              @click="emit('update:sideFilter', opt.value)"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
         <select
-          v-else
+          v-if="!props.lockedType"
           :value="projectType"
           class="px-2 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
           @change="onProjectTypeChange"
@@ -34,24 +44,6 @@
         </select>
       </div>
       <div class="flex items-center gap-2">
-        <div
-          v-if="projectType === 'mod'"
-          class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
-        >
-          <button
-            v-for="opt in sideOptions"
-            :key="opt.value"
-            class="px-2 py-1 text-xs font-medium transition-colors"
-            :class="
-              sideFilter === opt.value
-                ? 'bg-primary text-white'
-                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-            "
-            @click="emit('update:sideFilter', opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
         <div
           class="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400 ml-auto"
         >
@@ -152,7 +144,7 @@
             @focus="loadVersions(project.project_id)"
             @change="onVersionChange(project.project_id)"
           >
-            <option value="" disabled>Select version</option>
+            <option value="" disabled hidden>Select version</option>
             <option
               v-for="v in props.versions[project.project_id] || []"
               :key="v.id"
@@ -315,7 +307,7 @@ function onVersionChange(projectId: string) {
 }
 
 const sideOptions = [
-  { label: "All", value: "all" as const },
+  { label: "Both", value: "all" as const },
   { label: "Server", value: "server" as const },
   { label: "Client", value: "client" as const },
 ];
@@ -454,8 +446,13 @@ function formatDownloads(n: number): string {
 
 watch(
   () => props.searchResults,
-  () => {
-    selectedVersion.value = {};
+  (results) => {
+    const map: Record<string, string> = {};
+    for (const p of results) {
+      map[p.project_id] = "";
+    }
+    selectedVersion.value = map;
   },
+  { immediate: true },
 );
 </script>

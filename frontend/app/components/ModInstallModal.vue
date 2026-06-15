@@ -64,6 +64,13 @@ watch(
       if (props.projectType !== "mod") {
         installToServer.value = false;
         installToClient.value = true;
+      } else if (props.project) {
+        installToServer.value =
+          props.project.server_side === "required" ||
+          props.project.server_side !== "unsupported";
+        installToClient.value =
+          props.project.client_side === "required" ||
+          props.project.client_side === "optional";
       } else {
         installToServer.value = true;
         installToClient.value = false;

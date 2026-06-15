@@ -13,7 +13,7 @@
       <input
         ref="fileInput"
         type="file"
-        accept=".jar,.zip"
+        :accept="uploadAcceptTypes"
         multiple
         class="hidden"
         @change="onFileSelect"
@@ -24,14 +24,14 @@
         @click="showUploadModal = true"
       >
         <Upload class="w-4 h-4 text-white" />
-        {{ anyUploadLoading ? "Uploading..." : "Upload .jar or .zip" }}
+        {{ anyUploadLoading ? "Uploading..." : uploadButtonLabel }}
       </button>
       <button
         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
         @click="showLibraryPanel = true"
       >
         <Search class="w-4 h-4 text-indigo-500" />
-        Mod Library
+        Library
       </button>
       <button
         v-if="activeMainTab === 'client'"
@@ -77,7 +77,7 @@
             <input
               v-model="modUrl"
               type="url"
-              placeholder="https://example.com/file.jar"
+              :placeholder="urlPlaceholder"
               class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow text-sm"
               @keyup.enter="handleUploadConfirm"
             />
@@ -119,7 +119,7 @@
               Drag & drop files here
             </p>
             <p class="text-xs text-gray-400 dark:text-neutral-500 mb-2">
-              Supports .jar and .zip
+              {{ uploadSupportText }}
             </p>
             <button
               class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
@@ -590,6 +590,38 @@ const assetUploadLoading = computed(() => {
 
 const assetDownloadLoading = computed(() => false);
 
+const uploadButtonLabel = computed(() => {
+  if (activeMainTab.value === "server") return "Upload Mods";
+  if (activeClientSubTab.value === "mods") return "Upload Mods";
+  if (activeClientSubTab.value === "resourcepacks")
+    return "Upload Resource Packs";
+  return "Upload Shader Packs";
+});
+
+const uploadAcceptTypes = computed(() => {
+  if (activeMainTab.value === "server" || activeClientSubTab.value === "mods")
+    return ".jar,.zip";
+  return ".zip";
+});
+
+const uploadSupportText = computed(() => {
+  if (activeMainTab.value === "server" || activeClientSubTab.value === "mods")
+    return "Supports .jar and .zip";
+  return "Supports .zip";
+});
+
+const urlPlaceholder = computed(() => {
+  if (activeMainTab.value === "server" || activeClientSubTab.value === "mods")
+    return "https://example.com/file.jar";
+  return "https://example.com/file.zip";
+});
+
+const uploadAllowedExts = computed(() => {
+  if (activeMainTab.value === "server" || activeClientSubTab.value === "mods")
+    return [".jar", ".zip"];
+  return [".zip"];
+});
+
 const anyUploadLoading = computed(
   () =>
     uploadLoading.value ||
@@ -713,13 +745,17 @@ async function onFileSelect(e: Event) {
     const file = input.files[i];
     if (!file) continue;
     if (
-      !file.name.toLowerCase().endsWith(".jar") &&
-      !file.name.toLowerCase().endsWith(".zip")
+      !uploadAllowedExts.value.some((ext) =>
+        file.name.toLowerCase().endsWith(ext),
+      )
     )
       continue;
     if (pendingUploadFiles.value.some((f) => f.name === file.name)) continue;
     pendingUploadFiles.value.push(file);
-    if (file.name.toLowerCase().endsWith(".zip")) {
+    if (
+      file.name.toLowerCase().endsWith(".zip") &&
+      uploadAllowedExts.value.includes(".jar")
+    ) {
       try {
         const zip = await JSZip.loadAsync(file);
         const jars: string[] = [];
@@ -841,13 +877,17 @@ function onDrop(e: DragEvent) {
     const file = files[i];
     if (!file) continue;
     if (
-      !file.name.toLowerCase().endsWith(".jar") &&
-      !file.name.toLowerCase().endsWith(".zip")
+      !uploadAllowedExts.value.some((ext) =>
+        file.name.toLowerCase().endsWith(ext),
+      )
     )
       continue;
     if (pendingUploadFiles.value.some((f) => f.name === file.name)) continue;
     pendingUploadFiles.value.push(file);
-    if (file.name.toLowerCase().endsWith(".zip")) {
+    if (
+      file.name.toLowerCase().endsWith(".zip") &&
+      uploadAllowedExts.value.includes(".jar")
+    ) {
       JSZip.loadAsync(file)
         .then((zip) => {
           const jars: string[] = [];
