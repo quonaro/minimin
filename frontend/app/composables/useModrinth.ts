@@ -123,6 +123,8 @@ export function useModrinth() {
     }
 
     try {
+      const effectiveLoader =
+        projectType.value === "mod" ? loader.toLowerCase() : "";
       const res = await $fetch<any>(`/api/mm/modrinth/search`, {
         baseURL: useApiBase(),
         credentials: "include",
@@ -130,7 +132,7 @@ export function useModrinth() {
           type: projectType.value,
           query: searchQuery.value,
           game_version: gameVersion,
-          loader: loader.toLowerCase(),
+          loader: effectiveLoader,
           offset: 0,
           limit: searchLimit,
         },
@@ -173,9 +175,11 @@ export function useModrinth() {
     searchLoading.value = true;
     const nextOffset = searchOffset.value + searchLimit;
 
+    const effectiveLoader =
+      projectType.value === "mod" ? loader.toLowerCase() : "";
     const key = buildSearchKey(
       searchQuery.value,
-      loader,
+      effectiveLoader,
       gameVersion,
       nextOffset,
       projectType.value,
@@ -197,7 +201,7 @@ export function useModrinth() {
           type: projectType.value,
           query: searchQuery.value,
           game_version: gameVersion,
-          loader: loader.toLowerCase(),
+          loader: effectiveLoader,
           offset: nextOffset,
           limit: searchLimit,
         },
