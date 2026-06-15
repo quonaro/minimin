@@ -39,8 +39,6 @@
               : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
         "
         :title="mod.description || ''"
-        draggable="true"
-        @dragstart="onDragStart($event, mod)"
         @contextmenu.prevent="openContextMenu(mod, $event)"
       >
         <div
@@ -372,11 +370,6 @@ async function onDrop(e: DragEvent) {
   for (const file of files) {
     emit("upload", file);
   }
-}
-
-function onDragStart(e: DragEvent, mod: ModInfo) {
-  e.dataTransfer?.setData("application/x-mod-filename", mod.filename);
-  e.dataTransfer?.setData("application/x-mod-source", "client");
 }
 
 function generateArchive(ttl: number, include: string[]) {

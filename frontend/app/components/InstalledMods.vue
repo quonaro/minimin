@@ -40,8 +40,6 @@
               : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
         "
         :title="mod.description || ''"
-        draggable="true"
-        @dragstart="onDragStart($event, mod)"
         @contextmenu.prevent="openContextMenu(mod, $event)"
       >
         <div
@@ -317,11 +315,6 @@ function formatBytes(n: number): string {
   if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
   if (n >= 1024) return (n / 1024).toFixed(1) + " KB";
   return n + " B";
-}
-
-function onDragStart(e: DragEvent, mod: ModInfo) {
-  e.dataTransfer?.setData("application/x-mod-filename", mod.filename);
-  e.dataTransfer?.setData("application/x-mod-source", "server");
 }
 
 function onDrop(e: DragEvent) {
