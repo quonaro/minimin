@@ -1,9 +1,11 @@
 <template>
   <div class="p-6 h-[calc(100vh-4rem)] flex flex-col">
     <div class="mb-4">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Mods</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        Resources
+      </h1>
       <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
-        Manage installed mods and browse Modrinth library.
+        Manage server and client content.
       </p>
     </div>
 
@@ -17,29 +19,39 @@
       />
       <button
         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-        :disabled="uploadLoading || clientUploadLoading"
+        :disabled="uploadLoading || clientUploadLoading || assetUploadLoading"
         @click="fileInput?.click()"
       >
         <Upload class="w-4 h-4" />
         {{
-          uploadLoading || clientUploadLoading
+          uploadLoading || clientUploadLoading || assetUploadLoading
             ? "Uploading..."
             : "Upload .jar or .zip"
         }}
       </button>
       <button
         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors disabled:opacity-50"
-        :disabled="downloadLoading || clientDownloadLoading"
+        :disabled="
+          downloadLoading || clientDownloadLoading || assetDownloadLoading
+        "
         @click="showDownloadModal = true"
       >
         <Link class="w-4 h-4" />
         {{
-          downloadLoading || clientDownloadLoading
+          downloadLoading || clientDownloadLoading || assetDownloadLoading
             ? "Downloading..."
             : "Download from URL"
         }}
       </button>
       <button
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+        @click="showLibraryPanel = true"
+      >
+        <Search class="w-4 h-4" />
+        Mod Library
+      </button>
+      <button
+        v-if="activeMainTab === 'server'"
         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors disabled:opacity-50"
         :disabled="copyAllLoading || mods.length === 0"
         @click="openCopyAllConfirm"
@@ -60,7 +72,7 @@
       >
         <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-            Upload Mod
+            Upload {{ uploadTargetLabel }}
           </h2>
         </div>
         <div class="p-6 space-y-4">
@@ -81,11 +93,7 @@
               </button>
             </div>
             <div
-              v-if="
-                zipContents.length > 0 &&
-                uploadTarget === 'client' &&
-                clientUploadSection === 'mods'
-              "
+              v-if="zipContents.length > 0 && activeMainTab === 'server'"
               class="mt-2 max-h-32 overflow-y-auto rounded-lg border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 p-2 space-y-1"
             >
               <p class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
@@ -98,52 +106,6 @@
               >
                 {{ name }}
               </div>
-            </div>
-          </div>
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
-              >Install Target</label
-            >
-            <div
-              class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
-            >
-              <button
-                v-for="t in uploadTargets"
-                :key="t.value"
-                class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors"
-                :class="
-                  uploadTarget === t.value
-                    ? 'bg-primary text-white'
-                    : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-                "
-                @click="uploadTarget = t.value"
-              >
-                {{ t.label }}
-              </button>
-            </div>
-          </div>
-          <div v-if="uploadTarget === 'client'">
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
-              >Client Section</label
-            >
-            <div
-              class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
-            >
-              <button
-                v-for="s in clientUploadSections"
-                :key="s.value"
-                class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors"
-                :class="
-                  clientUploadSection === s.value
-                    ? 'bg-primary text-white'
-                    : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-                "
-                @click="clientUploadSection = s.value"
-              >
-                {{ s.label }}
-              </button>
             </div>
           </div>
         </div>
@@ -163,13 +125,18 @@
           <button
             class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
             :disabled="
-              !pendingUploadFile || uploadLoading || clientUploadLoading
+              !pendingUploadFile ||
+              uploadLoading ||
+              clientUploadLoading ||
+              assetUploadLoading
             "
             @click="handleUploadConfirm"
           >
             <Upload class="w-4 h-4" />
             {{
-              uploadLoading || clientUploadLoading ? "Uploading..." : "Upload"
+              uploadLoading || clientUploadLoading || assetUploadLoading
+                ? "Uploading..."
+                : "Upload"
             }}
           </button>
         </div>
@@ -190,46 +157,24 @@
             Download from URL
           </h2>
         </div>
-
         <div class="p-6 space-y-4">
           <div>
             <label
               class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-              >Mod URL</label
+              >URL</label
             >
             <input
               v-model="modUrl"
               type="url"
-              placeholder="https://example.com/mod.jar"
+              placeholder="https://example.com/file.jar"
               class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow text-sm"
               @keyup.enter="handleDownloadFromURL"
             />
           </div>
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2"
-              >Install Target</label
-            >
-            <div
-              class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
-            >
-              <button
-                v-for="t in uploadTargets"
-                :key="t.value"
-                class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors"
-                :class="
-                  downloadTarget === t.value
-                    ? 'bg-primary text-white'
-                    : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-                "
-                @click="downloadTarget = t.value"
-              >
-                {{ t.label }}
-              </button>
-            </div>
-          </div>
+          <p class="text-xs text-gray-500 dark:text-neutral-400">
+            Will be downloaded to: <strong>{{ downloadTargetLabel }}</strong>
+          </p>
         </div>
-
         <div
           class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
         >
@@ -244,12 +189,17 @@
           </button>
           <button
             class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="downloadLoading || clientDownloadLoading || !modUrl"
+            :disabled="
+              downloadLoading ||
+              clientDownloadLoading ||
+              assetDownloadLoading ||
+              !modUrl
+            "
             @click="handleDownloadFromURL"
           >
             <Download class="w-4 h-4" />
             {{
-              downloadLoading || clientDownloadLoading
+              downloadLoading || clientDownloadLoading || assetDownloadLoading
                 ? "Downloading..."
                 : "Download"
             }}
@@ -258,6 +208,7 @@
       </div>
     </div>
 
+    <!-- Copy All Modal -->
     <div
       v-if="showCopyAllModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
@@ -275,7 +226,6 @@
             existing mods will be skipped.
           </p>
         </div>
-
         <div class="p-6 overflow-y-auto flex-1 space-y-3">
           <div
             v-if="modsToCopy.length === 0"
@@ -305,7 +255,6 @@
             </div>
           </div>
         </div>
-
         <div
           class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
         >
@@ -334,31 +283,84 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-      <div
-        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden flex flex-col"
+    <!-- Main Tabs -->
+    <div
+      class="mb-4 flex items-center gap-1 border-b border-gray-200 dark:border-neutral-700"
+    >
+      <button
+        v-for="tab in mainTabs"
+        :key="tab.key"
+        class="px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] inline-flex items-center gap-1.5"
+        :class="
+          activeMainTab === tab.key
+            ? 'border-primary text-primary'
+            : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300'
+        "
+        @click="activeMainTab = tab.key"
       >
-        <div class="p-4 md:p-6 flex-1 min-h-0">
-          <installed-mods
-            :mods="mods"
-            :loading="loading"
-            :server-id="serverId"
-            v-model:search-query="installedSearchQuery"
-            v-model:side-filter="installedSideFilter"
-            @delete="deleteMod"
-            @upload="handleUpload"
-            @toggle="handleToggle"
-            @move="handleClientMove"
-            @copy="handleCopy"
-          />
-        </div>
-      </div>
+        <component
+          :is="tab.icon"
+          class="w-4 h-4"
+          :class="
+            activeMainTab === tab.key
+              ? tab.key === 'server'
+                ? 'text-blue-500'
+                : 'text-emerald-500'
+              : 'text-gray-400 dark:text-neutral-500'
+          "
+        />
+        {{ tab.label }}
+      </button>
+    </div>
 
-      <div
-        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden flex flex-col"
-      >
-        <div class="p-4 md:p-6 flex-1 min-h-0">
+    <!-- Server Tab -->
+    <div
+      v-if="activeMainTab === 'server'"
+      class="flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm"
+    >
+      <div class="p-4 md:p-6 h-full">
+        <installed-mods
+          :mods="mods"
+          :loading="loading"
+          :server-id="serverId"
+          v-model:search-query="installedSearchQuery"
+          v-model:side-filter="installedSideFilter"
+          @delete="deleteMod"
+          @upload="handleUpload"
+          @toggle="handleToggle"
+          @move="handleClientMove"
+          @copy="handleCopy"
+        />
+      </div>
+    </div>
+
+    <!-- Client Tab -->
+    <div
+      v-else
+      class="flex flex-col flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm"
+    >
+      <div class="p-4 md:p-6 h-full flex flex-col">
+        <div
+          class="mb-4 flex items-center gap-1 border-b border-gray-200 dark:border-neutral-700"
+        >
+          <button
+            v-for="tab in clientTabs"
+            :key="tab.key"
+            class="px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] inline-flex items-center gap-1.5"
+            :class="
+              activeClientSubTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300'
+            "
+            @click="activeClientSubTab = tab.key"
+          >
+            <component :is="tab.icon" class="w-4 h-4" />
+            {{ tab.label }}
+          </button>
+        </div>
+        <div class="flex-1 min-h-0 overflow-hidden">
           <client-mods
+            v-if="activeClientSubTab === 'mods'"
             :mods="clientModList"
             :loading="clientLoading"
             :server-id="serverId"
@@ -376,56 +378,124 @@
             @refresh-archive-links="handleRefreshLinks"
             @delete-archive-link="handleDeleteLink"
           />
-        </div>
-      </div>
-
-      <div
-        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden flex flex-col"
-      >
-        <div class="p-4 md:p-6 flex-1 min-h-0">
-          <mod-library
-            :search-query="modrinth.searchQuery.value"
-            :search-results="modrinth.searchResults.value"
-            :search-loading="modrinth.searchLoading.value"
-            :loader="serverEngine"
-            :game-version="serverGameVersion"
-            :install-loading="modrinth.installLoading.value"
-            :versions="versionsMap"
-            :has-more="modrinth.hasMore.value"
-            :version-details="versionDetailsMap"
-            :dep-projects="depProjectsMap"
-            :project-type="modrinth.projectType.value"
-            :installed-mod-basenames="installedModBasenames"
-            :installed-asset-basenames="installedAssetBasenames"
-            v-model:side-filter="librarySideFilter"
-            @update:search-query="onSearchInput"
-            @update:project-type="onProjectTypeChange"
-            @search="modrinth.search(serverEngine, serverGameVersion)"
-            @load-more="modrinth.searchMore(serverEngine, serverGameVersion)"
-            @install="handleInstall"
-            @load-versions="handleLoadVersions"
-            @load-version-details="handleLoadVersionDetails"
-            @load-project="handleLoadProject"
+          <client-assets
+            v-else-if="activeClientSubTab === 'resourcepacks'"
+            :server-id="serverId"
+            type="resourcepacks"
+            title="Resource Packs"
+            :icon="Image"
+            :search-query="clientSearchQuery"
+            :show-upload="true"
+          />
+          <client-assets
+            v-else-if="activeClientSubTab === 'shaderpacks'"
+            :server-id="serverId"
+            type="shaderpacks"
+            title="Shader Packs"
+            :icon="Sparkles"
+            :search-query="clientSearchQuery"
+            :show-upload="true"
           />
         </div>
       </div>
     </div>
+
+    <!-- Slide-over: Mod Library -->
+    <Transition name="slide-over">
+      <div v-if="showLibraryPanel" class="fixed inset-0 z-50">
+        <div
+          class="absolute inset-0 bg-black/30 backdrop-blur-sm"
+          @click="showLibraryPanel = false"
+        />
+        <div
+          class="absolute inset-y-0 right-0 w-full max-w-xl bg-white dark:bg-neutral-800 border-l border-gray-200 dark:border-neutral-700 shadow-2xl flex flex-col"
+        >
+          <div
+            class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-neutral-700 shrink-0"
+          >
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+              Mod Library
+            </h2>
+            <button
+              class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-700 text-gray-500 dark:text-neutral-400 transition-colors"
+              @click="showLibraryPanel = false"
+            >
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="flex-1 min-h-0 overflow-hidden p-4 md:p-6">
+            <mod-library
+              :search-query="modrinth.searchQuery.value"
+              :search-results="modrinth.searchResults.value"
+              :search-loading="modrinth.searchLoading.value"
+              :loader="serverEngine"
+              :game-version="serverGameVersion"
+              :install-loading="modrinth.installLoading.value"
+              :versions="versionsMap"
+              :has-more="modrinth.hasMore.value"
+              :version-details="versionDetailsMap"
+              :dep-projects="depProjectsMap"
+              :project-type="modrinth.projectType.value"
+              :installed-mod-basenames="installedModBasenames"
+              :installed-asset-basenames="installedAssetBasenames"
+              v-model:side-filter="librarySideFilter"
+              @update:search-query="onSearchInput"
+              @update:project-type="onProjectTypeChange"
+              @search="modrinth.search(serverEngine, serverGameVersion)"
+              @load-more="modrinth.searchMore(serverEngine, serverGameVersion)"
+              @install="handleInstallFromLibrary"
+              @load-versions="handleLoadVersions"
+              @load-version-details="handleLoadVersionDetails"
+              @load-project="handleLoadProject"
+            />
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
+<style scoped>
+.slide-over-enter-active,
+.slide-over-leave-active {
+  transition: opacity 0.3s ease;
+}
+.slide-over-enter-from,
+.slide-over-leave-to {
+  opacity: 0;
+}
+.slide-over-enter-active .absolute.inset-y-0.right-0,
+.slide-over-leave-active .absolute.inset-y-0.right-0 {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-over-enter-from .absolute.inset-y-0.right-0,
+.slide-over-leave-to .absolute.inset-y-0.right-0 {
+  transform: translateX(100%);
+}
+</style>
+
 <script setup lang="ts">
 import { debounce } from "~/utils/debounce";
-import { Upload, Link, Download, Copy, Box } from "lucide-vue-next";
+import {
+  Upload,
+  Link,
+  Download,
+  Copy,
+  Box,
+  Server,
+  Monitor,
+  Image,
+  Sparkles,
+  Search,
+  X,
+} from "lucide-vue-next";
 import JSZip from "jszip";
 import { useClientAssetsRefresh } from "~/composables/useClientAssetsRefresh";
 import { useClientAssets } from "~/composables/useClientAssets";
-import { useUploadQueue } from "~/composables/useUploadQueue";
 
-usePageTitle("Mods");
+usePageTitle("Resources");
 
-definePageMeta({
-  middleware: "auth",
-});
+definePageMeta({ middleware: "auth" });
 
 const route = useRoute();
 const serverId = route.params.serverId as string;
@@ -441,7 +511,6 @@ const {
   downloadFromURL,
   toggleMod,
 } = useMods(serverId);
-
 const {
   mods: clientModList,
   loading: clientLoading,
@@ -462,36 +531,63 @@ const {
 
 const resourcePacks = useClientAssets(serverId, "resourcepacks");
 const shaderPacks = useClientAssets(serverId, "shaderpacks");
-const { upload } = useUploadQueue();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const showUploadModal = ref(false);
 const showDownloadModal = ref(false);
+const showLibraryPanel = ref(false);
 const modUrl = ref("");
 const installedSearchQuery = ref("");
-const uploadTarget = ref<"server" | "client">("server");
-const downloadTarget = ref<"server" | "client">("server");
+const clientSearchQuery = ref("");
 const pendingUploadFile = ref<File | null>(null);
 const zipContents = ref<string[]>([]);
-const uploadTargets = [
-  { value: "server" as const, label: "Server" },
-  { value: "client" as const, label: "Client" },
-];
-const clientUploadSection = ref<"mods" | "resourcepacks" | "shaderpacks">(
+
+const activeMainTab = ref<"server" | "client">("server");
+const activeClientSubTab = ref<"mods" | "resourcepacks" | "shaderpacks">(
   "mods",
 );
-const clientUploadSections = [
-  { value: "mods" as const, label: "Mods" },
-  { value: "resourcepacks" as const, label: "Resource Packs" },
-  { value: "shaderpacks" as const, label: "Shader Packs" },
+
+const mainTabs = [
+  { key: "server" as const, label: "Server", icon: Server },
+  { key: "client" as const, label: "Client", icon: Monitor },
+];
+
+const clientTabs = [
+  { key: "mods" as const, label: "Mods", icon: Box },
+  { key: "resourcepacks" as const, label: "Resource Packs", icon: Image },
+  { key: "shaderpacks" as const, label: "Shader Packs", icon: Sparkles },
 ];
 
 const { trigger: triggerClientAssetsRefresh } =
   useClientAssetsRefresh(serverId);
 
+const assetUploadLoading = computed(() => {
+  if (activeClientSubTab.value === "resourcepacks")
+    return resourcePacks.uploadLoading.value;
+  if (activeClientSubTab.value === "shaderpacks")
+    return shaderPacks.uploadLoading.value;
+  return false;
+});
+
+const assetDownloadLoading = computed(() => false);
+
+const uploadTargetLabel = computed(() => {
+  if (activeMainTab.value === "server") return "Server Mod";
+  if (activeClientSubTab.value === "mods") return "Client Mod";
+  if (activeClientSubTab.value === "resourcepacks") return "Resource Pack";
+  return "Shader Pack";
+});
+
+const downloadTargetLabel = computed(() => {
+  if (activeMainTab.value === "server") return "server mods";
+  if (activeClientSubTab.value === "mods") return "client mods";
+  if (activeClientSubTab.value === "resourcepacks") return "resource packs";
+  return "shader packs";
+});
+
 const installedModBasenames = computed(() => {
-  const server = new Set<string>();
-  const client = new Set<string>();
+  const server = new Set<string>(),
+    client = new Set<string>();
   const add = (set: Set<string>, filename: string) => {
     const base = filename.replace(/\.[^.]+$/, "").toLowerCase();
     if (base) set.add(base);
@@ -511,8 +607,8 @@ const installedAssetBasenames = computed(() => {
   shaderPacks.assets.value.forEach((a) => add(a.filename));
   return names;
 });
+
 const installedSideFilter = ref<"all" | "server" | "client">("all");
-const clientSearchQuery = ref("");
 const librarySideFilter = ref<"all" | "server" | "client">("all");
 
 const showCopyAllModal = ref(false);
@@ -557,6 +653,7 @@ async function handleCopyAll() {
     copyAllLoading.value = false;
   }
 }
+
 const versionDetailsMap = ref<
   Record<string, import("~/composables/useModrinth").ModrinthVersion>
 >({});
@@ -575,9 +672,8 @@ async function onFileSelect(e: Event) {
       const zip = await JSZip.loadAsync(file);
       const jars: string[] = [];
       zip.forEach((relativePath, entry) => {
-        if (!entry.dir && relativePath.toLowerCase().endsWith(".jar")) {
+        if (!entry.dir && relativePath.toLowerCase().endsWith(".jar"))
           jars.push(relativePath);
-        }
       });
       zipContents.value = jars;
     } catch {
@@ -590,23 +686,26 @@ async function onFileSelect(e: Event) {
 
 async function handleUploadConfirm() {
   if (!pendingUploadFile.value) return;
-  if (uploadTarget.value === "server") {
-    await uploadFile(pendingUploadFile.value);
-  } else if (clientUploadSection.value === "mods") {
-    await uploadClientFile(pendingUploadFile.value);
+  const file = pendingUploadFile.value;
+  if (activeMainTab.value === "server") {
+    await uploadFile(file);
+  } else if (activeClientSubTab.value === "mods") {
+    await uploadClientFile(file);
     await refreshClient();
   } else {
-    await upload(
-      pendingUploadFile.value,
-      `${useApiBase()}/servers/${serverId}/client-assets/upload?type=${clientUploadSection.value}`,
+    const assetType = activeClientSubTab.value;
+    const formData = new FormData();
+    formData.append("file", file);
+    await $fetch(
+      `/servers/${serverId}/client-assets/upload?type=${assetType}`,
       {
+        baseURL: useApiBase(),
         method: "POST",
-        withCredentials: true,
+        body: formData,
+        credentials: "include",
       },
     );
-    useToast().show("success", "Upload complete", {
-      description: pendingUploadFile.value.name,
-    });
+    useToast().show("success", "Upload complete", { description: file.name });
     triggerClientAssetsRefresh();
   }
   pendingUploadFile.value = null;
@@ -637,23 +736,22 @@ async function downloadShaderPackFromURL(url: string, filename?: string) {
 
 async function handleDownloadFromURL() {
   if (!modUrl.value) return;
-  if (downloadTarget.value === "server") {
-    await downloadFromURL(modUrl.value);
-  } else {
-    if (modUrl.value.toLowerCase().endsWith(".zip")) {
-      await downloadResourcePackFromURL(modUrl.value);
-      triggerClientAssetsRefresh();
-    } else {
-      await downloadClientFromURL(modUrl.value);
-      await refreshClient();
-    }
+  if (activeMainTab.value === "server") await downloadFromURL(modUrl.value);
+  else if (activeClientSubTab.value === "mods") {
+    await downloadClientFromURL(modUrl.value);
+    await refreshClient();
+  } else if (activeClientSubTab.value === "resourcepacks") {
+    await downloadResourcePackFromURL(modUrl.value);
+    triggerClientAssetsRefresh();
+  } else if (activeClientSubTab.value === "shaderpacks") {
+    await downloadShaderPackFromURL(modUrl.value);
+    triggerClientAssetsRefresh();
   }
   modUrl.value = "";
   showDownloadModal.value = false;
 }
 
 const modrinth = useModrinth();
-
 const serverEngine = ref("");
 const serverGameVersion = ref("");
 const versionsMap = ref<
@@ -663,7 +761,6 @@ const versionsMap = ref<
 const debouncedSearch = debounce(() => {
   modrinth.search(serverEngine.value, serverGameVersion.value);
 }, 400);
-
 onBeforeUnmount(() => {
   debouncedSearch.cancel();
 });
@@ -672,7 +769,6 @@ function onSearchInput(v: string) {
   modrinth.searchQuery.value = v;
   debouncedSearch();
 }
-
 function onProjectTypeChange(v: "mod" | "resourcepack" | "shaderpack") {
   modrinth.projectType.value = v;
   debouncedSearch();
@@ -691,50 +787,39 @@ async function fetchServerInfo() {
     const engine = (data.engineType ?? "").toUpperCase();
     serverEngine.value = engine;
     serverGameVersion.value = data.gameVersion ?? "";
-
     if (engine === "PAPERMC" || engine === "PAPER") {
-      await navigateTo(`/servers/${serverId}/plugins`, {
-        replace: true,
-      });
+      await navigateTo(`/servers/${serverId}/plugins`, { replace: true });
       return;
     }
     if (engine === "VANILLA") {
-      await navigateTo(`/servers/${serverId}`, {
-        replace: true,
-      });
+      await navigateTo(`/servers/${serverId}`, { replace: true });
       return;
     }
   } catch {
-    // ignore
+    /* ignore */
   }
 }
 
 async function handleUpload(file: File) {
   await uploadFile(file);
 }
-
 async function handleToggle(filename: string) {
   await toggleMod(filename);
 }
-
 async function handleClientUpload(file: File) {
   await uploadClientFile(file);
 }
-
 async function handleClientDelete(filename: string) {
   await deleteClientMod(filename);
 }
-
 async function handleClientToggle(filename: string) {
   await toggleClientMod(filename);
 }
-
 async function handleClientMove(filename: string, target: "server" | "client") {
   await moveClientMod(filename, target);
   await refresh();
   await refreshClient();
 }
-
 async function handleCopy(
   filename: string,
   source: "server" | "client",
@@ -745,13 +830,12 @@ async function handleCopy(
   await refreshClient();
 }
 
-async function handleInstall(
+async function handleInstallFromLibrary(
   projectId: string,
   versionId: string,
   depProjectIds?: string[],
-  target?: "server" | "client" | "both",
+  _target?: "server" | "client" | "both",
 ) {
-  const installTarget = target || "server";
   const file = await modrinth.install(projectId, versionId);
   if (!file) return;
 
@@ -785,9 +869,7 @@ async function handleInstall(
           serverEngine.value,
           serverGameVersion.value,
         );
-        if (depFile) {
-          await doDownload(depFile.url, depFile.filename);
-        }
+        if (depFile) await doDownload(depFile.url, depFile.filename);
       }
     }
     await doDownload(modFile.url, modFile.filename);
@@ -808,18 +890,14 @@ async function handleInstall(
     return;
   }
 
-  if (installTarget === "both") {
+  if (activeMainTab.value === "server") {
     await installDepsAndMod(file, downloadFromURL, refresh);
-    await installDepsAndMod(file, downloadClientFromURL, refreshClient);
-    useToast().show("success", "Mod installed to server and client", {
+    useToast().show("success", "Mod installed to server", {
       description: file.filename,
     });
   } else {
-    const doDownload =
-      installTarget === "client" ? downloadClientFromURL : downloadFromURL;
-    const doRefresh = installTarget === "client" ? refreshClient : refresh;
-    await installDepsAndMod(file, doDownload, doRefresh);
-    useToast().show("success", "Mod installed", {
+    await installDepsAndMod(file, downloadClientFromURL, refreshClient);
+    useToast().show("success", "Mod installed to client", {
       description: file.filename,
     });
   }
@@ -832,26 +910,23 @@ async function handleLoadVersions(projectId: string) {
     loader,
     serverGameVersion.value,
   );
-  if (list.length > 0) {
+  if (list.length > 0)
     versionsMap.value = { ...versionsMap.value, [projectId]: list };
-  }
 }
 
 async function handleLoadVersionDetails(versionId: string) {
   const details = await modrinth.getVersionDetails(versionId);
-  if (details) {
+  if (details)
     versionDetailsMap.value = {
       ...versionDetailsMap.value,
       [versionId]: details,
     };
-  }
 }
 
 async function handleLoadProject(projectId: string) {
   const project = await modrinth.getProject(projectId);
-  if (project) {
+  if (project)
     depProjectsMap.value = { ...depProjectsMap.value, [projectId]: project };
-  }
 }
 
 const archiveResult = ref<
@@ -884,9 +959,8 @@ async function handleRefreshLinks() {
 
 async function handleDeleteLink(token: string) {
   const ok = await deleteArchive(token);
-  if (ok) {
+  if (ok)
     archiveLinks.value = archiveLinks.value.filter((l) => l.token !== token);
-  }
 }
 
 onMounted(async () => {

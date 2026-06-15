@@ -447,7 +447,7 @@
                     </div>
                   </div>
 
-                  <!-- Mods -->
+                  <!-- Resources -->
                   <div
                     class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
                   >
@@ -460,7 +460,7 @@
                       <p
                         class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
                       >
-                        Mods
+                        Resources
                       </p>
                       <p
                         class="text-sm font-semibold text-gray-900 dark:text-white"

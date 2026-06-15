@@ -31,7 +31,7 @@ async function fetchServerInfo() {
     const engine = (data.engineType ?? "").toUpperCase();
 
     if (engine === "FABRIC" || engine === "FORGE") {
-      await navigateTo(`/servers/${serverId}/mods`, {
+      await navigateTo(`/servers/${serverId}/resources`, {
         replace: true,
       });
       return;

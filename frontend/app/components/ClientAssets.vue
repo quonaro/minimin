@@ -1,38 +1,6 @@
 <template>
-  <div
-    class="flex flex-col flex-1 min-h-0"
-    :class="
-      props.embedded
-        ? ''
-        : 'border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden'
-    "
-  >
-    <button
-      v-if="!props.embedded"
-      class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-neutral-700/50 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors shrink-0"
-      @click="isOpen = !isOpen"
-    >
-      <div class="flex items-center gap-2">
-        <component
-          :is="icon"
-          class="w-5 h-5 text-gray-500 dark:text-neutral-400"
-        />
-        <span class="text-sm font-medium text-gray-700 dark:text-neutral-300">{{
-          title
-        }}</span>
-        <span class="text-xs text-gray-400 dark:text-neutral-500"
-          >({{ filteredAssets.length }})</span
-        >
-      </div>
-      <ChevronDown
-        class="w-4 h-4 text-gray-400 transition-transform"
-        :class="isOpen ? 'rotate-180' : ''"
-      />
-    </button>
-    <div
-      v-show="props.embedded || isOpen"
-      class="space-y-2 flex-1 min-h-0 overflow-y-auto p-4"
-    >
+  <div class="flex flex-col flex-1 min-h-0">
+    <div class="space-y-2 flex-1 min-h-0 overflow-y-auto">
       <div v-if="props.showUpload" class="flex items-center gap-2">
         <input
           ref="fileInput"
@@ -98,7 +66,6 @@
 
 <script setup lang="ts">
 import {
-  ChevronDown,
   Upload,
   Loader2,
   FileArchive,
@@ -115,13 +82,11 @@ interface Props {
   title: string;
   icon: Component;
   searchQuery?: string;
-  embedded?: boolean;
   showUpload?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
-  embedded: false,
   showUpload: true,
 });
 
@@ -131,7 +96,6 @@ const filteredAssets = computed(() => {
   return assets.value.filter((a) => a.filename.toLowerCase().includes(q));
 });
 
-const isOpen = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const {

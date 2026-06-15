@@ -294,7 +294,7 @@ const serverNav = computed(() => {
   if (engine === "FABRIC" || engine === "FORGE") {
     items.push({
       label: "Resources",
-      to: `${base}/mods`,
+      to: `${base}/resources`,
       icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10",
       requiresFilesInitialized: true,
     });
