@@ -473,7 +473,7 @@ func (h *Handler) HandleCopyMod(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, map[string]bool{"success": true})
 }
 
-// HandleUploadClientMod uploads a .jar into the server's mods-client directory.
+// HandleUploadClientMod uploads a .jar or .zip into the server's mods-client directory.
 func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -497,10 +497,15 @@ func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	const maxSize = 128 << 20 // 128MB
+	maxMB := h.ModUploadMaxMB
+	if maxMB <= 0 {
+		maxMB = 1024
+	}
+	maxSize := int64(maxMB) << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 	if err := r.ParseMultipartForm(maxSize); err != nil {
-		jsonError(w, "invalid multipart form or file too large", http.StatusBadRequest)
+		slog.Warn("multipart parse failed", "error", err)
+		jsonError(w, fmt.Sprintf("invalid multipart form or file too large: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 	defer func() {
@@ -517,8 +522,11 @@ func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) 
 	defer func() { _ = file.Close() }()
 
 	filename := filepath.Base(header.Filename)
-	if !strings.HasSuffix(strings.ToLower(filename), ".jar") {
-		jsonError(w, "only .jar files are allowed", http.StatusBadRequest)
+	isZip := strings.HasSuffix(strings.ToLower(filename), ".zip")
+	isJar := strings.HasSuffix(strings.ToLower(filename), ".jar")
+
+	if !isZip && !isJar {
+		jsonError(w, "only .jar and .zip files are allowed", http.StatusBadRequest)
 		return
 	}
 
@@ -534,22 +542,52 @@ func (h *Handler) HandleUploadClientMod(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	targetPath := filepath.Join(modsDir, filename)
-	out, err := os.Create(targetPath)
-	if err != nil {
-		jsonError(w, "failed to create file", http.StatusInternalServerError)
-		return
-	}
-	if _, err := out.ReadFrom(file); err != nil {
+	if isJar {
+		targetPath := filepath.Join(modsDir, filename)
+		out, err := os.Create(targetPath)
+		if err != nil {
+			jsonError(w, "failed to create file", http.StatusInternalServerError)
+			return
+		}
+		if _, err := out.ReadFrom(file); err != nil {
+			_ = out.Close()
+			jsonError(w, "failed to save file", http.StatusInternalServerError)
+			return
+		}
 		_ = out.Close()
-		jsonError(w, "failed to save file", http.StatusInternalServerError)
+
+		jsonResponse(w, map[string]any{
+			"success":   true,
+			"extracted": []string{filename},
+		})
 		return
 	}
-	_ = out.Close()
+
+	// .zip: save to temp, extract jars, delete temp
+	tmpPath := filepath.Join(modsDir, ".upload_"+filename)
+	tmp, err := os.Create(tmpPath)
+	if err != nil {
+		jsonError(w, "failed to create temp file", http.StatusInternalServerError)
+		return
+	}
+	if _, err := tmp.ReadFrom(file); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+		jsonError(w, "failed to save upload", http.StatusInternalServerError)
+		return
+	}
+	_ = tmp.Close()
+
+	extracted, extractErr := extractZipJars(tmpPath, modsDir)
+	_ = os.Remove(tmpPath)
+	if extractErr != nil {
+		jsonError(w, extractErr.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	jsonResponse(w, map[string]any{
-		"success":  true,
-		"filename": filename,
+		"success":   true,
+		"extracted": extracted,
 	})
 }
 

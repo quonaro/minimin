@@ -103,6 +103,16 @@
       </div>
     </div>
 
+    <!-- ZIP Preview Modal -->
+    <zip-preview-modal
+      v-if="showZipPreview"
+      :file-name="zipPreviewFile?.name ?? ''"
+      :entries="zipPreviewEntries"
+      :file-size="zipPreviewFile?.size"
+      @confirm="handleZipConfirm"
+      @cancel="closeZipPreview"
+    />
+
     <!-- Upload / Download Modal -->
     <div
       v-if="showUploadModal"
@@ -666,6 +676,10 @@ const modUrl = ref("");
 const searchQuery = ref("");
 const pendingUploadFiles = ref<File[]>([]);
 const zipContentsMap = ref<Record<string, string[]>>({});
+const showZipPreview = ref(false);
+const zipPreviewFile = ref<File | null>(null);
+const zipPreviewEntries = ref<string[]>([]);
+const zipPreviewContext = ref<"server" | "client">("server");
 const isDraggingOver = ref(false);
 const bulkUploadLoading = ref(false);
 const installToServer = ref(false);
@@ -1128,12 +1142,99 @@ async function fetchServerInfo() {
 }
 
 async function handleUpload(file: File) {
+  if (file.name.toLowerCase().endsWith(".zip")) {
+    const maxPreviewSize = 50 << 20; // 50 MB
+    if (file.size > maxPreviewSize) {
+      zipPreviewFile.value = file;
+      zipPreviewEntries.value = [];
+      showZipPreview.value = true;
+      return;
+    }
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const entries: string[] = [];
+      zip.forEach((relativePath, entry) => {
+        if (!entry.dir) entries.push(relativePath);
+      });
+      zipPreviewFile.value = file;
+      zipPreviewEntries.value = entries;
+      zipPreviewContext.value = "server";
+      showZipPreview.value = true;
+    } catch {
+      useToast().show("error", "Invalid ZIP", {
+        description: "Could not read archive contents.",
+      });
+    }
+    return;
+  }
   await uploadFile(file);
 }
+
+async function handleZipConfirm() {
+  console.log(
+    "[handleZipConfirm] context:",
+    zipPreviewContext.value,
+    "file:",
+    zipPreviewFile.value?.name,
+  );
+  const file = zipPreviewFile.value;
+  const ctx = zipPreviewContext.value;
+  closeZipPreview();
+  if (!file) return;
+  if (ctx === "client") {
+    await uploadClientFile(file);
+  } else {
+    await uploadFile(file);
+  }
+}
+
+function closeZipPreview() {
+  showZipPreview.value = false;
+  zipPreviewFile.value = null;
+  zipPreviewEntries.value = [];
+  zipPreviewContext.value = "server";
+}
+
 async function handleToggle(filename: string) {
   await toggleMod(filename);
 }
 async function handleClientUpload(file: File) {
+  console.log(
+    "[handleClientUpload] file:",
+    file.name,
+    "size:",
+    file.size,
+    "type:",
+    file.type,
+  );
+  if (file.name.toLowerCase().endsWith(".zip")) {
+    console.log("[handleClientUpload] detected ZIP, opening preview...");
+    const maxPreviewSize = 50 << 20;
+    if (file.size > maxPreviewSize) {
+      zipPreviewFile.value = file;
+      zipPreviewEntries.value = [];
+      zipPreviewContext.value = "client";
+      showZipPreview.value = true;
+      return;
+    }
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const entries: string[] = [];
+      zip.forEach((relativePath, entry) => {
+        if (!entry.dir) entries.push(relativePath);
+      });
+      zipPreviewFile.value = file;
+      zipPreviewEntries.value = entries;
+      zipPreviewContext.value = "client";
+      showZipPreview.value = true;
+    } catch (err) {
+      console.error("[handleClientUpload] JSZip failed:", err);
+      useToast().show("error", "Invalid ZIP", {
+        description: "Could not read archive contents.",
+      });
+    }
+    return;
+  }
   await uploadClientFile(file);
 }
 async function handleClientDelete(filename: string) {

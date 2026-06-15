@@ -21,7 +21,7 @@
         No client mods
       </p>
       <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1 max-w-xs">
-        Drag & drop .jar files here, or use the Upload button above.
+        Drag & drop .jar and .zip files here, or use the Upload button above.
       </p>
     </div>
 
@@ -370,9 +370,10 @@ async function onDrop(e: DragEvent) {
     return;
   }
 
-  const files = [...dt.files].filter((f) =>
-    f.name.toLowerCase().endsWith(".jar"),
-  );
+  const files = [...dt.files].filter((f) => {
+    const name = f.name.toLowerCase();
+    return name.endsWith(".jar") || name.endsWith(".zip");
+  });
   for (const file of files) {
     emit("upload", file);
   }
