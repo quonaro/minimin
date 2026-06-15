@@ -24,7 +24,7 @@ import (
 
 // Clean, neutral constants for the system namespace
 const (
-	ImageName   = "itzg/minecraft-server:latest"
+	ImageName   = "itzg/minecraft-server:java21"
 	NetworkName = "mc-agent-mesh" // Shared isolated network for the agent and containers
 )
 
@@ -529,6 +529,7 @@ func StartServerContainer(
 	b := NewContainerBuilder(ImageName).
 		WithEnv("MEMORY", memoryVal).
 		WithEnv("INIT_MEMORY", memoryVal).
+		WithEnv("JVM_XX_OPTS", "-XX:+UnlockExperimentalVMOptions").
 		WithPort(25565, gamePort, "0.0.0.0").
 		WithNetwork(networkName).
 		WithEnv("TYPE", engineType).

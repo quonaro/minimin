@@ -11,12 +11,15 @@
       <NuxtPage />
     </main>
     <ToastContainer />
-    <UploadProgress v-if="!route.meta.noUploads" />
+    <UploadProgress v-if="!route.meta.noUploads && uploads.length > 0" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { useUploadQueue } from "~/composables/useUploadQueue";
+
 const route = useRoute();
+const { uploads } = useUploadQueue();
 
 const hasSidebar = computed(() => {
   return !route.meta.noSidebar;

@@ -7,7 +7,7 @@
       >
         <div class="flex flex-col md:flex-row gap-8">
           <!-- Avatar column -->
-          <div class="flex flex-col items-center gap-4 shrink-0">
+          <div class="flex flex-col items-center gap-4 shrink-0 max-w-[200px]">
             <div class="relative">
               <div
                 class="w-24 h-24 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-gray-200 to-gray-300 dark:from-neutral-700 dark:to-neutral-600 flex items-center justify-center ring-4 ring-white dark:ring-neutral-800"
@@ -55,6 +55,103 @@
               :file="selectedIconFile"
               @save="uploadProcessedIcon"
             />
+
+            <!-- Actions -->
+            <div class="flex flex-col items-stretch gap-2 w-full">
+              <!-- Main controls -->
+              <div class="flex flex-col gap-2">
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus === 'running' ||
+                    isPending
+                  "
+                  class="flex items-center gap-2 w-full justify-center bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-neutral-600 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+                  @click="doAction('start')"
+                >
+                  <Loader2
+                    v-if="currentAction === 'start'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <Play v-else class="w-4 h-4" />
+                  Start
+                </button>
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus !== 'running' ||
+                    isPending
+                  "
+                  class="flex items-center gap-2 w-full justify-center bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-neutral-600 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+                  @click="doAction('stop')"
+                >
+                  <Loader2
+                    v-if="currentAction === 'stop'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <Square v-else class="w-4 h-4" />
+                  Stop
+                </button>
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus !== 'running' ||
+                    isPending
+                  "
+                  class="flex items-center gap-2 w-full justify-center bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-neutral-600 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+                  @click="doAction('force-stop')"
+                >
+                  <Loader2
+                    v-if="currentAction === 'force-stop'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <OctagonAlert v-else class="w-4 h-4" />
+                  Force Stop
+                </button>
+                <button
+                  :disabled="
+                    actionLoading ||
+                    server?.containerStatus !== 'running' ||
+                    isPending
+                  "
+                  class="flex items-center gap-2 w-full justify-center bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-neutral-600 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+                  @click="doAction('restart')"
+                >
+                  <Loader2
+                    v-if="currentAction === 'restart'"
+                    class="w-4 h-4 animate-spin"
+                  />
+                  <RotateCcw v-else class="w-4 h-4" />
+                  Restart
+                </button>
+              </div>
+
+              <!-- Danger zone -->
+              <div
+                class="mt-3 pt-3 border-t border-gray-200 dark:border-neutral-700 flex flex-col gap-2"
+              >
+                <button
+                  v-if="
+                    server.containerStatus === 'running' ||
+                    server.containerStatus === 'exited'
+                  "
+                  :disabled="recreateLoading || isPending"
+                  class="flex items-center gap-2 w-full justify-center bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  @click="promptRecreate"
+                >
+                  <RefreshCw class="w-4 h-4" />
+                  Recreate World
+                </button>
+                <button
+                  :disabled="deleteLoading || isPending"
+                  class="flex items-center gap-2 w-full justify-center bg-red-500/10 hover:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  @click="promptDelete"
+                >
+                  <Trash2 class="w-4 h-4" />
+                  Delete Server
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Details column -->
@@ -140,45 +237,8 @@
 
             <!-- Info tiles -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-              <!-- Identity -->
-              <div
-                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
-              >
-                <p
-                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
-                >
-                  Identity
-                </p>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <!-- Server ID -->
-                  <div
-                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
-                  >
-                    <div
-                      class="w-9 h-9 shrink-0 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"
-                    >
-                      <Hash class="w-4 h-4" />
-                    </div>
-                    <div class="min-w-0">
-                      <p
-                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
-                      >
-                        Server ID
-                      </p>
-                      <p
-                        class="text-sm font-semibold text-gray-900 dark:text-white truncate font-mono"
-                      >
-                        {{ serverId }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <!-- Network -->
-              <div
-                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
-              >
+              <div class="space-y-2">
                 <p
                   class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
@@ -325,9 +385,7 @@
               </div>
 
               <!-- Server -->
-              <div
-                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
-              >
+              <div class="space-y-2">
                 <p
                   class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
@@ -473,9 +531,7 @@
               </div>
 
               <!-- Resources -->
-              <div
-                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
-              >
+              <div class="space-y-2">
                 <p
                   class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
@@ -676,9 +732,7 @@
               </div>
 
               <!-- Storage -->
-              <div
-                class="p-4 rounded-2xl bg-gray-50/50 dark:bg-neutral-700/30 border border-gray-100 dark:border-neutral-700 space-y-3"
-              >
+              <div class="space-y-2">
                 <p
                   class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
                 >
@@ -819,98 +873,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex flex-wrap items-center gap-3">
-              <div class="flex flex-wrap gap-3">
-                <button
-                  :disabled="
-                    actionLoading ||
-                    server?.containerStatus === 'running' ||
-                    isPending
-                  "
-                  class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                  @click="doAction('start')"
-                >
-                  <Loader2
-                    v-if="currentAction === 'start'"
-                    class="w-4 h-4 animate-spin"
-                  />
-                  <Play v-else class="w-4 h-4" />
-                  Start
-                </button>
-                <button
-                  :disabled="
-                    actionLoading ||
-                    server?.containerStatus !== 'running' ||
-                    isPending
-                  "
-                  class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                  @click="doAction('stop')"
-                >
-                  <Loader2
-                    v-if="currentAction === 'stop'"
-                    class="w-4 h-4 animate-spin"
-                  />
-                  <Square v-else class="w-4 h-4" />
-                  Stop
-                </button>
-                <button
-                  :disabled="
-                    actionLoading ||
-                    server?.containerStatus !== 'running' ||
-                    isPending
-                  "
-                  class="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                  @click="doAction('force-stop')"
-                >
-                  <Loader2
-                    v-if="currentAction === 'force-stop'"
-                    class="w-4 h-4 animate-spin"
-                  />
-                  <OctagonAlert v-else class="w-4 h-4" />
-                  Force Stop
-                </button>
-                <button
-                  :disabled="
-                    actionLoading ||
-                    server?.containerStatus !== 'running' ||
-                    isPending
-                  "
-                  class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                  @click="doAction('restart')"
-                >
-                  <Loader2
-                    v-if="currentAction === 'restart'"
-                    class="w-4 h-4 animate-spin"
-                  />
-                  <RotateCcw v-else class="w-4 h-4" />
-                  Restart
-                </button>
-              </div>
-              <div class="flex flex-wrap gap-3 ml-auto">
-                <button
-                  v-if="
-                    server.containerStatus === 'running' ||
-                    server.containerStatus === 'exited'
-                  "
-                  :disabled="recreateLoading || isPending"
-                  class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                  @click="promptRecreate"
-                >
-                  <RefreshCw class="w-4 h-4" />
-                  Recreate World
-                </button>
-                <button
-                  :disabled="deleteLoading || isPending"
-                  class="inline-flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-95"
-                  @click="promptDelete"
-                >
-                  <Trash2 class="w-4 h-4" />
-                  Delete
-                </button>
               </div>
             </div>
           </div>
