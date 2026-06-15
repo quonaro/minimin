@@ -20,7 +20,7 @@
     <nav class="flex-1 p-4 space-y-2 flex flex-col">
       <div class="space-y-1 flex-1">
         <NuxtLink
-          to="/servers"
+          to="/"
           class="group flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
           :class="
             route.path === '/servers' || route.path.startsWith('/servers/')
@@ -42,7 +42,27 @@
               d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
             />
           </svg>
-          <span>Servers</span>
+          <span class="flex-1">Servers</span>
+          <button
+            @click.prevent.stop="showCreateModal = true"
+            class="ml-2 p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            title="Create Server"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          </button>
         </NuxtLink>
 
         <div v-if="servers.length > 0" class="ml-4 space-y-0.5">
@@ -192,6 +212,11 @@
         </span>
       </button>
     </div>
+    <LazyCreateServerModal
+      v-if="showCreateModal"
+      @close="showCreateModal = false"
+      @created="onCreated"
+    />
   </aside>
 </template>
 
@@ -214,6 +239,14 @@ interface ServerNavItem {
 }
 
 const { servers } = useServers();
+const showCreateModal = ref(false);
+
+function onCreated(serverId: string) {
+  showCreateModal.value = false;
+  if (serverId) {
+    navigateTo(`/servers/${serverId}`);
+  }
+}
 
 const currentServerStatus = ref("");
 const currentContainerStatus = ref("");

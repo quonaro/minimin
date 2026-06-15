@@ -118,221 +118,223 @@ async function submit() {
 </script>
 
 <template>
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-    @click.self="emit('close')"
-  >
+  <Teleport to="body">
     <div
-      class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="emit('close')"
     >
-      <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-          Create Server
-        </h2>
-      </div>
-
-      <div class="p-6 space-y-5">
-        <div>
-          <label
-            class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-          >
-            Server ID
-          </label>
-          <input
-            v-model="form.serverId"
-            type="text"
-            placeholder="Auto-generated if empty"
-            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-          />
+      <div
+        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+      >
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Create Server
+          </h2>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="p-6 space-y-5">
           <div>
             <label
               class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
             >
-              Engine
+              Server ID
             </label>
-            <select
-              v-model="form.engineType"
-              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-            >
-              <option value="VANILLA">Vanilla</option>
-              <option value="PAPER">Paper</option>
-              <option value="FABRIC">Fabric</option>
-              <option value="FORGE">Forge</option>
-            </select>
-          </div>
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              Version
-            </label>
-            <select
-              v-model="form.gameVersion"
-              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-            >
-              <option v-for="v in gameVersions" :key="v.id" :value="v.id">
-                {{ v.id }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div v-if="showLoaderVersion" class="grid grid-cols-1 gap-4">
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              Loader Version
-            </label>
-            <select
-              v-model="form.loaderVersion"
-              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-            >
-              <option v-for="v in loaderVersions" :key="v.id" :value="v.id">
-                {{ v.id }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label
-            class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-          >
-            RAM (GB)
-          </label>
-          <number-input v-model="form.ramGb" :min="1" class="w-full" />
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              Game Port
-            </label>
-            <number-input
-              v-model="form.gamePort"
-              :min="1024"
-              :max="65535"
-              class="w-full"
-            />
-          </div>
-          <div class="flex items-center gap-2 pt-6">
             <input
-              id="publicRcon"
-              v-model="form.publicRcon"
-              type="checkbox"
-              class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+              v-model="form.serverId"
+              type="text"
+              placeholder="Auto-generated if empty"
+              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
             />
-            <label
-              for="publicRcon"
-              class="text-sm font-medium text-gray-700 dark:text-neutral-300 cursor-pointer"
-            >
-              Public RCON
-            </label>
           </div>
-        </div>
 
-        <div v-if="form.publicRcon" class="grid grid-cols-1 gap-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                Engine
+              </label>
+              <select
+                v-model="form.engineType"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+              >
+                <option value="VANILLA">Vanilla</option>
+                <option value="PAPER">Paper</option>
+                <option value="FABRIC">Fabric</option>
+                <option value="FORGE">Forge</option>
+              </select>
+            </div>
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                Version
+              </label>
+              <select
+                v-model="form.gameVersion"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+              >
+                <option v-for="v in gameVersions" :key="v.id" :value="v.id">
+                  {{ v.id }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="showLoaderVersion" class="grid grid-cols-1 gap-4">
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                Loader Version
+              </label>
+              <select
+                v-model="form.loaderVersion"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+              >
+                <option v-for="v in loaderVersions" :key="v.id" :value="v.id">
+                  {{ v.id }}
+                </option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label
               class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
             >
-              RCON Port
+              RAM (GB)
             </label>
-            <number-input
-              v-model="form.rconPort"
-              :min="1024"
-              :max="65535"
-              class="w-full"
-            />
+            <number-input v-model="form.ramGb" :min="1" class="w-full" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                Game Port
+              </label>
+              <number-input
+                v-model="form.gamePort"
+                :min="1024"
+                :max="65535"
+                class="w-full"
+              />
+            </div>
+            <div class="flex items-center gap-2 pt-6">
+              <input
+                id="publicRcon"
+                v-model="form.publicRcon"
+                type="checkbox"
+                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label
+                for="publicRcon"
+                class="text-sm font-medium text-gray-700 dark:text-neutral-300 cursor-pointer"
+              >
+                Public RCON
+              </label>
+            </div>
+          </div>
+
+          <div v-if="form.publicRcon" class="grid grid-cols-1 gap-4">
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                RCON Port
+              </label>
+              <number-input
+                v-model="form.rconPort"
+                :min="1024"
+                :max="65535"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <div
+            class="p-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 space-y-4"
+          >
+            <h3
+              class="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider"
+            >
+              World Generation (DANGEROUS)
+            </h3>
+            <p class="text-xs text-red-500 dark:text-red-400">
+              These settings are applied only on first start. Changing them
+              later will create a new world.
+            </p>
+
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                Level Name
+              </label>
+              <input
+                v-model="form.levelName"
+                type="text"
+                placeholder="world"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+              />
+            </div>
+
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                Level Seed
+              </label>
+              <input
+                v-model="form.levelSeed"
+                type="text"
+                placeholder="Leave empty for random"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+              />
+            </div>
+
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
+              >
+                Level Type
+              </label>
+              <select
+                v-model="form.levelType"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
+              >
+                <option
+                  v-for="opt in levelTypeOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
 
         <div
-          class="p-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 space-y-4"
+          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
         >
-          <h3
-            class="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider"
+          <button
+            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium"
+            @click="emit('close')"
           >
-            World Generation (DANGEROUS)
-          </h3>
-          <p class="text-xs text-red-500 dark:text-red-400">
-            These settings are applied only on first start. Changing them later
-            will create a new world.
-          </p>
-
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              Level Name
-            </label>
-            <input
-              v-model="form.levelName"
-              type="text"
-              placeholder="world"
-              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-            />
-          </div>
-
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              Level Seed
-            </label>
-            <input
-              v-model="form.levelSeed"
-              type="text"
-              placeholder="Leave empty for random"
-              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-            />
-          </div>
-
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-            >
-              Level Type
-            </label>
-            <select
-              v-model="form.levelType"
-              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
-            >
-              <option
-                v-for="opt in levelTypeOptions"
-                :key="opt.value"
-                :value="opt.value"
-              >
-                {{ opt.label }}
-              </option>
-            </select>
-          </div>
+            Cancel
+          </button>
+          <button
+            :disabled="loading"
+            class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="submit"
+          >
+            {{ loading ? "Creating..." : "Create Server" }}
+          </button>
         </div>
       </div>
-
-      <div
-        class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
-      >
-        <button
-          class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium"
-          @click="emit('close')"
-        >
-          Cancel
-        </button>
-        <button
-          :disabled="loading"
-          class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          @click="submit"
-        >
-          {{ loading ? "Creating..." : "Create Server" }}
-        </button>
-      </div>
     </div>
-  </div>
+  </Teleport>
 </template>

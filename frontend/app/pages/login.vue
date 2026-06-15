@@ -266,7 +266,7 @@ const error = ref("");
 
 // Redirect if already authenticated
 if (isAuthenticated.value) {
-  await navigateTo("/servers");
+  await navigateTo("/");
 }
 
 async function handleLogin() {
@@ -277,7 +277,7 @@ async function handleLogin() {
     const success = await login(apiKeyInput.value);
     if (success) {
       showToast("success", "Signed in successfully");
-      await navigateTo("/servers");
+      await navigateTo("/");
     } else {
       error.value = "Invalid password or connection failed";
       showToast("error", "Sign in failed", { description: error.value });

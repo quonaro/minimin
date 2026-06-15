@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-neutral-900"
-  >
+  <div class="min-h-screen flex items-center justify-center p-4 bg-[#0F0F10]">
     <div v-if="loading" class="text-center text-gray-500 dark:text-neutral-400">
       <Loader2 class="w-8 h-8 animate-spin mx-auto mb-2" />
       <p>Loading archive...</p>
@@ -9,7 +7,7 @@
 
     <div v-else-if="error" class="w-full max-w-md">
       <div
-        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-gray-200 dark:border-neutral-700 p-8 text-center"
+        class="bg-[#262626] rounded-2xl shadow-xl border border-neutral-700 p-8 text-center"
       >
         <div
           class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4"
@@ -43,7 +41,7 @@
 
     <div
       v-else
-      class="w-full max-w-3xl bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-gray-200 dark:border-neutral-700 p-8"
+      class="w-full max-w-3xl bg-[#262626] rounded-2xl shadow-xl border border-neutral-700 p-8"
     >
       <div class="flex items-center justify-center gap-3 mb-4">
         <img src="/img/MiniMin_L.avif" alt="MiniMin" class="h-10 w-auto" />
@@ -69,7 +67,7 @@
       <div class="space-y-3 mb-6">
         <div
           v-if="hasFormat('zip')"
-          class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
+          class="flex items-center justify-between p-4 rounded-xl bg-[#262626] border border-neutral-600"
         >
           <div class="flex items-center gap-3">
             <FileArchive class="w-8 h-8 text-amber-600 dark:text-amber-400" />
@@ -102,7 +100,7 @@
 
         <div
           v-if="hasFormat('mrpack')"
-          class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
+          class="flex items-center justify-between p-4 rounded-xl bg-[#262626] border border-neutral-600"
         >
           <div class="flex items-center gap-3">
             <FileBox class="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
@@ -135,7 +133,7 @@
 
         <div
           v-if="hasFormat('curseforge')"
-          class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
+          class="flex items-center justify-between p-4 rounded-xl bg-[#262626] border border-neutral-600"
         >
           <div class="flex items-center gap-3">
             <Flame class="w-8 h-8 text-orange-600 dark:text-orange-400" />
@@ -168,7 +166,7 @@
 
         <div
           v-if="hasFormat('prism')"
-          class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600"
+          class="flex items-center justify-between p-4 rounded-xl bg-[#262626] border border-neutral-600"
         >
           <div class="flex items-center gap-3">
             <Box class="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
