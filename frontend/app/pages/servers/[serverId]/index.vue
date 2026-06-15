@@ -945,6 +945,366 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Live Metrics -->
+              <div class="space-y-2">
+                <p
+                  class="text-[10px] text-gray-400 dark:text-neutral-500 uppercase tracking-wider font-semibold px-1"
+                >
+                  Live Metrics
+                </p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <!-- RAM -->
+                  <div
+                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                  >
+                    <div
+                      class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
+                    >
+                      <div
+                        class="w-9 h-9 shrink-0 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400"
+                      >
+                        <MemoryStick class="w-4 h-4" />
+                      </div>
+                      <div class="min-w-0">
+                        <p
+                          class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                        >
+                          RAM
+                        </p>
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{
+                            latestMetric
+                              ? formatBytes(latestMetric.ramUsage)
+                              : "—"
+                          }}
+                        </p>
+                        <p
+                          class="text-[10px] text-gray-400 dark:text-neutral-500"
+                        >
+                          /
+                          {{
+                            latestMetric
+                              ? formatBytes(latestMetric.ramLimit)
+                              : "—"
+                          }}
+                        </p>
+                      </div>
+                    </div>
+                    <template v-if="server?.containerStatus === 'running'">
+                      <svg
+                        class="absolute inset-0 w-full h-full opacity-0 transition-all duration-300 group-hover:opacity-100 p-2"
+                        viewBox="0 0 100 32"
+                        preserveAspectRatio="none"
+                      >
+                        <polyline
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="text-indigo-500"
+                          :points="sparklinePoints(serverMetrics, 'ramUsage')"
+                        />
+                      </svg>
+                    </template>
+                    <template v-else>
+                      <div
+                        class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      >
+                        <span
+                          class="text-xs text-gray-500 dark:text-neutral-400 font-medium"
+                          >Server is down</span
+                        >
+                      </div>
+                    </template>
+                  </div>
+                  <!-- CPU -->
+                  <div
+                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                  >
+                    <div
+                      class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
+                    >
+                      <div
+                        class="w-9 h-9 shrink-0 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400"
+                      >
+                        <Activity class="w-4 h-4" />
+                      </div>
+                      <div class="min-w-0">
+                        <p
+                          class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                        >
+                          CPU
+                        </p>
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{
+                            latestMetric
+                              ? latestMetric.cpu.toFixed(1) + "%"
+                              : "—"
+                          }}
+                        </p>
+                      </div>
+                    </div>
+                    <template v-if="server?.containerStatus === 'running'">
+                      <svg
+                        class="absolute inset-0 w-full h-full opacity-0 transition-all duration-300 group-hover:opacity-100 p-2"
+                        viewBox="0 0 100 32"
+                        preserveAspectRatio="none"
+                      >
+                        <polyline
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="text-emerald-500"
+                          :points="sparklinePoints(serverMetrics, 'cpu')"
+                        />
+                      </svg>
+                    </template>
+                    <template v-else>
+                      <div
+                        class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      >
+                        <span
+                          class="text-xs text-gray-500 dark:text-neutral-400 font-medium"
+                          >Server is down</span
+                        >
+                      </div>
+                    </template>
+                  </div>
+                  <!-- Online -->
+                  <div
+                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                  >
+                    <div
+                      class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
+                    >
+                      <div
+                        class="w-9 h-9 shrink-0 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400"
+                      >
+                        <Users class="w-4 h-4" />
+                      </div>
+                      <div class="min-w-0">
+                        <p
+                          class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                        >
+                          Online
+                        </p>
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{
+                            latestMetric
+                              ? latestMetric.online + "/" + latestMetric.max
+                              : "—"
+                          }}
+                        </p>
+                      </div>
+                    </div>
+                    <template v-if="server?.containerStatus === 'running'">
+                      <svg
+                        class="absolute inset-0 w-full h-full opacity-0 transition-all duration-300 group-hover:opacity-100 p-2"
+                        viewBox="0 0 100 32"
+                        preserveAspectRatio="none"
+                      >
+                        <polyline
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="text-sky-500"
+                          :points="sparklinePoints(serverMetrics, 'online')"
+                        />
+                      </svg>
+                    </template>
+                    <template v-else>
+                      <div
+                        class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      >
+                        <span
+                          class="text-xs text-gray-500 dark:text-neutral-400 font-medium"
+                          >Server is down</span
+                        >
+                      </div>
+                    </template>
+                  </div>
+                  <!-- TPS -->
+                  <div
+                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                  >
+                    <div
+                      class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
+                    >
+                      <div
+                        class="w-9 h-9 shrink-0 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"
+                      >
+                        <Zap class="w-4 h-4" />
+                      </div>
+                      <div class="min-w-0">
+                        <p
+                          class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                        >
+                          TPS
+                        </p>
+                        <p
+                          class="text-sm font-semibold"
+                          :class="
+                            latestMetric?.tps == null
+                              ? 'text-gray-900 dark:text-white'
+                              : latestMetric.tps >= 18
+                                ? 'text-green-600 dark:text-green-400'
+                                : latestMetric.tps >= 15
+                                  ? 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-red-600 dark:text-red-400'
+                          "
+                        >
+                          {{
+                            latestMetric?.tps != null
+                              ? latestMetric.tps.toFixed(1)
+                              : "—"
+                          }}
+                        </p>
+                      </div>
+                    </div>
+                    <template v-if="server?.containerStatus === 'running'">
+                      <svg
+                        class="absolute inset-0 w-full h-full opacity-0 transition-all duration-300 group-hover:opacity-100 p-2"
+                        viewBox="0 0 100 32"
+                        preserveAspectRatio="none"
+                      >
+                        <polyline
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="text-purple-500"
+                          :points="sparklinePoints(serverMetrics, 'tps')"
+                        />
+                      </svg>
+                    </template>
+                    <template v-else>
+                      <div
+                        class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      >
+                        <span
+                          class="text-xs text-gray-500 dark:text-neutral-400 font-medium"
+                          >Server is down</span
+                        >
+                      </div>
+                    </template>
+                  </div>
+                  <!-- Net RX -->
+                  <div
+                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                  >
+                    <div
+                      class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
+                    >
+                      <div
+                        class="w-9 h-9 shrink-0 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400"
+                      >
+                        <ArrowDown class="w-4 h-4" />
+                      </div>
+                      <div class="min-w-0">
+                        <p
+                          class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                        >
+                          Net RX
+                        </p>
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{
+                            latestMetric
+                              ? latestMetric.rxRate.toFixed(1) + " KB/s"
+                              : "—"
+                          }}
+                        </p>
+                      </div>
+                    </div>
+                    <template v-if="server?.containerStatus === 'running'">
+                      <svg
+                        class="absolute inset-0 w-full h-full opacity-0 transition-all duration-300 group-hover:opacity-100 p-2"
+                        viewBox="0 0 100 32"
+                        preserveAspectRatio="none"
+                      >
+                        <polyline
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="text-cyan-500"
+                          :points="sparklinePoints(serverMetrics, 'rxRate')"
+                        />
+                      </svg>
+                    </template>
+                    <template v-else>
+                      <div
+                        class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      >
+                        <span
+                          class="text-xs text-gray-500 dark:text-neutral-400 font-medium"
+                          >Server is down</span
+                        >
+                      </div>
+                    </template>
+                  </div>
+                  <!-- Net TX -->
+                  <div
+                    class="relative flex items-center gap-3 p-3 min-h-[120px] rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700 group overflow-hidden"
+                  >
+                    <div
+                      class="flex items-center gap-3 transition-all duration-300 group-hover:opacity-0 group-hover:scale-95 shrink-0"
+                    >
+                      <div
+                        class="w-9 h-9 shrink-0 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400"
+                      >
+                        <ArrowUp class="w-4 h-4" />
+                      </div>
+                      <div class="min-w-0">
+                        <p
+                          class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                        >
+                          Net TX
+                        </p>
+                        <p
+                          class="text-sm font-semibold text-gray-900 dark:text-white"
+                        >
+                          {{
+                            latestMetric
+                              ? latestMetric.txRate.toFixed(1) + " KB/s"
+                              : "—"
+                          }}
+                        </p>
+                      </div>
+                    </div>
+                    <template v-if="server?.containerStatus === 'running'">
+                      <svg
+                        class="absolute inset-0 w-full h-full opacity-0 transition-all duration-300 group-hover:opacity-100 p-2"
+                        viewBox="0 0 100 32"
+                        preserveAspectRatio="none"
+                      >
+                        <polyline
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="text-teal-500"
+                          :points="sparklinePoints(serverMetrics, 'txRate')"
+                        />
+                      </svg>
+                    </template>
+                    <template v-else>
+                      <div
+                        class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      >
+                        <span
+                          class="text-xs text-gray-500 dark:text-neutral-400 font-medium"
+                          >Server is down</span
+                        >
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -975,197 +1335,6 @@
         >
           View →
         </NuxtLink>
-      </div>
-
-      <!-- Real-time Metrics -->
-      <div
-        v-if="serverMetrics.length > 0"
-        class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
-      >
-        <button
-          class="w-full flex items-center justify-between p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
-          @click="liveMetricsExpanded = !liveMetricsExpanded"
-        >
-          <div class="flex items-center gap-3">
-            <Activity class="w-5 h-5 text-gray-500 dark:text-neutral-400" />
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-              Live Metrics
-            </h2>
-          </div>
-          <ChevronDown
-            class="w-5 h-5 text-gray-500 dark:text-neutral-400 transition-transform"
-            :class="{ 'rotate-180': liveMetricsExpanded }"
-          />
-        </button>
-        <div
-          v-show="liveMetricsExpanded"
-          class="px-4 pt-2 pb-4 md:px-6 md:pt-3 md:pb-6"
-        >
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <!-- RAM -->
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-                RAM
-              </div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ latestMetric ? formatBytes(latestMetric.ramUsage) : "—" }}
-              </div>
-              <div class="text-xs text-gray-400 dark:text-neutral-500">
-                / {{ latestMetric ? formatBytes(latestMetric.ramLimit) : "—" }}
-              </div>
-              <svg
-                class="w-full h-8 mt-2"
-                viewBox="0 0 100 32"
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="text-indigo-500"
-                  :points="sparklinePoints(serverMetrics, 'ramUsage')"
-                />
-              </svg>
-            </div>
-            <!-- CPU -->
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-                CPU
-              </div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ latestMetric ? latestMetric.cpu.toFixed(1) + "%" : "—" }}
-              </div>
-              <svg
-                class="w-full h-8 mt-2"
-                viewBox="0 0 100 32"
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="text-emerald-500"
-                  :points="sparklinePoints(serverMetrics, 'cpu')"
-                />
-              </svg>
-            </div>
-            <!-- Online -->
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-                Online
-              </div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{
-                  latestMetric
-                    ? latestMetric.online + "/" + latestMetric.max
-                    : "—"
-                }}
-              </div>
-              <svg
-                class="w-full h-8 mt-2"
-                viewBox="0 0 100 32"
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="text-sky-500"
-                  :points="sparklinePoints(serverMetrics, 'online')"
-                />
-              </svg>
-            </div>
-            <!-- TPS -->
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-              <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-                TPS
-              </div>
-              <div
-                class="text-lg font-semibold"
-                :class="
-                  latestMetric?.tps == null
-                    ? 'text-gray-900 dark:text-white'
-                    : latestMetric.tps >= 18
-                      ? 'text-green-600 dark:text-green-400'
-                      : latestMetric.tps >= 15
-                        ? 'text-yellow-600 dark:text-yellow-400'
-                        : 'text-red-600 dark:text-red-400'
-                "
-              >
-                {{
-                  latestMetric?.tps != null ? latestMetric.tps.toFixed(1) : "—"
-                }}
-              </div>
-              <svg
-                class="w-full h-8 mt-2"
-                viewBox="0 0 100 32"
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="text-purple-500"
-                  :points="sparklinePoints(serverMetrics, 'tps')"
-                />
-              </svg>
-            </div>
-            <!-- Network RX -->
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-              <div
-                class="text-xs text-gray-500 dark:text-neutral-400 mb-1 flex items-center gap-1"
-              >
-                <ArrowDown class="w-3 h-3" />
-                Net RX
-              </div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{
-                  latestMetric ? latestMetric.rxRate.toFixed(1) + " KB/s" : "—"
-                }}
-              </div>
-              <svg
-                class="w-full h-8 mt-2"
-                viewBox="0 0 100 32"
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="text-blue-500"
-                  :points="sparklinePoints(serverMetrics, 'rxRate')"
-                />
-              </svg>
-            </div>
-            <!-- Network TX -->
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50">
-              <div
-                class="text-xs text-gray-500 dark:text-neutral-400 mb-1 flex items-center gap-1"
-              >
-                <ArrowUp class="w-3 h-3" />
-                Net TX
-              </div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{
-                  latestMetric ? latestMetric.txRate.toFixed(1) + " KB/s" : "—"
-                }}
-              </div>
-              <svg
-                class="w-full h-8 mt-2"
-                viewBox="0 0 100 32"
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="text-teal-500"
-                  :points="sparklinePoints(serverMetrics, 'txRate')"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Players Online -->

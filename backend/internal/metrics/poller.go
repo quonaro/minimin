@@ -99,14 +99,7 @@ func (p *Poller) poll(ctx context.Context) {
 			cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage) - float64(prev.CPUStats.CPUUsage.TotalUsage)
 			systemDelta := float64(stats.CPUStats.SystemUsage) - float64(prev.CPUStats.SystemUsage)
 			if systemDelta > 0 && cpuDelta > 0 {
-				onlineCPUs := uint32(len(stats.CPUStats.CPUUsage.PercpuUsage))
-				if onlineCPUs == 0 {
-					onlineCPUs = stats.CPUStats.OnlineCPUs
-				}
-				if onlineCPUs == 0 {
-					onlineCPUs = 1
-				}
-				cpuPercent = (cpuDelta / systemDelta) * float64(onlineCPUs) * 100.0
+				cpuPercent = (cpuDelta / systemDelta) * 100.0
 			}
 		}
 

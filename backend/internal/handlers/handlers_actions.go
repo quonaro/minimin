@@ -127,6 +127,7 @@ func (h *Handler) doStart(id string, removeExisting bool) {
 	s.ContainerStatus = "running"
 	s.ContainerStartedAt = time.Now().UTC()
 	s.ServerStatus = "starting"
+	s.ImageName = runner.ImageName
 	s.PendingProperties = nil
 	h.Instance.Set(s)
 	h.Instance.ClearDesired(id, "running")
