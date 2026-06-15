@@ -17,10 +17,10 @@ func (h *Handler) HandleGetServerDisk(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.VolumePath == "" {
 		jsonResponse(w, map[string]int64{
-			"totalBytes":        0,
-			"worldBytes":        0,
-			"worldNetherBytes":  0,
-			"worldEndBytes":     0,
+			"totalBytes":       0,
+			"worldBytes":       0,
+			"worldNetherBytes": 0,
+			"worldEndBytes":    0,
 		})
 		return
 	}

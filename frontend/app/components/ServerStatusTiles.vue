@@ -29,6 +29,21 @@ const {
   rconLoading,
   savePublicRcon,
 } = useServerConfigEdits(serverId.value, toRef(props, "server"));
+
+function formatServerStatus(status: string): string {
+  switch (status) {
+    case "pulling_image":
+      return "Pulling image...";
+    case "starting":
+      return "Starting...";
+    case "running":
+      return "Running";
+    case "stopped":
+      return "Stopped";
+    default:
+      return status;
+  }
+}
 </script>
 
 <template>
@@ -113,7 +128,7 @@ const {
               Server
             </p>
             <p class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ server.serverStatus }}
+              {{ formatServerStatus(server.serverStatus) }}
               <span
                 v-if="serverUptime"
                 class="text-gray-500 dark:text-neutral-400 font-normal"

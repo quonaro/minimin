@@ -11,14 +11,14 @@ import (
 
 // Checker periodically pings running Minecraft servers and updates their status.
 type Checker struct {
-	Instance         *state.InstanceFile
+	Instance            *state.InstanceFile
 	BroadcastPlayerData func(serverID string)
 }
 
 // NewChecker creates a Checker.
 func NewChecker(instance *state.InstanceFile, broadcastFn func(string)) *Checker {
 	return &Checker{
-		Instance:         instance,
+		Instance:            instance,
 		BroadcastPlayerData: broadcastFn,
 	}
 }

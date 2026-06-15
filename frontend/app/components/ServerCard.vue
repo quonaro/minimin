@@ -39,7 +39,7 @@
             v-else-if="server.serverStatus === 'pulling_image'"
             class="w-3 h-3"
           />
-          server: {{ server.serverStatus }}
+          server: {{ formatServerStatus(server.serverStatus) }}
         </span>
         <span
           v-if="server.modCount !== undefined && server.modCount > 0"
@@ -125,6 +125,21 @@ import {
 const props = defineProps<{
   server: Server;
 }>();
+
+function formatServerStatus(status: string): string {
+  switch (status) {
+    case "pulling_image":
+      return "pulling image...";
+    case "starting":
+      return "starting...";
+    case "running":
+      return "running";
+    case "stopped":
+      return "stopped";
+    default:
+      return status;
+  }
+}
 
 function getStatusColor(status: string) {
   switch (status) {

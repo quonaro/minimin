@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 )
 
@@ -22,7 +23,7 @@ func (h *Handler) HandleStartServer(w http.ResponseWriter, r *http.Request) {
 	}
 	// Empty body is fine — default to false.
 	_ = decodeJSON(r, &req)
-	go h.Actions.Start(r.Context(), id, req.RemoveExisting)
+	go h.Actions.Start(context.Background(), id, req.RemoveExisting)
 	jsonResponse(w, s)
 }
 
@@ -39,7 +40,7 @@ func (h *Handler) HandleStopServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.Instance.Save()
-	go h.Actions.Stop(r.Context(), id)
+	go h.Actions.Stop(context.Background(), id)
 	jsonResponse(w, s)
 }
 
@@ -56,7 +57,7 @@ func (h *Handler) HandleForceStopServer(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	_ = h.Instance.Save()
-	go h.Actions.ForceStop(r.Context(), id)
+	go h.Actions.ForceStop(context.Background(), id)
 	jsonResponse(w, s)
 }
 
@@ -73,7 +74,7 @@ func (h *Handler) HandleRestartServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.Instance.Save()
-	go h.Actions.Restart(r.Context(), id)
+	go h.Actions.Restart(context.Background(), id)
 	jsonResponse(w, s)
 }
 
@@ -101,6 +102,6 @@ func (h *Handler) HandleRecreateWorld(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.Instance.Save()
-	go h.Actions.RecreateWorld(r.Context(), id)
+	go h.Actions.RecreateWorld(context.Background(), id)
 	w.WriteHeader(http.StatusNoContent)
 }
