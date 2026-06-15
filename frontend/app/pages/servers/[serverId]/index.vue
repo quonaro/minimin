@@ -172,21 +172,10 @@
           <!-- Details column -->
           <div class="flex-1 min-w-0">
             <!-- Title row -->
-            <div class="mb-6">
-              <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div class="mb-2">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
                 {{ server.serverId }}
               </h1>
-              <div class="flex items-center gap-3 flex-wrap">
-                <span
-                  v-if="isPending"
-                  class="text-xs text-gray-500 dark:text-neutral-400 italic"
-                >
-                  <template v-if="server.serverStatus === 'pulling_image'"
-                    >Pulling image…</template
-                  >
-                  <template v-else>({{ server.desiredStatus }}…)</template>
-                </span>
-              </div>
             </div>
 
             <!-- Info tiles -->
