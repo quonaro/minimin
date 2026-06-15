@@ -298,9 +298,6 @@ func (h *Handler) collectClientFiles(serverID string, include []string) (map[str
 		}
 	}
 
-	if len(filesByType) == 0 {
-		return nil, fmt.Errorf("no files found for selected types")
-	}
 	return filesByType, nil
 }
 
@@ -624,7 +621,11 @@ func (h *Handler) HandleDownloadClientArchive(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	srv, _ := h.Instance.Get(archive.ServerID)
+	srv, ok := h.Instance.Get(archive.ServerID)
+	if !ok || srv.VolumePath == "" {
+		jsonError(w, "server not found or volume not initialized", http.StatusNotFound)
+		return
+	}
 
 	var contentType, ext string
 	switch format {
