@@ -24,7 +24,7 @@
           class="group flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
           :class="
             route.path === '/servers' || route.path.startsWith('/servers/')
-              ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
+              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : ''
           "
         >
@@ -53,7 +53,7 @@
             class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
             :class="
               route.params.serverId === server.serverId
-                ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                 : 'text-gray-600 dark:text-neutral-400'
             "
           >
@@ -79,7 +79,7 @@
             class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-100 dark:hover:bg-neutral-800"
             :class="
               route.path === item.to
-                ? 'bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-white'
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                 : 'text-gray-600 dark:text-neutral-400'
             "
           >

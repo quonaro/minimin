@@ -14,41 +14,32 @@
         ref="fileInput"
         type="file"
         accept=".jar,.zip"
+        multiple
         class="hidden"
         @change="onFileSelect"
       />
       <button
         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-        :disabled="uploadLoading || clientUploadLoading || assetUploadLoading"
-        @click="fileInput?.click()"
+        :disabled="anyUploadLoading"
+        @click="showUploadModal = true"
       >
-        <Upload class="w-4 h-4" />
-        {{
-          uploadLoading || clientUploadLoading || assetUploadLoading
-            ? "Uploading..."
-            : "Upload .jar or .zip"
-        }}
-      </button>
-      <button
-        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors disabled:opacity-50"
-        :disabled="
-          downloadLoading || clientDownloadLoading || assetDownloadLoading
-        "
-        @click="showDownloadModal = true"
-      >
-        <Link class="w-4 h-4" />
-        {{
-          downloadLoading || clientDownloadLoading || assetDownloadLoading
-            ? "Downloading..."
-            : "Download from URL"
-        }}
+        <Upload class="w-4 h-4 text-white" />
+        {{ anyUploadLoading ? "Uploading..." : "Upload .jar or .zip" }}
       </button>
       <button
         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
         @click="showLibraryPanel = true"
       >
-        <Search class="w-4 h-4" />
+        <Search class="w-4 h-4 text-indigo-500" />
         Mod Library
+      </button>
+      <button
+        v-if="activeMainTab === 'client'"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 text-sm font-medium transition-colors"
+        @click="showArchiveModal = true"
+      >
+        <Archive class="w-4 h-4 text-amber-500" />
+        Export
       </button>
       <button
         v-if="activeMainTab === 'server'"
@@ -56,108 +47,28 @@
         :disabled="copyAllLoading || mods.length === 0"
         @click="openCopyAllConfirm"
       >
-        <Copy class="w-4 h-4" />
+        <Copy class="w-4 h-4 text-blue-500" />
         {{ copyAllLoading ? "Copying..." : "Copy all to client" }}
       </button>
     </div>
 
-    <!-- Upload Modal -->
+    <!-- Upload / Download Modal -->
     <div
       v-if="showUploadModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      @click.self="showUploadModal = false"
+      @click.self="closeUploadModal"
     >
       <div
-        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-md"
+        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-md flex flex-col max-h-[80vh]"
       >
-        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-            Upload {{ uploadTargetLabel }}
-          </h2>
-        </div>
-        <div class="p-6 space-y-4">
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
-              >File</label
-            >
-            <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-900 dark:text-white truncate">{{
-                pendingUploadFile?.name || "No file selected"
-              }}</span>
-              <button
-                class="text-primary text-sm font-medium hover:underline"
-                @click="fileInput?.click()"
-              >
-                Choose file
-              </button>
-            </div>
-            <div
-              v-if="zipContents.length > 0 && activeMainTab === 'server'"
-              class="mt-2 max-h-32 overflow-y-auto rounded-lg border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 p-2 space-y-1"
-            >
-              <p class="text-xs text-gray-500 dark:text-neutral-400 mb-1">
-                Archive contains {{ zipContents.length }} mod(s):
-              </p>
-              <div
-                v-for="name in zipContents"
-                :key="name"
-                class="text-xs text-gray-700 dark:text-neutral-300 truncate"
-              >
-                {{ name }}
-              </div>
-            </div>
-          </div>
-        </div>
         <div
-          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
+          class="p-6 border-b border-gray-200 dark:border-neutral-700 shrink-0"
         >
-          <button
-            class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
-            @click="
-              showUploadModal = false;
-              pendingUploadFile = null;
-              zipContents = [];
-            "
-          >
-            Cancel
-          </button>
-          <button
-            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-            :disabled="
-              !pendingUploadFile ||
-              uploadLoading ||
-              clientUploadLoading ||
-              assetUploadLoading
-            "
-            @click="handleUploadConfirm"
-          >
-            <Upload class="w-4 h-4" />
-            {{
-              uploadLoading || clientUploadLoading || assetUploadLoading
-                ? "Uploading..."
-                : "Upload"
-            }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Download Modal -->
-    <div
-      v-if="showDownloadModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      @click.self="showDownloadModal = false"
-    >
-      <div
-        class="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 w-full max-w-md"
-      >
-        <div class="p-6 border-b border-gray-200 dark:border-neutral-700">
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-            Download from URL
+            Add {{ uploadTargetLabel }}
           </h2>
         </div>
-        <div class="p-6 space-y-4">
+        <div class="p-6 space-y-4 overflow-y-auto">
           <div>
             <label
               class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1"
@@ -168,41 +79,100 @@
               type="url"
               placeholder="https://example.com/file.jar"
               class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow text-sm"
-              @keyup.enter="handleDownloadFromURL"
+              @keyup.enter="handleUploadConfirm"
             />
           </div>
           <p class="text-xs text-gray-500 dark:text-neutral-400">
             Will be downloaded to: <strong>{{ downloadTargetLabel }}</strong>
           </p>
+
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div
+                class="w-full border-t border-gray-200 dark:border-neutral-700"
+              />
+            </div>
+            <div class="relative flex justify-center text-xs">
+              <span
+                class="bg-white dark:bg-neutral-800 px-2 text-gray-500 dark:text-neutral-400"
+                >or</span
+              >
+            </div>
+          </div>
+
+          <div
+            class="border-2 border-dashed rounded-xl p-6 text-center transition-colors"
+            :class="
+              isDraggingOver
+                ? 'border-primary bg-primary/5'
+                : 'border-gray-300 dark:border-neutral-600'
+            "
+            @dragenter.prevent="isDraggingOver = true"
+            @dragover.prevent="isDraggingOver = true"
+            @dragleave.prevent="isDraggingOver = false"
+            @drop.prevent="onDrop"
+          >
+            <Upload
+              class="w-8 h-8 mx-auto text-gray-400 dark:text-neutral-500 mb-2"
+            />
+            <p class="text-sm text-gray-600 dark:text-neutral-300 mb-2">
+              Drag & drop files here
+            </p>
+            <button
+              class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
+              @click="fileInput?.click()"
+            >
+              Select files
+            </button>
+          </div>
+
+          <div v-if="pendingUploadFiles.length > 0" class="space-y-2">
+            <div
+              v-for="(file, idx) in pendingUploadFiles"
+              :key="file.name + idx"
+              class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+            >
+              <File
+                class="w-4 h-4 text-gray-400 dark:text-neutral-500 shrink-0"
+              />
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm text-gray-900 dark:text-white truncate">
+                  {{ file.name }}
+                </p>
+                <p
+                  v-if="zipContentsMap[file.name]?.length"
+                  class="text-xs text-gray-500 dark:text-neutral-400"
+                >
+                  Archive: {{ zipContentsMap[file.name]?.length || 0 }} mod(s)
+                </p>
+              </div>
+              <button
+                class="p-1 rounded hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-500 dark:text-neutral-400"
+                @click="removePendingFile(idx)"
+              >
+                <X class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
         <div
-          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end"
+          class="p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end shrink-0"
         >
           <button
             class="px-4 py-2 rounded-lg text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors font-medium text-sm"
-            @click="
-              showDownloadModal = false;
-              modUrl = '';
-            "
+            @click="closeUploadModal"
           >
             Cancel
           </button>
           <button
-            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
             :disabled="
-              downloadLoading ||
-              clientDownloadLoading ||
-              assetDownloadLoading ||
-              !modUrl
+              bulkUploadLoading || (!modUrl && pendingUploadFiles.length === 0)
             "
-            @click="handleDownloadFromURL"
+            @click="handleUploadConfirm"
           >
-            <Download class="w-4 h-4" />
-            {{
-              downloadLoading || clientDownloadLoading || assetDownloadLoading
-                ? "Downloading..."
-                : "Download"
-            }}
+            <Upload class="w-4 h-4" />
+            {{ bulkUploadLoading ? "Uploading..." : "Upload" }}
           </button>
         </div>
       </div>
@@ -283,34 +253,85 @@
       </div>
     </div>
 
-    <!-- Main Tabs -->
+    <!-- Tabs -->
     <div
       class="mb-4 flex items-center gap-1 border-b border-gray-200 dark:border-neutral-700"
     >
       <button
-        v-for="tab in mainTabs"
-        :key="tab.key"
         class="px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] inline-flex items-center gap-1.5"
         :class="
-          activeMainTab === tab.key
+          activeMainTab === 'server'
             ? 'border-primary text-primary'
             : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300'
         "
-        @click="activeMainTab = tab.key"
+        @click="activeMainTab = 'server'"
       >
-        <component
-          :is="tab.icon"
+        <Server
           class="w-4 h-4"
           :class="
-            activeMainTab === tab.key
-              ? tab.key === 'server'
-                ? 'text-blue-500'
-                : 'text-emerald-500'
+            activeMainTab === 'server'
+              ? 'text-blue-500'
               : 'text-gray-400 dark:text-neutral-500'
           "
         />
-        {{ tab.label }}
+        Server
       </button>
+
+      <button
+        class="px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] inline-flex items-center gap-1.5"
+        :class="
+          activeMainTab === 'client'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300'
+        "
+        @click="activeMainTab = 'client'"
+      >
+        <Monitor
+          class="w-4 h-4"
+          :class="
+            activeMainTab === 'client'
+              ? 'text-emerald-500'
+              : 'text-gray-400 dark:text-neutral-500'
+          "
+        />
+        Client
+      </button>
+
+      <Transition name="tab-appear">
+        <div v-if="activeMainTab === 'client'" class="flex items-center gap-1">
+          <span class="text-gray-400 dark:text-neutral-600 mx-1">·</span>
+          <button
+            v-for="tab in clientTabs"
+            :key="tab.key"
+            class="px-3 py-2 text-sm font-medium transition-colors inline-flex items-center gap-1.5 border-b-2 -mb-[1px]"
+            :class="
+              activeClientSubTab === tab.key
+                ? tab.key === 'mods'
+                  ? 'border-blue-500 text-blue-500'
+                  : tab.key === 'resourcepacks'
+                    ? 'border-emerald-500 text-emerald-500'
+                    : 'border-purple-500 text-purple-500'
+                : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300'
+            "
+            @click="activeClientSubTab = tab.key"
+          >
+            <component
+              :is="tab.icon"
+              class="w-4 h-4"
+              :class="
+                activeClientSubTab === tab.key
+                  ? tab.key === 'mods'
+                    ? 'text-blue-500'
+                    : tab.key === 'resourcepacks'
+                      ? 'text-emerald-500'
+                      : 'text-purple-500'
+                  : 'text-gray-400 dark:text-neutral-500'
+              "
+            />
+            {{ tab.label }}
+          </button>
+        </div>
+      </Transition>
     </div>
 
     <!-- Server Tab -->
@@ -340,24 +361,6 @@
       class="flex flex-col flex-1 min-h-0 overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm"
     >
       <div class="p-4 md:p-6 h-full flex flex-col">
-        <div
-          class="mb-4 flex items-center gap-1 border-b border-gray-200 dark:border-neutral-700"
-        >
-          <button
-            v-for="tab in clientTabs"
-            :key="tab.key"
-            class="px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] inline-flex items-center gap-1.5"
-            :class="
-              activeClientSubTab === tab.key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300'
-            "
-            @click="activeClientSubTab = tab.key"
-          >
-            <component :is="tab.icon" class="w-4 h-4" />
-            {{ tab.label }}
-          </button>
-        </div>
         <div class="flex-1 min-h-0 overflow-hidden">
           <client-mods
             v-if="activeClientSubTab === 'mods'"
@@ -368,7 +371,9 @@
             :archive-result="archiveResult"
             :archive-links="archiveLinks"
             :links-loading="linksLoading"
+            :show-archive-modal="showArchiveModal"
             v-model:search-query="clientSearchQuery"
+            @update:show-archive-modal="showArchiveModal = $event"
             @delete="handleClientDelete"
             @upload="handleClientUpload"
             @toggle="handleClientToggle"
@@ -385,7 +390,6 @@
             title="Resource Packs"
             :icon="Image"
             :search-query="clientSearchQuery"
-            :show-upload="true"
           />
           <client-assets
             v-else-if="activeClientSubTab === 'shaderpacks'"
@@ -394,7 +398,6 @@
             title="Shader Packs"
             :icon="Sparkles"
             :search-query="clientSearchQuery"
-            :show-upload="true"
           />
         </div>
       </div>
@@ -438,6 +441,7 @@
               :project-type="modrinth.projectType.value"
               :installed-mod-basenames="installedModBasenames"
               :installed-asset-basenames="installedAssetBasenames"
+              :locked-type="libraryProjectType"
               v-model:side-filter="librarySideFilter"
               @update:search-query="onSearchInput"
               @update:project-type="onProjectTypeChange"
@@ -472,6 +476,19 @@
 .slide-over-leave-to .absolute.inset-y-0.right-0 {
   transform: translateX(100%);
 }
+
+/* Inline sub-tabs appear animation */
+.tab-appear-enter-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tab-appear-leave-active {
+  transition: all 0.15s ease;
+}
+.tab-appear-enter-from,
+.tab-appear-leave-to {
+  opacity: 0;
+  transform: translateX(-10px);
+}
 </style>
 
 <script setup lang="ts">
@@ -482,12 +499,14 @@ import {
   Download,
   Copy,
   Box,
+  File,
   Server,
   Monitor,
   Image,
   Sparkles,
   Search,
   X,
+  Archive,
 } from "lucide-vue-next";
 import JSZip from "jszip";
 import { useClientAssetsRefresh } from "~/composables/useClientAssetsRefresh";
@@ -534,23 +553,20 @@ const shaderPacks = useClientAssets(serverId, "shaderpacks");
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const showUploadModal = ref(false);
-const showDownloadModal = ref(false);
 const showLibraryPanel = ref(false);
+const showArchiveModal = ref(false);
 const modUrl = ref("");
 const installedSearchQuery = ref("");
 const clientSearchQuery = ref("");
-const pendingUploadFile = ref<File | null>(null);
-const zipContents = ref<string[]>([]);
+const pendingUploadFiles = ref<File[]>([]);
+const zipContentsMap = ref<Record<string, string[]>>({});
+const isDraggingOver = ref(false);
+const bulkUploadLoading = ref(false);
 
 const activeMainTab = ref<"server" | "client">("server");
 const activeClientSubTab = ref<"mods" | "resourcepacks" | "shaderpacks">(
   "mods",
 );
-
-const mainTabs = [
-  { key: "server" as const, label: "Server", icon: Server },
-  { key: "client" as const, label: "Client", icon: Monitor },
-];
 
 const clientTabs = [
   { key: "mods" as const, label: "Mods", icon: Box },
@@ -571,6 +587,14 @@ const assetUploadLoading = computed(() => {
 
 const assetDownloadLoading = computed(() => false);
 
+const anyUploadLoading = computed(
+  () =>
+    uploadLoading.value ||
+    clientUploadLoading.value ||
+    assetUploadLoading.value ||
+    bulkUploadLoading.value,
+);
+
 const uploadTargetLabel = computed(() => {
   if (activeMainTab.value === "server") return "Server Mod";
   if (activeClientSubTab.value === "mods") return "Client Mod";
@@ -583,6 +607,24 @@ const downloadTargetLabel = computed(() => {
   if (activeClientSubTab.value === "mods") return "client mods";
   if (activeClientSubTab.value === "resourcepacks") return "resource packs";
   return "shader packs";
+});
+
+const libraryProjectType = computed<
+  "mod" | "resourcepack" | "shaderpack" | undefined
+>(() => {
+  if (activeMainTab.value === "server") return undefined;
+  if (activeClientSubTab.value === "resourcepacks") return "resourcepack";
+  if (activeClientSubTab.value === "shaderpacks") return "shaderpack";
+  return "mod";
+});
+
+watch(showLibraryPanel, (open) => {
+  if (!open) return;
+  const lt = libraryProjectType.value;
+  if (lt && modrinth.projectType.value !== lt) {
+    modrinth.projectType.value = lt;
+    modrinth.search(serverEngine.value, serverGameVersion.value);
+  }
 });
 
 const installedModBasenames = computed(() => {
@@ -663,54 +705,86 @@ const depProjectsMap = ref<
 
 async function onFileSelect(e: Event) {
   const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-  pendingUploadFile.value = file;
-  zipContents.value = [];
-  if (file.name.toLowerCase().endsWith(".zip")) {
-    try {
-      const zip = await JSZip.loadAsync(file);
-      const jars: string[] = [];
-      zip.forEach((relativePath, entry) => {
-        if (!entry.dir && relativePath.toLowerCase().endsWith(".jar"))
-          jars.push(relativePath);
-      });
-      zipContents.value = jars;
-    } catch {
-      zipContents.value = [];
+  if (!input.files) return;
+  for (let i = 0; i < input.files.length; i++) {
+    const file = input.files[i];
+    if (!file) continue;
+    if (
+      !file.name.toLowerCase().endsWith(".jar") &&
+      !file.name.toLowerCase().endsWith(".zip")
+    )
+      continue;
+    if (pendingUploadFiles.value.some((f) => f.name === file.name)) continue;
+    pendingUploadFiles.value.push(file);
+    if (file.name.toLowerCase().endsWith(".zip")) {
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const jars: string[] = [];
+        zip.forEach((relativePath, entry) => {
+          if (!entry.dir && relativePath.toLowerCase().endsWith(".jar"))
+            jars.push(relativePath);
+        });
+        zipContentsMap.value[file.name] = jars;
+      } catch {
+        /* ignore */
+      }
     }
   }
-  showUploadModal.value = true;
   input.value = "";
 }
 
 async function handleUploadConfirm() {
-  if (!pendingUploadFile.value) return;
-  const file = pendingUploadFile.value;
-  if (activeMainTab.value === "server") {
-    await uploadFile(file);
-  } else if (activeClientSubTab.value === "mods") {
-    await uploadClientFile(file);
-    await refreshClient();
-  } else {
-    const assetType = activeClientSubTab.value;
-    const formData = new FormData();
-    formData.append("file", file);
-    await $fetch(
-      `/servers/${serverId}/client-assets/upload?type=${assetType}`,
-      {
-        baseURL: useApiBase(),
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      },
-    );
-    useToast().show("success", "Upload complete", { description: file.name });
-    triggerClientAssetsRefresh();
+  if (!modUrl.value && pendingUploadFiles.value.length === 0) return;
+  bulkUploadLoading.value = true;
+  try {
+    if (modUrl.value) {
+      await performDownloadFromURL();
+      modUrl.value = "";
+    }
+    for (const file of pendingUploadFiles.value) {
+      if (activeMainTab.value === "server") {
+        await uploadFile(file);
+      } else if (activeClientSubTab.value === "mods") {
+        await uploadClientFile(file);
+      } else {
+        const assetType = activeClientSubTab.value;
+        const formData = new FormData();
+        formData.append("file", file);
+        await $fetch(
+          `/servers/${serverId}/client-assets/upload?type=${assetType}`,
+          {
+            baseURL: useApiBase(),
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          },
+        );
+        useToast().show("success", "Upload complete", {
+          description: file.name,
+        });
+        triggerClientAssetsRefresh();
+      }
+    }
+    if (
+      activeClientSubTab.value === "mods" &&
+      pendingUploadFiles.value.length > 0
+    ) {
+      await refreshClient();
+    }
+    if (
+      activeMainTab.value === "server" &&
+      pendingUploadFiles.value.length > 0
+    ) {
+      await refresh();
+    }
+  } catch (err: any) {
+    useToast().show("error", "Failed to process files", {
+      description: err?.data?.detail || err?.message || "Unknown error",
+    });
+  } finally {
+    bulkUploadLoading.value = false;
+    closeUploadModal();
   }
-  pendingUploadFile.value = null;
-  zipContents.value = [];
-  showUploadModal.value = false;
 }
 
 async function downloadResourcePackFromURL(url: string, filename?: string) {
@@ -734,7 +808,7 @@ async function downloadShaderPackFromURL(url: string, filename?: string) {
   });
 }
 
-async function handleDownloadFromURL() {
+async function performDownloadFromURL() {
   if (!modUrl.value) return;
   if (activeMainTab.value === "server") await downloadFromURL(modUrl.value);
   else if (activeClientSubTab.value === "mods") {
@@ -747,8 +821,50 @@ async function handleDownloadFromURL() {
     await downloadShaderPackFromURL(modUrl.value);
     triggerClientAssetsRefresh();
   }
+}
+
+function closeUploadModal() {
+  showUploadModal.value = false;
+  pendingUploadFiles.value = [];
+  zipContentsMap.value = {};
   modUrl.value = "";
-  showDownloadModal.value = false;
+}
+
+function onDrop(e: DragEvent) {
+  isDraggingOver.value = false;
+  const files = e.dataTransfer?.files;
+  if (!files) return;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (!file) continue;
+    if (
+      !file.name.toLowerCase().endsWith(".jar") &&
+      !file.name.toLowerCase().endsWith(".zip")
+    )
+      continue;
+    if (pendingUploadFiles.value.some((f) => f.name === file.name)) continue;
+    pendingUploadFiles.value.push(file);
+    if (file.name.toLowerCase().endsWith(".zip")) {
+      JSZip.loadAsync(file)
+        .then((zip) => {
+          const jars: string[] = [];
+          zip.forEach((relativePath, entry) => {
+            if (!entry.dir && relativePath.toLowerCase().endsWith(".jar"))
+              jars.push(relativePath);
+          });
+          zipContentsMap.value[file.name] = jars;
+        })
+        .catch(() => {
+          /* ignore */
+        });
+    }
+  }
+}
+
+function removePendingFile(idx: number) {
+  const file = pendingUploadFiles.value[idx];
+  pendingUploadFiles.value.splice(idx, 1);
+  if (file) delete zipContentsMap.value[file.name];
 }
 
 const modrinth = useModrinth();

@@ -1,23 +1,6 @@
 <template>
   <div class="flex flex-col flex-1 min-h-0">
     <div class="space-y-2 flex-1 min-h-0 overflow-y-auto">
-      <div v-if="props.showUpload" class="flex items-center gap-2">
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".zip"
-          class="hidden"
-          @change="onFileSelect"
-        />
-        <button
-          class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
-          :disabled="uploadLoading"
-          @click="fileInput?.click()"
-        >
-          <Upload class="w-3.5 h-3.5" />
-          Upload
-        </button>
-      </div>
       <div
         v-if="filteredAssets.length === 0 && !loading"
         class="text-center text-gray-500 dark:text-neutral-400 py-6 text-sm"
@@ -66,7 +49,6 @@
 
 <script setup lang="ts">
 import {
-  Upload,
   Loader2,
   FileArchive,
   Eye,
@@ -82,12 +64,10 @@ interface Props {
   title: string;
   icon: Component;
   searchQuery?: string;
-  showUpload?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
-  showUpload: true,
 });
 
 const filteredAssets = computed(() => {
@@ -96,17 +76,10 @@ const filteredAssets = computed(() => {
   return assets.value.filter((a) => a.filename.toLowerCase().includes(q));
 });
 
-const fileInput = ref<HTMLInputElement | null>(null);
-
-const {
-  assets,
-  loading,
-  uploadLoading,
-  refresh,
-  deleteAsset,
-  uploadFile,
-  toggleAsset,
-} = useClientAssets(props.serverId, props.type);
+const { assets, loading, refresh, deleteAsset, toggleAsset } = useClientAssets(
+  props.serverId,
+  props.type,
+);
 
 const { key: refreshKey } = useClientAssetsRefresh(props.serverId);
 watch(refreshKey, () => {
@@ -116,15 +89,6 @@ watch(refreshKey, () => {
 onMounted(() => {
   refresh();
 });
-
-function onFileSelect(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-  uploadFile(file).then(() => {
-    input.value = "";
-  });
-}
 
 function formatBytes(n: number): string {
   if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";

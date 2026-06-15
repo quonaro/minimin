@@ -1,26 +1,16 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <div class="flex items-center justify-between mb-2">
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white">Client</h2>
-      <span class="text-xs text-gray-500 dark:text-neutral-400">
-        {{ filteredMods.length }} items
-      </span>
-    </div>
     <div class="mb-4 flex items-center gap-2">
       <input
         :value="rawQuery"
         type="text"
-        placeholder="Search client mods, resource packs, shader packs..."
+        placeholder="Search client mods..."
         class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
         @input="onSearchInput"
       />
-      <button
-        class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
-        @click="showArchiveModal = true"
-      >
-        <Archive class="w-3.5 h-3.5" />
-        Export
-      </button>
+      <span class="text-xs text-gray-500 dark:text-neutral-400 shrink-0">
+        {{ filteredMods.length }} items
+      </span>
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
@@ -197,11 +187,12 @@
       </div>
 
       <client-archive-modal
-        v-model:show="showArchiveModal"
+        :show="props.showArchiveModal"
         :archive-loading="archiveLoading"
         :archive-result="archiveResult"
         :archive-links="archiveLinks"
         :links-loading="linksLoading"
+        @update:show="emit('update:showArchiveModal', $event)"
         @generate="generateArchive"
         @refresh-links="emit('refresh-archive-links')"
         @delete-link="emit('delete-archive-link', $event)"
@@ -236,6 +227,7 @@ interface Props {
   archiveResult?: ArchiveInfo | null;
   archiveLinks?: ArchiveLinkEntry[];
   linksLoading?: boolean;
+  showArchiveModal?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -244,6 +236,7 @@ const props = withDefaults(defineProps<Props>(), {
   archiveResult: null,
   archiveLinks: () => [],
   linksLoading: false,
+  showArchiveModal: false,
 });
 const emit = defineEmits<{
   delete: [filename: string];
@@ -256,6 +249,7 @@ const emit = defineEmits<{
     target: "server" | "client",
   ];
   "update:searchQuery": [value: string];
+  "update:showArchiveModal": [value: boolean];
   "generate-archive": [ttl: number, include: string[]];
   "refresh-archive-links": [];
   "delete-archive-link": [token: string];
@@ -277,7 +271,6 @@ onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer);
 });
 const isDragOver = ref(false);
-const showArchiveModal = ref(false);
 
 const contextMenuOpen = ref(false);
 const contextMenuX = ref(0);

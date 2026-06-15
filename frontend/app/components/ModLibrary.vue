@@ -10,7 +10,20 @@
           class="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
           @keyup.enter="onSearch"
         />
+        <span
+          v-if="props.lockedType"
+          class="px-2 py-2 rounded-lg bg-gray-100 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-700 text-sm text-gray-700 dark:text-neutral-300 font-medium"
+        >
+          {{
+            props.lockedType === "mod"
+              ? "Mods"
+              : props.lockedType === "resourcepack"
+                ? "Resource Packs"
+                : "Shaders"
+          }}
+        </span>
         <select
+          v-else
           :value="projectType"
           class="px-2 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
           @change="onProjectTypeChange"
@@ -244,6 +257,7 @@ interface Props {
   projectType?: "mod" | "resourcepack" | "shaderpack";
   installedModBasenames?: { server: Set<string>; client: Set<string> };
   installedAssetBasenames?: Set<string>;
+  lockedType?: "mod" | "resourcepack" | "shaderpack";
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -388,6 +402,7 @@ function onSearch() {
 }
 
 function onProjectTypeChange(e: Event) {
+  if (props.lockedType) return;
   emit(
     "update:projectType",
     (e.target as HTMLSelectElement).value as
