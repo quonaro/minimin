@@ -46,7 +46,7 @@
           </span>
           <div class="w-px h-4 bg-gray-200 dark:bg-neutral-600" />
           <button
-            class="text-xs font-medium text-primary hover:underline whitespace-nowrap"
+            class="text-xs font-medium text-gray-900 dark:text-white hover:underline whitespace-nowrap"
             @click="selectAll"
           >
             All
@@ -83,7 +83,7 @@
           class="relative flex flex-col p-2 rounded-xl border transition-all cursor-pointer"
           :class="
             selected.has(mod.filename)
-              ? 'ring-1 ring-primary'
+              ? 'bg-primary/5'
               : mod.corrupted
                 ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
                 : mod.enabled !== false
