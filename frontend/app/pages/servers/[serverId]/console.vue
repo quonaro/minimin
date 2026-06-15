@@ -2,21 +2,13 @@
   <div class="flex flex-col min-w-0 h-[calc(100vh-4rem)]">
     <div class="flex-1 min-h-0 min-w-0 px-6 pt-6 pb-6 flex flex-col">
       <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
-        <div class="flex items-center gap-4">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              Console
-            </h1>
-            <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
-              Live server console output and command input.
-            </p>
-          </div>
-          <button
-            class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
-            @click="clearMessages"
-          >
-            Clear
-          </button>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+            Console
+          </h1>
+          <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
+            Live server console output and command input.
+          </p>
         </div>
 
         <div class="flex items-center gap-2">
@@ -56,6 +48,12 @@
             @click="reconnect"
           >
             Reconnect
+          </button>
+          <button
+            class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-sm text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            @click="clearMessages"
+          >
+            Clear
           </button>
         </div>
       </div>

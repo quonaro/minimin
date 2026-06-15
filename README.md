@@ -12,6 +12,7 @@ A lightweight, web-based control panel for managing multiple Minecraft servers v
 - **Real-Time Logs** — Stream server logs in real-time through WebSocket
 - **Player Management** — View online players, bans, ops, and whitelist
 - **Client Mod Archive** — Generate and share client mod packages with public download links
+- **Minimin Sync** — Pair with the [desktop client](https://github.com/quonaro/minimin-sync) so players can auto-sync modpacks
 - **Modrinth Integration** — Search and download mods directly from Modrinth
 
 ## Architecture
@@ -90,6 +91,45 @@ Multi-stage build:
 1. `frontend-builder` — installs npm deps and generates static SPA
 2. `backend-builder` — compiles Go binary
 3. `runtime` — Alpine Linux with Caddy + supervisor
+
+## Screenshots
+
+> Commit screenshots to `docs/screenshots/` (or use GitHub drag-n-drop upload) and replace the paths below.
+
+### Dashboard
+
+![Dashboard](docs/screenshots/dashboard.png)
+Main dashboard — server cards with status, online players, quick actions.
+
+### Server Console
+
+![Server Console](docs/screenshots/server-console.png)
+Server console tab — real-time logs + RCON command input.
+
+### File Manager
+
+![File Manager](docs/screenshots/server-files.png)
+File manager — browsing server directories, editing config files.
+
+### Mod Management
+
+![Mod Management](docs/screenshots/server-mods.png)
+Mod management — installed mods list, toggle / remove / add from Modrinth.
+
+### Resources
+
+![Resources](docs/screenshots/server-resources.png)
+Resource packs & shaders management.
+
+### Client Archive
+
+![Client Archive](docs/screenshots/client-archive.png)
+Client mod archive — generating a public download link for players.
+
+### Players
+
+![Players](docs/screenshots/player-list.png)
+Online players, bans, ops, and whitelist view.
 
 ## License
 
