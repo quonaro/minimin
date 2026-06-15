@@ -2,12 +2,12 @@
 import type { Server } from "~/composables/useServers";
 
 definePageMeta({
-  middleware: "auth",
+  middleware: ["auth", "servers-redirect"],
 });
 
 const showModal = ref(false);
 
-const { data: rawServers } = await useFetch<Server[]>("/servers", {
+const { data: rawServers, pending } = await useFetch<Server[]>("/servers", {
   baseURL: useApiBase(),
   credentials: "include",
 });
@@ -19,11 +19,6 @@ const servers = computed<Server[]>(() => {
     : (rawServers.value as any).body || [];
 });
 
-const firstServer = servers.value[0];
-if (firstServer) {
-  await navigateTo(`/servers/${firstServer.serverId}`, { replace: true });
-}
-
 function onCreated(serverId: string) {
   showModal.value = false;
   if (serverId) {
@@ -33,8 +28,11 @@ function onCreated(serverId: string) {
 </script>
 
 <template>
+  <div v-if="pending" class="flex items-center justify-center h-full">
+    <p class="text-gray-500 dark:text-neutral-400">Loading...</p>
+  </div>
   <div
-    v-if="servers.length === 0"
+    v-else-if="servers.length === 0"
     class="flex flex-col items-center justify-center h-full p-8"
   >
     <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">

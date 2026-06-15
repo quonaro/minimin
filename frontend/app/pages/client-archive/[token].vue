@@ -232,6 +232,7 @@
 <script setup lang="ts">
 definePageMeta({
   noSidebar: true,
+  noUploads: true,
 });
 import {
   Loader2,

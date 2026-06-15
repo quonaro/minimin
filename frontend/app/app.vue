@@ -11,7 +11,7 @@
       <NuxtPage />
     </main>
     <ToastContainer />
-    <UploadProgress />
+    <UploadProgress v-if="!route.meta.noUploads" />
   </div>
 </template>
 
