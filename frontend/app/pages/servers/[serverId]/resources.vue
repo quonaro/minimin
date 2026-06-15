@@ -115,8 +115,11 @@
             <Upload
               class="w-8 h-8 mx-auto text-gray-400 dark:text-neutral-500 mb-2"
             />
-            <p class="text-sm text-gray-600 dark:text-neutral-300 mb-2">
+            <p class="text-sm text-gray-600 dark:text-neutral-300 mb-1">
               Drag & drop files here
+            </p>
+            <p class="text-xs text-gray-400 dark:text-neutral-500 mb-2">
+              Supports .jar and .zip
             </p>
             <button
               class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
@@ -609,14 +612,14 @@ const downloadTargetLabel = computed(() => {
   return "shader packs";
 });
 
-const libraryProjectType = computed<
-  "mod" | "resourcepack" | "shaderpack" | undefined
->(() => {
-  if (activeMainTab.value === "server") return undefined;
-  if (activeClientSubTab.value === "resourcepacks") return "resourcepack";
-  if (activeClientSubTab.value === "shaderpacks") return "shaderpack";
-  return "mod";
-});
+const libraryProjectType = computed<"mod" | "resourcepack" | "shaderpack">(
+  () => {
+    if (activeMainTab.value === "server") return "mod";
+    if (activeClientSubTab.value === "resourcepacks") return "resourcepack";
+    if (activeClientSubTab.value === "shaderpacks") return "shaderpack";
+    return "mod";
+  },
+);
 
 watch(showLibraryPanel, (open) => {
   if (!open) return;
@@ -876,7 +879,7 @@ const versionsMap = ref<
 
 const debouncedSearch = debounce(() => {
   modrinth.search(serverEngine.value, serverGameVersion.value);
-}, 400);
+}, 1300);
 onBeforeUnmount(() => {
   debouncedSearch.cancel();
 });

@@ -32,13 +32,6 @@
           <option value="resourcepack">Resource Packs</option>
           <option value="shaderpack">Shaders</option>
         </select>
-        <button
-          class="px-3 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
-          :disabled="searchLoading"
-          @click="onSearch"
-        >
-          <Search class="w-4 h-4" />
-        </button>
       </div>
       <div class="flex items-center gap-2">
         <div
@@ -236,7 +229,7 @@
 </template>
 
 <script setup lang="ts">
-import { Box, Search } from "lucide-vue-next";
+import { Box } from "lucide-vue-next";
 import type {
   ModrinthProject,
   ModrinthVersion,
