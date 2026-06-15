@@ -91,7 +91,7 @@
                   ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
                   : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
           "
-          :title="mod.description || ''"
+          :title="`${mod.name || mod.filename}${mod.description ? ' — ' + mod.description : ''}`"
           @click="toggleSelect(mod.filename)"
           @contextmenu.prevent="openContextMenu(mod, $event)"
         >
@@ -166,14 +166,14 @@
             <button
               class="text-gray-400 hover:text-primary transition-colors p-1"
               title="Show in File Manager"
-              @click="emit('show-in-files', mod.filename)"
+              @click.stop="emit('show-in-files', mod.filename)"
             >
               <FolderOpen class="w-3.5 h-3.5" />
             </button>
             <button
               class="text-gray-400 hover:text-primary transition-colors p-1"
               :title="mod.enabled !== false ? 'Disable mod' : 'Enable mod'"
-              @click="emit('toggle', mod.filename)"
+              @click.stop="emit('toggle', mod.filename)"
             >
               <Eye v-if="mod.enabled !== false" class="w-3.5 h-3.5" />
               <EyeOff v-else class="w-3.5 h-3.5" />
@@ -181,14 +181,14 @@
             <button
               class="text-gray-400 hover:text-primary transition-colors p-1"
               title="Move to client mods"
-              @click="emit('move', mod.filename, 'client')"
+              @click.stop="emit('move', mod.filename, 'client')"
             >
               <Server class="w-3.5 h-3.5" />
             </button>
             <button
               class="text-gray-400 hover:text-red-500 transition-colors p-1"
               :disabled="loading"
-              @click="emit('delete', mod.filename)"
+              @click.stop="emit('delete', mod.filename)"
             >
               <Trash2 class="w-3.5 h-3.5" />
             </button>

@@ -23,61 +23,83 @@
       </p>
     </div>
 
-    <div v-else class="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1">
-      <div
-        v-if="selected.size > 0"
-        class="flex items-center gap-2 p-2 pb-0 shrink-0"
+    <div
+      v-else
+      class="relative flex flex-col flex-1 min-h-0 overflow-y-auto pr-1"
+    >
+      <Transition
+        enter-active-class="transition ease-out duration-200"
+        enter-from-class="opacity-0 translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition ease-in duration-150"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-2"
       >
-        <span class="text-xs text-gray-500 dark:text-neutral-400">
-          {{ selected.size }} selected
-        </span>
-        <button class="text-xs text-primary hover:underline" @click="selectAll">
-          Select all
-        </button>
-        <button
-          class="text-xs text-gray-500 dark:text-neutral-400 hover:underline"
-          @click="clearSelection"
+        <div
+          v-if="selected.size > 0"
+          class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-2xl border shadow-2xl backdrop-blur-sm bg-white/95 dark:bg-neutral-800/95 border-gray-200 dark:border-neutral-700"
         >
-          Clear
-        </button>
-        <div class="flex-1" />
-        <button
-          class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
-          @click="emitBatchToggle"
-        >
-          <EyeOff class="w-3 h-3" />
-          Toggle
-        </button>
-        <button
-          class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-          @click="emitBatchDelete"
-        >
-          <Trash2 class="w-3 h-3" />
-          Delete
-        </button>
-      </div>
+          <span
+            class="text-xs font-medium text-gray-700 dark:text-neutral-200 whitespace-nowrap"
+          >
+            {{ selected.size }} selected
+          </span>
+          <div class="w-px h-4 bg-gray-200 dark:bg-neutral-600" />
+          <button
+            class="text-xs font-medium text-primary hover:underline whitespace-nowrap"
+            @click="selectAll"
+          >
+            All
+          </button>
+          <button
+            class="text-xs font-medium text-gray-500 dark:text-neutral-400 hover:underline whitespace-nowrap"
+            @click="clearSelection"
+          >
+            Clear
+          </button>
+          <div class="w-px h-4 bg-gray-200 dark:bg-neutral-600" />
+          <button
+            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
+            @click="emitBatchToggle"
+          >
+            <EyeOff class="w-3.5 h-3.5" />
+            Toggle
+          </button>
+          <button
+            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+            @click="emitBatchDelete"
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+            Delete
+          </button>
+        </div>
+      </Transition>
       <div
         class="grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 content-start p-2"
       >
         <div
           v-for="mod in filteredMods"
           :key="mod.filename"
-          class="relative flex flex-col p-2 rounded-xl border transition-colors"
+          class="relative flex flex-col p-2 rounded-xl border transition-all cursor-pointer"
           :class="
-            mod.corrupted
-              ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
-              : mod.enabled !== false
-                ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
-                : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
+            selected.has(mod.filename)
+              ? 'ring-2 ring-primary ring-offset-1 dark:ring-offset-neutral-800'
+              : mod.corrupted
+                ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
+                : mod.enabled !== false
+                  ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
+                  : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
           "
-          :title="mod.description || ''"
+          :title="`${mod.name || mod.filename}${mod.description ? ' — ' + mod.description : ''}`"
+          @click="toggleSelect(mod.filename)"
           @contextmenu.prevent="openContextMenu(mod, $event)"
         >
           <input
             type="checkbox"
-            class="absolute top-1 right-1 z-10 w-3.5 h-3.5 rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary cursor-pointer"
+            class="absolute top-2 right-2 z-10 w-4 h-4 rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary cursor-pointer bg-white/80 dark:bg-neutral-800/80 backdrop-blur"
             :checked="selected.has(mod.filename)"
-            @click.stop="toggleSelect(mod.filename)"
+            @click.stop
+            @change="toggleSelect(mod.filename)"
           />
           <div
             class="self-center relative w-10 h-10 rounded-xl overflow-hidden"
@@ -143,14 +165,14 @@
             <button
               class="text-gray-400 hover:text-primary transition-colors p-1"
               title="Show in File Manager"
-              @click="emit('show-in-files', mod.filename)"
+              @click.stop="emit('show-in-files', mod.filename)"
             >
               <FolderOpen class="w-3.5 h-3.5" />
             </button>
             <button
               class="text-gray-400 hover:text-primary transition-colors p-1"
               :title="mod.enabled !== false ? 'Disable mod' : 'Enable mod'"
-              @click="emit('toggle', mod.filename)"
+              @click.stop="emit('toggle', mod.filename)"
             >
               <Eye v-if="mod.enabled !== false" class="w-3.5 h-3.5" />
               <EyeOff v-else class="w-3.5 h-3.5" />
@@ -158,14 +180,14 @@
             <button
               class="text-gray-400 hover:text-amber-500 transition-colors p-1"
               title="Move to server mods"
-              @click="emit('move', mod.filename, 'server')"
+              @click.stop="emit('move', mod.filename, 'server')"
             >
               <Server class="w-3.5 h-3.5" />
             </button>
             <button
               class="text-gray-400 hover:text-red-500 transition-colors p-1"
               :disabled="loading"
-              @click="emit('delete', mod.filename)"
+              @click.stop="emit('delete', mod.filename)"
             >
               <Trash2 class="w-3.5 h-3.5" />
             </button>
