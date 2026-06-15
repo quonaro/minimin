@@ -61,22 +61,34 @@
             <div class="flex flex-col items-stretch gap-2 w-full">
               <!-- Main controls -->
               <div class="flex flex-col gap-2">
-                <button
-                  :disabled="
-                    actionLoading ||
-                    server?.containerStatus === 'running' ||
-                    isPending
-                  "
-                  class="flex items-center gap-2 w-full justify-center bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-neutral-600 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
-                  @click="doAction('start')"
-                >
-                  <Loader2
-                    v-if="currentAction === 'start'"
-                    class="w-4 h-4 animate-spin"
-                  />
-                  <Play v-else class="w-4 h-4" />
-                  Start
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    :disabled="
+                      actionLoading ||
+                      server?.containerStatus === 'running' ||
+                      isPending
+                    "
+                    class="flex items-center gap-2 flex-1 justify-center bg-gray-100 dark:bg-neutral-700/50 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-neutral-600 px-4 py-2 rounded-xl transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+                    @click="doAction('start')"
+                  >
+                    <Loader2
+                      v-if="currentAction === 'start'"
+                      class="w-4 h-4 animate-spin"
+                    />
+                    <Play v-else class="w-4 h-4" />
+                    Start
+                  </button>
+                  <label
+                    class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-neutral-400 cursor-pointer select-none shrink-0"
+                  >
+                    <input
+                      v-model="removeBeforeStart"
+                      type="checkbox"
+                      class="w-3.5 h-3.5 rounded border-gray-300 dark:border-neutral-600 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 bg-white dark:bg-neutral-700 cursor-pointer"
+                    />
+                    Recreate
+                  </label>
+                </div>
                 <button
                   :disabled="
                     actionLoading ||
@@ -560,6 +572,29 @@
                         class="text-sm font-semibold text-gray-900 dark:text-white"
                       >
                         {{ server.loaderVersion || "—" }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Java Version -->
+                  <div
+                    class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-neutral-700/50 border border-gray-100 dark:border-neutral-700"
+                  >
+                    <div
+                      class="w-9 h-9 shrink-0 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400"
+                    >
+                      <Coffee class="w-4 h-4" />
+                    </div>
+                    <div class="min-w-0">
+                      <p
+                        class="text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider font-semibold"
+                      >
+                        Java Version
+                      </p>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{ getJavaVersion(server.imageName) }}
                       </p>
                     </div>
                   </div>
@@ -1274,6 +1309,7 @@ import {
   ChevronDown,
   Clock,
   Code,
+  Coffee,
   Copy,
   FolderOpen,
   Globe,
@@ -1321,6 +1357,7 @@ const actionLoading = ref(false);
 const currentAction = ref<"start" | "stop" | "force-stop" | "restart" | null>(
   null,
 );
+const removeBeforeStart = ref(false);
 const iconTimestamp = ref(Date.now());
 const iconError = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -1593,6 +1630,13 @@ function getStatusColor(status: string) {
   }
 }
 
+function getJavaVersion(imageName?: string): string {
+  if (!imageName) return "—";
+  const tag = imageName.split(":")[1] || "";
+  const match = tag.match(/^java(\d+)$/);
+  return match && match[1] ? match[1] : tag;
+}
+
 function getEngineAbbreviation(engineType: string) {
   switch (engineType.toUpperCase()) {
     case "FORGE":
@@ -1857,6 +1901,10 @@ async function doAction(action: "start" | "stop" | "restart" | "force-stop") {
       baseURL: useApiBase(),
       method: "POST",
       credentials: "include",
+      body:
+        action === "start"
+          ? { removeExisting: removeBeforeStart.value }
+          : undefined,
     });
     showToast("info", `Server ${action} requested`, {
       description: `${serverId} — operation in progress.`,

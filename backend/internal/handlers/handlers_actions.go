@@ -15,7 +15,7 @@ import (
 	"github.com/docker/docker/client"
 )
 
-func (h *Handler) doStart(id string) {
+func (h *Handler) doStart(id string, removeExisting bool) {
 	s, _ := h.Instance.Get(id)
 	prevStatus := s.Status
 
@@ -26,6 +26,16 @@ func (h *Handler) doStart(id string) {
 			_ = h.Instance.Save()
 		}
 	}()
+
+	if removeExisting && s.ContainerID != "" {
+		if err := h.Cli.ContainerRemove(context.Background(), s.ContainerID, container.RemoveOptions{Force: true}); err != nil {
+			slog.Warn("failed to remove existing container on start", "server_id", id, "container_id", s.ContainerID, "error", err)
+		}
+		s.ContainerID = ""
+		s.ContainerStatus = ""
+		s.ContainerStartedAt = time.Time{}
+		h.Instance.Set(s)
+	}
 
 	if s.ContainerID != "" {
 		if err := h.Cli.ContainerStart(context.Background(), s.ContainerID, container.StartOptions{}); err != nil {
@@ -111,6 +121,7 @@ func (h *Handler) doStart(id string) {
 		s.HostPath = runner.HostPathForDocker(volumePath, h.ServersDir, h.ServersHostDir)
 		s.ContainerPath = "/data"
 		s.ModCount = state.CountMods(s)
+		s.ImageName = runner.ImageName
 	}
 
 	s.ContainerStatus = "running"
@@ -136,7 +147,12 @@ func (h *Handler) HandleStartServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.Instance.Save()
-	go h.doStart(id)
+	var req struct {
+		RemoveExisting bool `json:"removeExisting"`
+	}
+	// Empty body is fine — default to false.
+	_ = decodeJSON(r, &req)
+	go h.doStart(id, req.RemoveExisting)
 	jsonResponse(w, s)
 }
 
@@ -279,7 +295,7 @@ func (h *Handler) doRestart(id string) {
 	h.Instance.Set(s)
 	h.Instance.ClearDesired(id, prevStatus)
 	_ = h.Instance.Save()
-	h.doStart(id)
+	h.doStart(id, false)
 }
 
 // handleRestartServer restarts a server container asynchronously.
@@ -380,7 +396,7 @@ func (h *Handler) doRecreateWorld(id string) {
 			h.Instance.Set(s)
 			h.Instance.ClearDesired(id, prevStatus)
 			_ = h.Instance.Save()
-			h.doStart(id)
+			h.doStart(id, false)
 			return
 		}
 		slog.Error("failed to start container after world recreate", "server_id", id, "error", err)

@@ -148,6 +148,7 @@ func (h *Handler) HandleCreateServer(w http.ResponseWriter, r *http.Request) {
 		ContainerStartedAt: time.Now().UTC(),
 		ServerStatus:       "starting",
 		ModCount:           state.CountMods(state.ServerState{VolumePath: volumePath}),
+		ImageName:          runner.ImageName,
 	}
 	h.Instance.Set(s)
 	_ = h.Instance.Save()

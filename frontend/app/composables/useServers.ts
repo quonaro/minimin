@@ -19,6 +19,7 @@ export interface Server {
   containerPath?: string;
   modCount?: number;
   externalJavaArgs?: string[];
+  imageName?: string;
 }
 
 export function useServers() {

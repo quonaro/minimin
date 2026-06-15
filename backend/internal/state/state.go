@@ -42,6 +42,7 @@ type ServerState struct {
 	ModCount           int               `json:"modCount"       yaml:"mod_count"`
 	ExternalJavaArgs   []string          `json:"externalJavaArgs"   yaml:"external_java_args,omitempty"`
 	PendingProperties  map[string]string `json:"pendingProperties"  yaml:"pending_properties,omitempty"`
+	ImageName          string            `json:"imageName"          yaml:"image_name,omitempty"`
 }
 
 // InstanceFile is the in-memory representation of instance.yml.
