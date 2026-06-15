@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="mb-4 space-y-2">
+    <div class="pt-2 mb-4 space-y-2">
       <div class="flex items-center gap-2">
         <div
           class="flex-1 flex items-center rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 overflow-hidden focus-within:ring-2 focus-within:ring-primary"
@@ -13,24 +13,28 @@
             class="flex-1 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 bg-transparent border-none focus:outline-none"
             @keyup.enter="onSearch"
           />
-          <div
+          <select
             v-if="projectType === 'mod'"
-            class="flex border-l border-gray-300 dark:border-neutral-700"
+            :value="sideFilter"
+            class="px-2 py-2 text-xs font-medium bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border-l border-gray-300 dark:border-neutral-700 focus:outline-none cursor-pointer"
+            @change="
+              emit(
+                'update:sideFilter',
+                ($event.target as HTMLSelectElement).value as
+                  | 'all'
+                  | 'server'
+                  | 'client',
+              )
+            "
           >
-            <button
+            <option
               v-for="opt in sideOptions"
               :key="opt.value"
-              class="px-2.5 py-2 text-xs font-medium transition-colors"
-              :class="
-                sideFilter === opt.value
-                  ? 'bg-primary text-white'
-                  : 'text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-              "
-              @click="emit('update:sideFilter', opt.value)"
+              :value="opt.value"
             >
               {{ opt.label }}
-            </button>
-          </div>
+            </option>
+          </select>
         </div>
         <select
           v-if="!props.lockedType"
@@ -42,15 +46,6 @@
           <option value="resourcepack">Resource Packs</option>
           <option value="shaderpack">Shaders</option>
         </select>
-      </div>
-      <div class="flex items-center gap-2">
-        <div
-          class="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400 ml-auto"
-        >
-          <span v-if="projectType === 'mod'">Loader: {{ loader }}</span>
-          <span v-if="projectType === 'mod'">&middot;</span>
-          <span>Version: {{ gameVersion }}</span>
-        </div>
       </div>
     </div>
 

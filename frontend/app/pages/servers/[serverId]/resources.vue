@@ -419,9 +419,29 @@
           <div
             class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-neutral-700 shrink-0"
           >
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-              Mod Library
-            </h2>
+            <div class="flex items-center gap-3">
+              <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+                Library
+              </h2>
+              <span
+                v-if="serverEngine"
+                class="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-semibold"
+              >
+                {{ serverEngine }}
+              </span>
+              <span
+                v-if="serverGameVersion"
+                class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold"
+              >
+                {{ serverGameVersion }}
+              </span>
+              <span
+                v-if="serverLoaderVersion"
+                class="px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-semibold"
+              >
+                {{ serverLoaderVersion }}
+              </span>
+            </div>
             <button
               class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-700 text-gray-500 dark:text-neutral-400 transition-colors"
               @click="showLibraryPanel = false"
@@ -429,7 +449,9 @@
               <X class="w-5 h-5" />
             </button>
           </div>
-          <div class="flex-1 min-h-0 overflow-hidden p-4 md:p-6">
+          <div
+            class="flex-1 min-h-0 overflow-hidden px-4 md:px-6 pb-4 md:pb-6 pt-2"
+          >
             <mod-library
               :search-query="modrinth.searchQuery.value"
               :search-results="modrinth.searchResults.value"
@@ -566,10 +588,28 @@ const zipContentsMap = ref<Record<string, string[]>>({});
 const isDraggingOver = ref(false);
 const bulkUploadLoading = ref(false);
 
-const activeMainTab = ref<"server" | "client">("server");
-const activeClientSubTab = ref<"mods" | "resourcepacks" | "shaderpacks">(
-  "mods",
+const router = useRouter();
+
+const validMainTabs = ["server", "client"] as const;
+const validSubTabs = ["mods", "resourcepacks", "shaderpacks"] as const;
+
+const activeMainTab = ref<"server" | "client">(
+  validMainTabs.includes(route.query.tab as any)
+    ? (route.query.tab as "server" | "client")
+    : "server",
 );
+const activeClientSubTab = ref<"mods" | "resourcepacks" | "shaderpacks">(
+  validSubTabs.includes(route.query.sub as any)
+    ? (route.query.sub as "mods" | "resourcepacks" | "shaderpacks")
+    : "mods",
+);
+
+watch(activeMainTab, (v) => {
+  router.replace({ query: { ...route.query, tab: v } });
+});
+watch(activeClientSubTab, (v) => {
+  router.replace({ query: { ...route.query, sub: v } });
+});
 
 const clientTabs = [
   { key: "mods" as const, label: "Mods", icon: Box },
@@ -913,6 +953,7 @@ function removePendingFile(idx: number) {
 const modrinth = useModrinth();
 const serverEngine = ref("");
 const serverGameVersion = ref("");
+const serverLoaderVersion = ref("");
 const versionsMap = ref<
   Record<string, import("~/composables/useModrinth").ModrinthVersion[]>
 >({});
@@ -936,8 +977,14 @@ function onProjectTypeChange(v: "mod" | "resourcepack" | "shaderpack") {
 async function fetchServerInfo() {
   try {
     const res = await $fetch<
-      | { body: { engineType: string; gameVersion: string } }
-      | { engineType: string; gameVersion: string }
+      | {
+          body: {
+            engineType: string;
+            gameVersion: string;
+            loaderVersion?: string;
+          };
+        }
+      | { engineType: string; gameVersion: string; loaderVersion?: string }
     >(`/servers/${serverId}`, {
       baseURL: useApiBase(),
       credentials: "include",
@@ -946,6 +993,7 @@ async function fetchServerInfo() {
     const engine = (data.engineType ?? "").toUpperCase();
     serverEngine.value = engine;
     serverGameVersion.value = data.gameVersion ?? "";
+    serverLoaderVersion.value = data.loaderVersion ?? "";
     if (engine === "PAPERMC" || engine === "PAPER") {
       await navigateTo(`/servers/${serverId}/plugins`, { replace: true });
       return;
