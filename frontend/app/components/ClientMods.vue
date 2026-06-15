@@ -370,9 +370,12 @@ async function onDrop(e: DragEvent) {
     return;
   }
 
-  const file = dt.files[0];
-  if (!file) return;
-  emit("upload", file);
+  const files = [...dt.files].filter((f) =>
+    f.name.toLowerCase().endsWith(".jar"),
+  );
+  for (const file of files) {
+    emit("upload", file);
+  }
 }
 
 function onDragStart(e: DragEvent, mod: ModInfo) {

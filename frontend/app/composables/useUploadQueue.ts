@@ -6,12 +6,19 @@ export interface UploadTask {
   percentage: number;
   speed: number;
   remainingSeconds: number;
+  duration?: number; // ms, set on done
   status: "pending" | "uploading" | "done" | "error" | "cancelled";
   xhr?: XMLHttpRequest;
 }
 
 export function useUploadQueue() {
   const uploads = useState<UploadTask[]>("upload-queue", () => []);
+
+  function updateTask(id: string, patch: Partial<UploadTask>) {
+    const t = uploads.value.find((u) => u.id === id);
+    if (!t) return;
+    Object.assign(t, patch);
+  }
 
   function upload(
     body: FormData | File | Blob,
@@ -32,68 +39,89 @@ export function useUploadQueue() {
         if (f instanceof File) fileName = f.name;
       }
 
-      const task: UploadTask = {
+      const fileSize =
+        body instanceof File
+          ? body.size
+          : body instanceof FormData
+            ? (body.get("file") instanceof File
+                ? (body.get("file") as File).size
+                : 0)
+            : 0;
+
+      uploads.value.push({
         id,
         fileName,
         loaded: 0,
-        total: 0,
+        total: fileSize,
         percentage: 0,
         speed: 0,
         remainingSeconds: 0,
         status: "pending",
-      };
-
-      uploads.value.push(task);
+      });
 
       const xhr = new XMLHttpRequest();
-      task.xhr = xhr;
+      updateTask(id, { xhr });
 
       const startTime = Date.now();
       let lastLoaded = 0;
       let lastTime = startTime;
 
       xhr.upload.addEventListener("progress", (e) => {
-        if (!e.lengthComputable) return;
+        const t = uploads.value.find((u) => u.id === id);
+        if (!t) return;
+        const total = e.total && e.total > 0 ? e.total : t.total;
+        if (!total) return;
+
         const now = Date.now();
         const dt = (now - lastTime) / 1000;
         if (dt <= 0) return;
 
         const dloaded = e.loaded - lastLoaded;
-        task.loaded = e.loaded;
-        task.total = e.total;
-        task.percentage = Math.round((e.loaded / e.total) * 100);
-        task.status = "uploading";
-        task.speed = dloaded / dt;
-        task.remainingSeconds = Math.max(0, (e.total - e.loaded) / task.speed);
+        const speed = dloaded / dt;
+        updateTask(id, {
+          loaded: e.loaded,
+          total,
+          percentage: Math.min(100, Math.round((e.loaded / total) * 100)),
+          status: "uploading",
+          speed,
+          remainingSeconds:
+            speed > 0 ? Math.max(0, (total - e.loaded) / speed) : 0,
+        });
 
         lastLoaded = e.loaded;
         lastTime = now;
       });
 
       xhr.addEventListener("load", () => {
+        const duration = Date.now() - startTime;
         if (xhr.status >= 200 && xhr.status < 300) {
-          task.status = "done";
-          task.percentage = 100;
-          setTimeout(() => {
-            uploads.value = uploads.value.filter((u) => u.id !== id);
-          }, 2000);
+          updateTask(id, {
+            status: "done",
+            percentage: 100,
+            duration,
+          });
           resolve();
         } else {
-          task.status = "error";
-          uploads.value = uploads.value.filter((u) => u.id !== id);
-          reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+          updateTask(id, { status: "error", duration });
+          reject(
+            new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`),
+          );
         }
       });
 
       xhr.addEventListener("error", () => {
-        task.status = "error";
-        uploads.value = uploads.value.filter((u) => u.id !== id);
+        updateTask(id, {
+          status: "error",
+          duration: Date.now() - startTime,
+        });
         reject(new Error("Network error during upload"));
       });
 
       xhr.addEventListener("abort", () => {
-        task.status = "cancelled";
-        uploads.value = uploads.value.filter((u) => u.id !== id);
+        updateTask(id, {
+          status: "cancelled",
+          duration: Date.now() - startTime,
+        });
         reject(new Error("Upload cancelled"));
       });
 
@@ -105,7 +133,18 @@ export function useUploadQueue() {
         );
       }
 
-      xhr.send(body);
+      let sendBody: XMLHttpRequestBodyInit = body;
+      if (body instanceof File || body instanceof Blob) {
+        const fd = new FormData();
+        if (body instanceof File) {
+          fd.append("file", body, body.name);
+        } else {
+          fd.append("file", body);
+        }
+        sendBody = fd;
+      }
+
+      xhr.send(sendBody);
     });
   }
 
@@ -116,5 +155,9 @@ export function useUploadQueue() {
     }
   }
 
-  return { uploads, upload, cancelUpload };
+  function removeUpload(id: string) {
+    uploads.value = uploads.value.filter((u) => u.id !== id);
+  }
+
+  return { uploads, upload, cancelUpload, removeUpload };
 }

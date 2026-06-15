@@ -662,6 +662,12 @@ export function useFilesExplorer() {
 
   onMounted(async () => {
     document.addEventListener("keydown", onDocumentKeyDown);
+    const rawPath = Array.isArray(route.query.path)
+      ? route.query.path[0]
+      : route.query.path;
+    if (typeof rawPath === "string" && rawPath) {
+      currentPath.value = parentPath(normalizePath(rawPath));
+    }
     await refreshList();
   });
 

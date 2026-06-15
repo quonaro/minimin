@@ -343,15 +343,18 @@ function onDrop(e: DragEvent) {
     return;
   }
 
-  const file = dt.files[0];
-  if (!file) return;
-  const ext = file.name.split(".").pop()?.toLowerCase();
-  if (ext !== "jar" && ext !== "zip") {
+  const files = [...dt.files].filter((f) => {
+    const ext = f.name.split(".").pop()?.toLowerCase();
+    return ext === "jar" || ext === "zip";
+  });
+  if (files.length === 0 && dt.files.length > 0) {
     useToast().show("error", "Invalid file type", {
       description: "Only .jar and .zip files are allowed.",
     });
     return;
   }
-  emit("upload", file);
+  for (const file of files) {
+    emit("upload", file);
+  }
 }
 </script>
