@@ -101,6 +101,30 @@
           </option>
         </select>
       </div>
+      <select
+        v-if="
+          activeMainTab === 'server' ||
+          (activeMainTab === 'client' && activeClientSubTab === 'mods')
+        "
+        :value="sortBy"
+        class="px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-xs text-gray-700 dark:text-neutral-300 focus:outline-none cursor-pointer"
+        @change="
+          sortBy = ($event.target as HTMLSelectElement).value as
+            | 'name-asc'
+            | 'name-desc'
+            | 'size-asc'
+            | 'size-desc'
+            | 'date-asc'
+            | 'date-desc'
+        "
+      >
+        <option value="name-asc">Name (A-Z)</option>
+        <option value="name-desc">Name (Z-A)</option>
+        <option value="size-asc">Size (smallest)</option>
+        <option value="size-desc">Size (largest)</option>
+        <option value="date-asc">Date (oldest)</option>
+        <option value="date-desc">Date (newest)</option>
+      </select>
     </div>
 
     <!-- ZIP Preview Modal -->
@@ -343,6 +367,17 @@
       </div>
     </div>
 
+    <!-- Batch Delete Confirm -->
+    <confirm-dialog
+      v-model="showBatchDeleteModal"
+      title="Delete selected mods?"
+      :description="`This will permanently delete ${batchDeleteFilenames.length} selected mod(s).`"
+      confirm-label="Delete"
+      danger
+      simple
+      @confirm="confirmBatchDelete"
+    />
+
     <!-- Tabs -->
     <div
       class="mb-4 flex items-center gap-1 border-b border-gray-200 dark:border-neutral-700"
@@ -436,9 +471,12 @@
           :server-id="serverId"
           :search-query="searchQuery"
           :side-filter="installedSideFilter"
+          :sort-by="sortBy"
           @delete="deleteMod"
+          @batch-delete="openBatchDelete('server', $event)"
           @upload="handleUpload"
           @toggle="handleToggle"
+          @batch-toggle="handleBatchToggle"
           @move="handleClientMove"
           @copy="handleCopy"
           @show-in-files="(f) => openFileInManager(f, 'mods')"
@@ -465,10 +503,13 @@
             :show-archive-modal="showArchiveModal"
             :search-query="searchQuery"
             :side-filter="clientSideFilter"
+            :sort-by="sortBy"
             @update:show-archive-modal="showArchiveModal = $event"
             @delete="handleClientDelete"
+            @batch-delete="openBatchDelete('client', $event)"
             @upload="handleClientUpload"
             @toggle="handleClientToggle"
+            @batch-toggle="handleClientBatchToggle"
             @move="handleClientMove"
             @copy="handleCopy"
             @generate-archive="handleGenerateArchive"
@@ -627,6 +668,7 @@ import {
   X,
   Archive,
 } from "lucide-vue-next";
+import ConfirmDialog from "~/components/ConfirmDialog.vue";
 import JSZip from "jszip";
 import { useClientAssetsRefresh } from "~/composables/useClientAssetsRefresh";
 import { useClientAssets } from "~/composables/useClientAssets";
@@ -645,9 +687,11 @@ const {
   downloadLoading,
   refresh,
   deleteMod,
+  deleteMods,
   uploadFile,
   downloadFromURL,
   toggleMod,
+  toggleMods,
 } = useMods(serverId);
 const {
   mods: clientModList,
@@ -657,9 +701,11 @@ const {
   archiveLoading: clientArchiveLoading,
   refresh: refreshClient,
   deleteMod: deleteClientMod,
+  deleteMods: deleteClientMods,
   uploadFile: uploadClientFile,
   downloadFromURL: downloadClientFromURL,
   toggleMod: toggleClientMod,
+  toggleMods: toggleClientMods,
   moveMod: moveClientMod,
   copyMod: copyClientMod,
   createArchive,
@@ -859,6 +905,45 @@ const installedAssetBasenames = computed(() => {
 const installedSideFilter = ref<"all" | "server" | "client">("all");
 const clientSideFilter = ref<"all" | "server" | "client">("all");
 const librarySideFilter = ref<"all" | "server" | "client">("all");
+const sortBy = ref<
+  "name-asc" | "name-desc" | "size-asc" | "size-desc" | "date-asc" | "date-desc"
+>("name-asc");
+
+const showBatchDeleteModal = ref(false);
+const batchDeleteTarget = ref<"server" | "client">("server");
+const batchDeleteFilenames = ref<string[]>([]);
+
+function openBatchDelete(target: "server" | "client", filenames: string[]) {
+  batchDeleteTarget.value = target;
+  batchDeleteFilenames.value = filenames;
+  showBatchDeleteModal.value = true;
+}
+
+async function confirmBatchDelete() {
+  showBatchDeleteModal.value = false;
+  if (batchDeleteTarget.value === "server") {
+    await handleBatchDelete(batchDeleteFilenames.value);
+  } else {
+    await handleClientBatchDelete(batchDeleteFilenames.value);
+  }
+  batchDeleteFilenames.value = [];
+}
+
+async function handleBatchDelete(filenames: string[]) {
+  await deleteMods(filenames);
+}
+
+async function handleBatchToggle(filenames: string[]) {
+  await toggleMods(filenames);
+}
+
+async function handleClientBatchDelete(filenames: string[]) {
+  await deleteClientMods(filenames);
+}
+
+async function handleClientBatchToggle(filenames: string[]) {
+  await toggleClientMods(filenames);
+}
 
 const showCopyAllModal = ref(false);
 const copyAllLoading = ref(false);

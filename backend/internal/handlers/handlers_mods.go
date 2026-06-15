@@ -55,15 +55,17 @@ func (h *Handler) HandleListServerMods(w http.ResponseWriter, r *http.Request) {
 		modInfo, _ := parseModInfoCached(modPath, info.Size(), info.ModTime())
 		if modInfo == nil {
 			modInfo = &ModInfo{
-				Filename:  e.Name(),
-				Name:      strings.TrimSuffix(e.Name(), ".deactivated"),
-				Size:      info.Size(),
-				Enabled:   !isDeactivated,
-				Corrupted: true,
+				Filename:    e.Name(),
+				Name:        strings.TrimSuffix(e.Name(), ".deactivated"),
+				Size:        info.Size(),
+				Enabled:     !isDeactivated,
+				Corrupted:   true,
+				InstalledAt: info.ModTime().Unix(),
 			}
 		} else {
 			modInfo.Filename = e.Name()
 			modInfo.Enabled = !isDeactivated
+			modInfo.InstalledAt = info.ModTime().Unix()
 			if isDeactivated && strings.HasSuffix(modInfo.Name, ".deactivated") {
 				modInfo.Name = strings.TrimSuffix(modInfo.Name, ".deactivated")
 			}

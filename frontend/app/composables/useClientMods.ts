@@ -137,6 +137,48 @@ export function useClientMods(serverId: string) {
     }
   }
 
+  async function deleteMods(filenames: string[]) {
+    if (filenames.length === 0) return;
+    try {
+      await Promise.all(
+        filenames.map((filename) =>
+          $fetch(`/servers/${serverId}/client-mods/${encodeURIComponent(filename)}`, {
+            baseURL: useApiBase(),
+            method: "DELETE",
+            credentials: "include",
+          }),
+        ),
+      );
+      show("success", `Deleted ${filenames.length} mod(s)`);
+      await refresh();
+    } catch (err: any) {
+      show("error", "Failed to delete client mods", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    }
+  }
+
+  async function toggleMods(filenames: string[]) {
+    if (filenames.length === 0) return;
+    try {
+      await Promise.all(
+        filenames.map((filename) =>
+          $fetch(`/servers/${serverId}/client-mods/${encodeURIComponent(filename)}/toggle`, {
+            baseURL: useApiBase(),
+            method: "POST",
+            credentials: "include",
+          }),
+        ),
+      );
+      show("success", `Toggled ${filenames.length} mod(s)`);
+      await refresh();
+    } catch (err: any) {
+      show("error", "Failed to toggle client mods", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    }
+  }
+
   async function moveMod(filename: string, target: "server" | "client") {
     try {
       await $fetch(`/servers/${serverId}/client-mods/move`, {
@@ -256,9 +298,11 @@ export function useClientMods(serverId: string) {
     archiveLoading,
     refresh,
     deleteMod,
+    deleteMods,
     uploadFile,
     downloadFromURL,
     toggleMod,
+    toggleMods,
     moveMod,
     copyMod,
     createArchive,

@@ -23,167 +23,206 @@
       </p>
     </div>
 
-    <div
-      v-else
-      class="grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 content-start flex-1 min-h-0 overflow-y-auto p-2"
-    >
+    <div v-else class="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1">
       <div
-        v-for="mod in filteredMods"
-        :key="mod.filename"
-        class="flex flex-col p-2 rounded-xl border transition-colors"
-        :class="
-          mod.corrupted
-            ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
-            : mod.enabled !== false
-              ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
-              : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
-        "
-        :title="mod.description || ''"
-        @contextmenu.prevent="openContextMenu(mod, $event)"
+        v-if="selected.size > 0"
+        class="flex items-center gap-2 p-2 pb-0 shrink-0"
+      >
+        <span class="text-xs text-gray-500 dark:text-neutral-400">
+          {{ selected.size }} selected
+        </span>
+        <button class="text-xs text-primary hover:underline" @click="selectAll">
+          Select all
+        </button>
+        <button
+          class="text-xs text-gray-500 dark:text-neutral-400 hover:underline"
+          @click="clearSelection"
+        >
+          Clear
+        </button>
+        <div class="flex-1" />
+        <button
+          class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors"
+          @click="emitBatchToggle"
+        >
+          <EyeOff class="w-3 h-3" />
+          Toggle
+        </button>
+        <button
+          class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+          @click="emitBatchDelete"
+        >
+          <Trash2 class="w-3 h-3" />
+          Delete
+        </button>
+      </div>
+      <div
+        class="grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 content-start p-2"
       >
         <div
-          class="self-center relative w-10 h-10 rounded-xl overflow-hidden"
+          v-for="mod in filteredMods"
+          :key="mod.filename"
+          class="relative flex flex-col p-2 rounded-xl border transition-colors"
           :class="
             mod.corrupted
-              ? 'bg-red-100 dark:bg-red-900/30'
-              : 'bg-indigo-50 dark:bg-indigo-900/20'
+              ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
+              : mod.enabled !== false
+                ? 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300 dark:hover:border-neutral-600'
+                : 'bg-gray-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-60'
           "
+          :title="mod.description || ''"
+          @contextmenu.prevent="openContextMenu(mod, $event)"
         >
-          <img
-            v-if="serverId && !mod.corrupted"
-            v-show="iconLoaded[mod.filename]"
-            :src="getIconUrl(mod.filename)"
-            class="w-full h-full object-cover"
-            alt=""
-            @load="iconLoaded[mod.filename] = true"
-            @error="iconLoaded[mod.filename] = false"
+          <input
+            type="checkbox"
+            class="absolute top-1 right-1 z-10 w-3.5 h-3.5 rounded border-gray-300 dark:border-neutral-600 text-primary focus:ring-primary cursor-pointer"
+            :checked="selected.has(mod.filename)"
+            @click.stop="toggleSelect(mod.filename)"
           />
           <div
-            v-show="mod.corrupted || !iconLoaded[mod.filename]"
-            class="absolute inset-0 flex items-center justify-center"
-            :class="mod.corrupted ? 'text-red-500' : 'text-indigo-500'"
-          >
-            <AlertTriangle v-if="mod.corrupted" class="w-5 h-5" />
-            <Box v-else class="w-5 h-5" />
-          </div>
-        </div>
-        <div class="mt-1 flex items-center justify-center gap-1 flex-wrap">
-          <template v-if="mod.corrupted">
-            <span
-              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-              >Corrupted JAR</span
-            >
-          </template>
-          <template v-else>
-            <span
-              v-if="mod.version"
-              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 truncate max-w-[4.5rem]"
-            >
-              {{ mod.version }}
-            </span>
-            <span
-              v-if="mod.size"
-              class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-neutral-400"
-            >
-              {{ formatBytes(mod.size) }}
-            </span>
-          </template>
-        </div>
-        <div class="mt-0.5 text-center min-w-0">
-          <p
-            class="text-xs font-semibold truncate"
+            class="self-center relative w-10 h-10 rounded-xl overflow-hidden"
             :class="
               mod.corrupted
-                ? 'text-red-700 dark:text-red-300'
-                : 'text-gray-900 dark:text-white'
+                ? 'bg-red-100 dark:bg-red-900/30'
+                : 'bg-indigo-50 dark:bg-indigo-900/20'
             "
           >
-            {{ mod.name || mod.filename }}
-          </p>
-        </div>
-        <div class="mt-1.5 flex items-center justify-center gap-0.5">
-          <button
-            class="text-gray-400 hover:text-primary transition-colors p-1"
-            title="Show in File Manager"
-            @click="emit('show-in-files', mod.filename)"
-          >
-            <FolderOpen class="w-3.5 h-3.5" />
-          </button>
-          <button
-            class="text-gray-400 hover:text-primary transition-colors p-1"
-            :title="mod.enabled !== false ? 'Disable mod' : 'Enable mod'"
-            @click="emit('toggle', mod.filename)"
-          >
-            <Eye v-if="mod.enabled !== false" class="w-3.5 h-3.5" />
-            <EyeOff v-else class="w-3.5 h-3.5" />
-          </button>
-          <button
-            class="text-gray-400 hover:text-amber-500 transition-colors p-1"
-            title="Move to server mods"
-            @click="emit('move', mod.filename, 'server')"
-          >
-            <Server class="w-3.5 h-3.5" />
-          </button>
-          <button
-            class="text-gray-400 hover:text-red-500 transition-colors p-1"
-            :disabled="loading"
-            @click="emit('delete', mod.filename)"
-          >
-            <Trash2 class="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      <div
-        v-if="contextMenuOpen"
-        class="fixed inset-0 z-40"
-        @click="closeContextMenu"
-        @contextmenu.prevent
-      >
-        <div
-          data-mods-context-menu="true"
-          class="fixed z-50 min-w-[210px] bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl py-1"
-          :style="{ left: `${contextMenuX}px`, top: `${contextMenuY}px` }"
-          @click.stop
-        >
-          <button
-            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
-            @click="contextShowInFiles"
-          >
-            <FolderOpen class="w-4 h-4" />
-            Show in File Manager
-          </button>
-          <button
-            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
-            @click="contextToggle"
-          >
-            <component
-              :is="contextTarget?.enabled !== false ? EyeOff : Eye"
-              class="w-4 h-4"
+            <img
+              v-if="serverId && !mod.corrupted"
+              v-show="iconLoaded[mod.filename]"
+              :src="getIconUrl(mod.filename)"
+              class="w-full h-full object-cover"
+              alt=""
+              @load="iconLoaded[mod.filename] = true"
+              @error="iconLoaded[mod.filename] = false"
             />
-            {{ contextTarget?.enabled !== false ? "Disable" : "Enable" }}
-          </button>
-          <button
-            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
-            @click="contextMove"
+            <div
+              v-show="mod.corrupted || !iconLoaded[mod.filename]"
+              class="absolute inset-0 flex items-center justify-center"
+              :class="mod.corrupted ? 'text-red-500' : 'text-indigo-500'"
+            >
+              <AlertTriangle v-if="mod.corrupted" class="w-5 h-5" />
+              <Box v-else class="w-5 h-5" />
+            </div>
+          </div>
+          <div class="mt-1 flex items-center justify-center gap-1 flex-wrap">
+            <template v-if="mod.corrupted">
+              <span
+                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                >Corrupted JAR</span
+              >
+            </template>
+            <template v-else>
+              <span
+                v-if="mod.version"
+                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 truncate max-w-[4.5rem]"
+              >
+                {{ mod.version }}
+              </span>
+              <span
+                v-if="mod.size"
+                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-neutral-400"
+              >
+                {{ formatBytes(mod.size) }}
+              </span>
+            </template>
+          </div>
+          <div class="mt-0.5 text-center min-w-0">
+            <p
+              class="text-xs font-semibold truncate"
+              :class="
+                mod.corrupted
+                  ? 'text-red-700 dark:text-red-300'
+                  : 'text-gray-900 dark:text-white'
+              "
+            >
+              {{ mod.name || mod.filename }}
+            </p>
+          </div>
+          <div class="mt-1.5 flex items-center justify-center gap-0.5">
+            <button
+              class="text-gray-400 hover:text-primary transition-colors p-1"
+              title="Show in File Manager"
+              @click="emit('show-in-files', mod.filename)"
+            >
+              <FolderOpen class="w-3.5 h-3.5" />
+            </button>
+            <button
+              class="text-gray-400 hover:text-primary transition-colors p-1"
+              :title="mod.enabled !== false ? 'Disable mod' : 'Enable mod'"
+              @click="emit('toggle', mod.filename)"
+            >
+              <Eye v-if="mod.enabled !== false" class="w-3.5 h-3.5" />
+              <EyeOff v-else class="w-3.5 h-3.5" />
+            </button>
+            <button
+              class="text-gray-400 hover:text-amber-500 transition-colors p-1"
+              title="Move to server mods"
+              @click="emit('move', mod.filename, 'server')"
+            >
+              <Server class="w-3.5 h-3.5" />
+            </button>
+            <button
+              class="text-gray-400 hover:text-red-500 transition-colors p-1"
+              :disabled="loading"
+              @click="emit('delete', mod.filename)"
+            >
+              <Trash2 class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-if="contextMenuOpen"
+          class="fixed inset-0 z-40"
+          @click="closeContextMenu"
+          @contextmenu.prevent
+        >
+          <div
+            data-mods-context-menu="true"
+            class="fixed z-50 min-w-[210px] bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl py-1"
+            :style="{ left: `${contextMenuX}px`, top: `${contextMenuY}px` }"
+            @click.stop
           >
-            <Server class="w-4 h-4" />
-            Move to server mods
-          </button>
-          <button
-            class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
-            @click="contextCopy"
-          >
-            <Copy class="w-4 h-4" />
-            Copy to server mods
-          </button>
-          <button
-            class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-            @click="contextDelete"
-          >
-            <Trash2 class="w-4 h-4" />
-            Delete
-          </button>
+            <button
+              class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+              @click="contextShowInFiles"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Show in File Manager
+            </button>
+            <button
+              class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+              @click="contextToggle"
+            >
+              <component
+                :is="contextTarget?.enabled !== false ? EyeOff : Eye"
+                class="w-4 h-4"
+              />
+              {{ contextTarget?.enabled !== false ? "Disable" : "Enable" }}
+            </button>
+            <button
+              class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+              @click="contextMove"
+            >
+              <Server class="w-4 h-4" />
+              Move to server mods
+            </button>
+            <button
+              class="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+              @click="contextCopy"
+            >
+              <Copy class="w-4 h-4" />
+              Copy to server mods
+            </button>
+            <button
+              class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+              @click="contextDelete"
+            >
+              <Trash2 class="w-4 h-4" />
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -226,6 +265,13 @@ interface Props {
   serverId?: string;
   searchQuery?: string;
   sideFilter?: "all" | "server" | "client";
+  sortBy?:
+    | "name-asc"
+    | "name-desc"
+    | "size-asc"
+    | "size-desc"
+    | "date-asc"
+    | "date-desc";
   archiveLoading?: boolean;
   archiveResult?: ArchiveInfo | null;
   archiveLinks?: ArchiveLinkEntry[];
@@ -236,6 +282,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
   sideFilter: "all",
+  sortBy: "name-asc",
   archiveLoading: false,
   archiveResult: null,
   archiveLinks: () => [],
@@ -244,8 +291,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 const emit = defineEmits<{
   delete: [filename: string];
+  "batch-delete": [filenames: string[]];
   upload: [file: File];
   toggle: [filename: string];
+  "batch-toggle": [filenames: string[]];
   move: [filename: string, target: "server" | "client"];
   copy: [
     filename: string,
@@ -313,6 +362,38 @@ function contextDelete() {
   closeContextMenu();
 }
 
+const selected = ref<Set<string>>(new Set());
+
+function toggleSelect(filename: string) {
+  const s = selected.value;
+  if (s.has(filename)) {
+    s.delete(filename);
+  } else {
+    s.add(filename);
+  }
+  selected.value = new Set(s);
+}
+
+function selectAll() {
+  selected.value = new Set(filteredMods.value.map((m) => m.filename));
+}
+
+function clearSelection() {
+  selected.value = new Set();
+}
+
+function emitBatchDelete() {
+  if (selected.value.size === 0) return;
+  emit("batch-delete", [...selected.value]);
+  selected.value = new Set();
+}
+
+function emitBatchToggle() {
+  if (selected.value.size === 0) return;
+  emit("batch-toggle", [...selected.value]);
+  selected.value = new Set();
+}
+
 const iconLoaded = ref<Record<string, boolean>>({});
 
 function getIconUrl(filename: string): string {
@@ -335,6 +416,31 @@ const filteredMods = computed(() => {
     list = list.filter((m) => m.environment === "server");
   } else if (props.sideFilter === "client") {
     list = list.filter((m) => m.environment === "client");
+  }
+  list = [...list];
+  switch (props.sortBy) {
+    case "name-asc":
+      list.sort((a, b) =>
+        (a.name || a.filename).localeCompare(b.name || b.filename),
+      );
+      break;
+    case "name-desc":
+      list.sort((a, b) =>
+        (b.name || b.filename).localeCompare(a.name || a.filename),
+      );
+      break;
+    case "size-asc":
+      list.sort((a, b) => (a.size ?? 0) - (b.size ?? 0));
+      break;
+    case "size-desc":
+      list.sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
+      break;
+    case "date-asc":
+      list.sort((a, b) => (a.installed_at ?? 0) - (b.installed_at ?? 0));
+      break;
+    case "date-desc":
+      list.sort((a, b) => (b.installed_at ?? 0) - (a.installed_at ?? 0));
+      break;
   }
   return list;
 });

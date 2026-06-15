@@ -12,6 +12,7 @@ export interface ModInfo {
   enabled?: boolean;
   environment?: string;
   corrupted?: boolean;
+  installed_at?: number;
 }
 
 export function useMods(serverId: string) {
@@ -132,6 +133,48 @@ export function useMods(serverId: string) {
     }
   }
 
+  async function deleteMods(filenames: string[]) {
+    if (filenames.length === 0) return;
+    try {
+      await Promise.all(
+        filenames.map((filename) =>
+          $fetch(`/servers/${serverId}/mods/${encodeURIComponent(filename)}`, {
+            baseURL: useApiBase(),
+            method: "DELETE",
+            credentials: "include",
+          }),
+        ),
+      );
+      show("success", `Deleted ${filenames.length} mod(s)`);
+      await refresh();
+    } catch (err: any) {
+      show("error", "Failed to delete mods", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    }
+  }
+
+  async function toggleMods(filenames: string[]) {
+    if (filenames.length === 0) return;
+    try {
+      await Promise.all(
+        filenames.map((filename) =>
+          $fetch(`/servers/${serverId}/mods/${encodeURIComponent(filename)}/toggle`, {
+            baseURL: useApiBase(),
+            method: "POST",
+            credentials: "include",
+          }),
+        ),
+      );
+      show("success", `Toggled ${filenames.length} mod(s)`);
+      await refresh();
+    } catch (err: any) {
+      show("error", "Failed to toggle mods", {
+        description: err?.data?.detail || err?.message || "Unknown error",
+      });
+    }
+  }
+
   return {
     mods,
     loading,
@@ -139,8 +182,10 @@ export function useMods(serverId: string) {
     downloadLoading,
     refresh,
     deleteMod,
+    deleteMods,
     uploadFile,
     downloadFromURL,
     toggleMod,
+    toggleMods,
   };
 }
