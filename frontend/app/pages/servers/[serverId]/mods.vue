@@ -419,6 +419,7 @@ import { Upload, Link, Download, Copy, Box } from "lucide-vue-next";
 import JSZip from "jszip";
 import { useClientAssetsRefresh } from "~/composables/useClientAssetsRefresh";
 import { useClientAssets } from "~/composables/useClientAssets";
+import { useUploadQueue } from "~/composables/useUploadQueue";
 
 usePageTitle("Mods");
 
@@ -461,6 +462,7 @@ const {
 
 const resourcePacks = useClientAssets(serverId, "resourcepacks");
 const shaderPacks = useClientAssets(serverId, "shaderpacks");
+const { upload } = useUploadQueue();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const showUploadModal = ref(false);
@@ -594,15 +596,12 @@ async function handleUploadConfirm() {
     await uploadClientFile(pendingUploadFile.value);
     await refreshClient();
   } else {
-    const formData = new FormData();
-    formData.append("file", pendingUploadFile.value);
-    await $fetch(
-      `/servers/${serverId}/client-assets/upload?type=${clientUploadSection.value}`,
+    await upload(
+      pendingUploadFile.value,
+      `${useApiBase()}/servers/${serverId}/client-assets/upload?type=${clientUploadSection.value}`,
       {
-        baseURL: useApiBase(),
         method: "POST",
-        body: formData,
-        credentials: "include",
+        withCredentials: true,
       },
     );
     useToast().show("success", "Upload complete", {

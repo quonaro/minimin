@@ -1,3 +1,5 @@
+import { useUploadQueue } from "./useUploadQueue";
+
 export interface ModInfo {
   filename: string;
   name: string;
@@ -14,6 +16,7 @@ export interface ModInfo {
 
 export function useMods(serverId: string) {
   const { show } = useToast();
+  const { upload } = useUploadQueue();
 
   const mods = ref<ModInfo[]>([]);
   const loading = ref(false);
@@ -62,19 +65,15 @@ export function useMods(serverId: string) {
   async function uploadFile(file: File) {
     uploadLoading.value = true;
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      await $fetch(`/servers/${serverId}/mods/upload`, {
-        baseURL: useApiBase(),
+      await upload(file, `${useApiBase()}/servers/${serverId}/mods/upload`, {
         method: "POST",
-        body: formData,
-        credentials: "include",
+        withCredentials: true,
       });
       show("success", "Upload complete", { description: file.name });
       await refresh();
     } catch (err: any) {
       show("error", "Upload failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: err?.message || "Unknown error",
       });
     } finally {
       uploadLoading.value = false;

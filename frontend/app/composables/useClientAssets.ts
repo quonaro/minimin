@@ -1,3 +1,5 @@
+import { useUploadQueue } from "./useUploadQueue";
+
 export interface ClientAsset {
   filename: string;
   size: number;
@@ -6,6 +8,7 @@ export interface ClientAsset {
 
 export function useClientAssets(serverId: string, type: "resourcepacks" | "shaderpacks") {
   const { show } = useToast();
+  const { upload } = useUploadQueue();
 
   const assets = ref<ClientAsset[]>([]);
   const loading = ref(false);
@@ -54,19 +57,19 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
   async function uploadFile(file: File) {
     uploadLoading.value = true;
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      await $fetch(`/servers/${serverId}/client-assets/upload?type=${type}`, {
-        baseURL: useApiBase(),
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+      await upload(
+        file,
+        `${useApiBase()}/servers/${serverId}/client-assets/upload?type=${type}`,
+        {
+          method: "POST",
+          withCredentials: true,
+        },
+      );
       show("success", "Upload complete", { description: file.name });
       await refresh();
     } catch (err: any) {
       show("error", "Upload failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: err?.message || "Unknown error",
       });
     } finally {
       uploadLoading.value = false;

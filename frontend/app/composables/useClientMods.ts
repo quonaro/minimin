@@ -1,4 +1,5 @@
 import type { ModInfo } from "./useMods";
+import { useUploadQueue } from "./useUploadQueue";
 
 export interface ArchiveInfo {
   token: string;
@@ -19,6 +20,7 @@ export interface ArchiveLinkEntry {
 
 export function useClientMods(serverId: string) {
   const { show } = useToast();
+  const { upload } = useUploadQueue();
 
   const mods = ref<ModInfo[]>([]);
   const loading = ref(false);
@@ -68,19 +70,15 @@ export function useClientMods(serverId: string) {
   async function uploadFile(file: File) {
     uploadLoading.value = true;
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      await $fetch(`/servers/${serverId}/client-mods/upload`, {
-        baseURL: useApiBase(),
+      await upload(file, `${useApiBase()}/servers/${serverId}/client-mods/upload`, {
         method: "POST",
-        body: formData,
-        credentials: "include",
+        withCredentials: true,
       });
       show("success", "Upload complete", { description: file.name });
       await refresh();
     } catch (err: any) {
       show("error", "Upload failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: err?.message || "Unknown error",
       });
     } finally {
       uploadLoading.value = false;

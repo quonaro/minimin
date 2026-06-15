@@ -11,6 +11,7 @@
       <NuxtPage />
     </main>
     <ToastContainer />
+    <UploadProgress />
   </div>
 </template>
 
