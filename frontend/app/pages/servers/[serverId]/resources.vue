@@ -52,6 +52,33 @@
       </button>
     </div>
 
+    <div class="mb-4 flex items-center gap-2">
+      <input
+        v-model="searchQuery"
+        type="text"
+        :placeholder="searchPlaceholder"
+        class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
+      />
+      <div
+        v-if="activeMainTab === 'server'"
+        class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
+      >
+        <button
+          v-for="opt in sideOptions"
+          :key="opt.value"
+          class="px-2.5 py-1.5 text-xs font-medium transition-colors"
+          :class="
+            installedSideFilter === opt.value
+              ? 'bg-primary text-white'
+              : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
+          "
+          @click="installedSideFilter = opt.value"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+    </div>
+
     <!-- Upload / Download Modal -->
     <div
       v-if="showUploadModal"
@@ -347,8 +374,8 @@
           :mods="mods"
           :loading="loading"
           :server-id="serverId"
-          v-model:search-query="installedSearchQuery"
-          v-model:side-filter="installedSideFilter"
+          :search-query="searchQuery"
+          :side-filter="installedSideFilter"
           @delete="deleteMod"
           @upload="handleUpload"
           @toggle="handleToggle"
@@ -375,7 +402,7 @@
             :archive-links="archiveLinks"
             :links-loading="linksLoading"
             :show-archive-modal="showArchiveModal"
-            v-model:search-query="clientSearchQuery"
+            :search-query="searchQuery"
             @update:show-archive-modal="showArchiveModal = $event"
             @delete="handleClientDelete"
             @upload="handleClientUpload"
@@ -392,7 +419,7 @@
             type="resourcepacks"
             title="Resource Packs"
             :icon="Image"
-            :search-query="clientSearchQuery"
+            :search-query="searchQuery"
           />
           <client-assets
             v-else-if="activeClientSubTab === 'shaderpacks'"
@@ -400,7 +427,7 @@
             type="shaderpacks"
             title="Shader Packs"
             :icon="Sparkles"
-            :search-query="clientSearchQuery"
+            :search-query="searchQuery"
           />
         </div>
       </div>
@@ -581,8 +608,7 @@ const showUploadModal = ref(false);
 const showLibraryPanel = ref(false);
 const showArchiveModal = ref(false);
 const modUrl = ref("");
-const installedSearchQuery = ref("");
-const clientSearchQuery = ref("");
+const searchQuery = ref("");
 const pendingUploadFiles = ref<File[]>([]);
 const zipContentsMap = ref<Record<string, string[]>>({});
 const isDraggingOver = ref(false);
@@ -616,6 +642,20 @@ const clientTabs = [
   { key: "resourcepacks" as const, label: "Resource Packs", icon: Image },
   { key: "shaderpacks" as const, label: "Shader Packs", icon: Sparkles },
 ];
+
+const sideOptions = [
+  { label: "All", value: "all" as const },
+  { label: "Server", value: "server" as const },
+  { label: "Client", value: "client" as const },
+];
+
+const searchPlaceholder = computed(() => {
+  if (activeMainTab.value === "server") return "Search server mods...";
+  if (activeClientSubTab.value === "mods") return "Search client mods...";
+  if (activeClientSubTab.value === "resourcepacks")
+    return "Search resource packs...";
+  return "Search shader packs...";
+});
 
 const { trigger: triggerClientAssetsRefresh } =
   useClientAssetsRefresh(serverId);

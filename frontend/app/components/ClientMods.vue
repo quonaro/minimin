@@ -1,14 +1,7 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <div class="mb-4 flex items-center gap-2">
-      <input
-        :value="rawQuery"
-        type="text"
-        placeholder="Search client mods..."
-        class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
-        @input="onSearchInput"
-      />
-      <span class="text-xs text-gray-500 dark:text-neutral-400 shrink-0">
+    <div class="mb-4 flex items-center justify-end">
+      <span class="text-xs text-gray-500 dark:text-neutral-400">
         {{ filteredMods.length }} items
       </span>
     </div>
@@ -248,28 +241,12 @@ const emit = defineEmits<{
     source: "server" | "client",
     target: "server" | "client",
   ];
-  "update:searchQuery": [value: string];
   "update:showArchiveModal": [value: boolean];
   "generate-archive": [ttl: number, include: string[]];
   "refresh-archive-links": [];
   "delete-archive-link": [token: string];
 }>();
 
-const rawQuery = ref(props.searchQuery);
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-function onSearchInput(e: Event) {
-  const val = (e.target as HTMLInputElement).value;
-  rawQuery.value = val;
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    emit("update:searchQuery", val);
-  }, 150);
-}
-
-onUnmounted(() => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-});
 const isDragOver = ref(false);
 
 const contextMenuOpen = ref(false);

@@ -9,32 +9,6 @@
           {{ filteredMods.length }} mods
         </span>
       </div>
-      <div class="flex items-center gap-2">
-        <input
-          :value="rawQuery"
-          type="text"
-          placeholder="Search server mods..."
-          class="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-primary focus:outline-none"
-          @input="onSearchInput"
-        />
-        <div
-          class="flex rounded-lg border border-gray-300 dark:border-neutral-700 overflow-hidden"
-        >
-          <button
-            v-for="opt in sideOptions"
-            :key="opt.value"
-            class="px-2 py-1.5 text-xs font-medium transition-colors"
-            :class="
-              sideFilter === opt.value
-                ? 'bg-primary text-white'
-                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-            "
-            @click="emit('update:sideFilter', opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
-      </div>
     </div>
 
     <div
@@ -247,27 +221,9 @@ const emit = defineEmits<{
     source: "server" | "client",
     target: "server" | "client",
   ];
-  "update:searchQuery": [value: string];
-  "update:sideFilter": [value: "all" | "server" | "client"];
 }>();
 
 const isDragOver = ref(false);
-
-const rawQuery = ref(props.searchQuery);
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-function onSearchInput(e: Event) {
-  const val = (e.target as HTMLInputElement).value;
-  rawQuery.value = val;
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    emit("update:searchQuery", val);
-  }, 150);
-}
-
-onUnmounted(() => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-});
 
 const contextMenuOpen = ref(false);
 const contextMenuX = ref(0);
@@ -313,12 +269,6 @@ function contextDelete() {
   }
   closeContextMenu();
 }
-
-const sideOptions = [
-  { label: "All", value: "all" as const },
-  { label: "Server", value: "server" as const },
-  { label: "Client", value: "client" as const },
-];
 
 const filteredMods = computed(() => {
   let list = props.mods;
