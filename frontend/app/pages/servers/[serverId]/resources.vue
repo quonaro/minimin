@@ -405,6 +405,7 @@
           @toggle="handleToggle"
           @move="handleClientMove"
           @copy="handleCopy"
+          @show-in-files="(f) => openFileInManager(f, 'mods')"
         />
       </div>
     </div>
@@ -437,6 +438,7 @@
             @generate-archive="handleGenerateArchive"
             @refresh-archive-links="handleRefreshLinks"
             @delete-archive-link="handleDeleteLink"
+            @show-in-files="(f) => openFileInManager(f, 'client-mods')"
           />
           <client-assets
             v-else-if="activeClientSubTab === 'resourcepacks'"
@@ -445,6 +447,7 @@
             title="Resource Packs"
             :icon="Image"
             :search-query="searchQuery"
+            @show-in-files="(f) => openFileInManager(f, 'resourcepacks')"
           />
           <client-assets
             v-else-if="activeClientSubTab === 'shaderpacks'"
@@ -453,6 +456,7 @@
             title="Shader Packs"
             :icon="Sparkles"
             :search-query="searchQuery"
+            @show-in-files="(f) => openFileInManager(f, 'shaderpacks')"
           />
         </div>
       </div>
@@ -802,6 +806,16 @@ function openCopyAllConfirm() {
   const clientFilenames = new Set(clientModList.value.map((m) => m.filename));
   modsToCopy.value = mods.value.filter((m) => !clientFilenames.has(m.filename));
   showCopyAllModal.value = true;
+}
+
+function openFileInManager(
+  filename: string,
+  folder: "mods" | "client-mods" | "resourcepacks" | "shaderpacks",
+) {
+  navigateTo({
+    path: `/servers/${serverId}/files`,
+    query: { path: `${folder}/${filename}` },
+  });
 }
 
 async function handleCopyAll() {
