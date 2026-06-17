@@ -496,15 +496,9 @@
             :mods="clientModList"
             :loading="clientLoading"
             :server-id="serverId"
-            :archive-loading="clientArchiveLoading"
-            :archive-result="archiveResult"
-            :archive-links="archiveLinks"
-            :links-loading="linksLoading"
-            :show-archive-modal="showArchiveModal"
             :search-query="searchQuery"
             :side-filter="clientSideFilter"
             :sort-by="sortBy"
-            @update:show-archive-modal="showArchiveModal = $event"
             @delete="handleClientDelete"
             @batch-delete="openBatchDelete('client', $event)"
             @upload="handleClientUpload"
@@ -512,9 +506,6 @@
             @batch-toggle="handleClientBatchToggle"
             @move="handleClientMove"
             @copy="handleCopy"
-            @generate-archive="handleGenerateArchive"
-            @refresh-archive-links="handleRefreshLinks"
-            @delete-archive-link="handleDeleteLink"
             @show-in-files="(f) => openFileInManager(f, 'mods-client')"
           />
           <client-assets
@@ -540,6 +531,19 @@
         </div>
       </div>
     </div>
+
+    <client-archive-modal
+      :show="showArchiveModal"
+      :archive-loading="clientArchiveLoading"
+      :archive-result="archiveResult"
+      :archive-links="archiveLinks"
+      :links-loading="linksLoading"
+      :default-include="archiveDefaultInclude"
+      @update:show="showArchiveModal = $event"
+      @generate="handleGenerateArchive"
+      @refresh-links="handleRefreshLinks"
+      @delete-link="handleDeleteLink"
+    />
 
     <!-- Slide-over: Mod Library -->
     <Transition name="slide-over">
@@ -806,6 +810,12 @@ const assetUploadLoading = computed(() => {
 });
 
 const assetDownloadLoading = computed(() => false);
+
+const archiveDefaultInclude = computed(() => {
+  if (activeClientSubTab.value === "resourcepacks") return ["resourcepacks"];
+  if (activeClientSubTab.value === "shaderpacks") return ["shaderpacks"];
+  return ["mods"];
+});
 
 const uploadButtonLabel = computed(() => {
   if (activeMainTab.value === "server") return "Upload Mods";

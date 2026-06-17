@@ -19,6 +19,7 @@ const props = defineProps<{
   archiveResult?: ArchiveInfo | null;
   archiveLinks?: ArchiveLinkEntry[];
   linksLoading?: boolean;
+  defaultInclude?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -66,12 +67,13 @@ function deleteLink(token: string) {
 watch(
   () => props.show,
   (val) => {
+    archiveInclude.value = props.defaultInclude
+      ? [...props.defaultInclude]
+      : ["mods"];
+    archiveTTLDays.value = 1;
+    activeTab.value = "generate";
     if (val) {
       emit("refresh-links");
-    } else {
-      archiveInclude.value = ["mods"];
-      archiveTTLDays.value = 1;
-      activeTab.value = "generate";
     }
   },
 );

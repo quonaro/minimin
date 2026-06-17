@@ -256,18 +256,6 @@
         </div>
       </div>
     </div>
-
-    <client-archive-modal
-      :show="props.showArchiveModal"
-      :archive-loading="archiveLoading"
-      :archive-result="archiveResult"
-      :archive-links="archiveLinks"
-      :links-loading="linksLoading"
-      @update:show="emit('update:showArchiveModal', $event)"
-      @generate="generateArchive"
-      @refresh-links="emit('refresh-archive-links')"
-      @delete-link="emit('delete-archive-link', $event)"
-    />
   </div>
 </template>
 
@@ -278,16 +266,11 @@ import {
   Eye,
   EyeOff,
   Server,
-  Archive,
   Copy,
   AlertTriangle,
   FolderOpen,
 } from "lucide-vue-next";
 import type { ModInfo } from "~/composables/useMods";
-import type {
-  ArchiveInfo,
-  ArchiveLinkEntry,
-} from "~/composables/useClientMods";
 
 interface Props {
   mods: ModInfo[];
@@ -302,22 +285,12 @@ interface Props {
     | "size-desc"
     | "date-asc"
     | "date-desc";
-  archiveLoading?: boolean;
-  archiveResult?: ArchiveInfo | null;
-  archiveLinks?: ArchiveLinkEntry[];
-  linksLoading?: boolean;
-  showArchiveModal?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchQuery: "",
   sideFilter: "all",
   sortBy: "name-asc",
-  archiveLoading: false,
-  archiveResult: null,
-  archiveLinks: () => [],
-  linksLoading: false,
-  showArchiveModal: false,
 });
 const emit = defineEmits<{
   delete: [filename: string];
@@ -331,10 +304,6 @@ const emit = defineEmits<{
     source: "server" | "client",
     target: "server" | "client",
   ];
-  "update:showArchiveModal": [value: boolean];
-  "generate-archive": [ttl: number, include: string[]];
-  "refresh-archive-links": [];
-  "delete-archive-link": [token: string];
   "show-in-files": [filename: string];
 }>();
 
@@ -506,9 +475,5 @@ async function onDrop(e: DragEvent) {
   for (const file of files) {
     emit("upload", file);
   }
-}
-
-function generateArchive(ttl: number, include: string[]) {
-  emit("generate-archive", ttl, include);
 }
 </script>
