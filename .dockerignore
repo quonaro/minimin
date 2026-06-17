@@ -13,6 +13,8 @@ frontend/.output
 frontend/.nuxt
 frontend/dist
 frontend/.env
+frontend/.pnpm-store
+frontend/package-lock.json
 
 # Go
 backend/tmp
