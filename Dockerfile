@@ -7,7 +7,8 @@ WORKDIR /app/frontend
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 COPY frontend/ ./
 ENV API_BASE_URL=/
@@ -26,7 +27,8 @@ RUN go mod download
 
 COPY backend/ ./
 COPY --from=frontend-builder /app/frontend/.output/public ./internal/static/web/
-RUN CGO_ENABLED=0 GOOS=linux go build -o orchestrator ./cmd/main.go
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -o orchestrator ./cmd/main.go
 
 # ------------------
 # Backend dev stage
