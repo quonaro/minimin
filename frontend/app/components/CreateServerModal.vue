@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { InstancePreview } from "./CreateServerInstanceDrop.vue";
 
+interface World {
+  name: string;
+  archivePath: string;
+}
+
 const emit = defineEmits<{
   (e: "created", serverId: string): void;
   (e: "close"): void;
@@ -12,6 +17,7 @@ const { loadForEngine, gameVersionsFor, loaderVersionsFor } = useVersions();
 const loading = ref(false);
 const mode = ref<"blank" | "instance">("blank");
 const instancePreview = ref<InstancePreview | null>(null);
+const selectedWorld = ref<World | null>(null);
 const instanceFieldsLocked = ref(false);
 
 const form = reactive({
@@ -154,6 +160,9 @@ async function createFromInstance() {
   if (form.levelName) fd.append("levelName", form.levelName);
   if (form.levelSeed) fd.append("levelSeed", form.levelSeed);
   if (form.levelType) fd.append("levelType", form.levelType);
+  if (selectedWorld.value) {
+    fd.append("world", selectedWorld.value.archivePath);
+  }
 
   const res = await $fetch<{ serverId?: string }>(`/servers/from-instance`, {
     baseURL: useApiBase(),
@@ -182,6 +191,14 @@ function onInstancePreview(preview: InstancePreview) {
       .replace(/^-+|-+$/g, "")
       .slice(0, 32);
   }
+  const worlds = preview.worlds || [];
+  const first = worlds[0];
+  if (first) {
+    selectedWorld.value = first;
+    form.levelName = first.name;
+  } else {
+    selectedWorld.value = null;
+  }
 }
 
 function unlockInstanceFields() {
@@ -190,6 +207,7 @@ function unlockInstanceFields() {
 
 function onInstanceError(message: string) {
   instancePreview.value = null;
+  selectedWorld.value = null;
   instanceFieldsLocked.value = false;
   showToast("error", "Instance preview failed", { description: message });
 }
@@ -197,6 +215,7 @@ function onInstanceError(message: string) {
 function setMode(next: "blank" | "instance") {
   mode.value = next;
   instancePreview.value = null;
+  selectedWorld.value = null;
   instanceFieldsLocked.value = false;
 }
 </script>
@@ -478,6 +497,32 @@ function setMode(next: "blank" | "instance") {
                 class="text-xs text-gray-500 dark:text-neutral-400"
               >
                 Detected: {{ (instancePreview.detectedPaths || []).join(", ") }}
+              </div>
+              <div
+                v-if="(instancePreview.worlds || []).length > 0"
+                class="pt-2"
+              >
+                <label
+                  class="block text-xs font-medium text-gray-700 dark:text-neutral-300 mb-1"
+                >
+                  Import world
+                </label>
+                <select
+                  v-model="selectedWorld"
+                  class="w-full text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                >
+                  <option
+                    v-for="w in instancePreview.worlds"
+                    :key="w.archivePath"
+                    :value="w"
+                  >
+                    {{ w.name }}
+                  </option>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1">
+                  Will be used as level name:
+                  <strong>{{ selectedWorld?.name || "world" }}</strong>
+                </p>
               </div>
             </div>
           </div>

@@ -40,6 +40,7 @@ func (s *Service) Prepare(token string) (*Metadata, error) {
 		return nil, err
 	}
 	meta.DetectedPaths = DetectPaths(zr.Reader, format)
+	meta.Worlds = DetectWorlds(zr.Reader, format)
 	_ = size
 	return meta, nil
 }
@@ -53,7 +54,8 @@ func (s *Service) Save(name string, size int64, src io.Reader) (string, error) {
 }
 
 // Extract token expands a previously stored archive into the target directory.
-func (s *Service) Extract(token, targetDir string) (*Metadata, error) {
+// opts controls which directories and which world are imported.
+func (s *Service) Extract(token string, opts ExtractOptions) (*Metadata, error) {
 	entry, err := s.store.Get(token)
 	if err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func (s *Service) Extract(token, targetDir string) (*Metadata, error) {
 		return nil, err
 	}
 
-	if err := Extract(zr.Reader, format, targetDir); err != nil {
+	if err := Extract(zr.Reader, format, opts); err != nil {
 		return nil, err
 	}
 

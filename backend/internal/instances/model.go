@@ -14,6 +14,12 @@ const (
 	FormatPlain      Format = "plain"
 )
 
+// World describes a save directory found inside an archive.
+type World struct {
+	Name        string `json:"name"`
+	ArchivePath string `json:"archivePath"`
+}
+
 // Metadata contains values that can be inferred from the archive.
 type Metadata struct {
 	Format        Format   `json:"format"`
@@ -22,6 +28,7 @@ type Metadata struct {
 	EngineType    string   `json:"engineType,omitempty"`
 	LoaderVersion string   `json:"loaderVersion,omitempty"`
 	DetectedPaths []string `json:"detectedPaths"`
+	Worlds        []World  `json:"worlds"`
 }
 
 // TempEntry holds an uploaded archive awaiting extraction.
@@ -43,6 +50,14 @@ type ExtractOptions struct {
 	// StripComponents removes leading path components when matching AllowedDirs.
 	// 0 means the directory must appear at the archive root.
 	StripComponents int
+
+	// World is the archive path of a selected world to extract as the server
+	// level. If empty, no world is imported.
+	World string
+
+	// LevelName is the directory name the selected world should be written to.
+	// If empty, "world" is used.
+	LevelName string
 }
 
 // allowedTopLevelDirs is the default list of directories that may be written

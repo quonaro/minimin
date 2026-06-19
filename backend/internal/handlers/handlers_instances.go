@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"orchestrator/internal/instances"
 	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
 )
@@ -86,6 +87,7 @@ func (h *Handler) HandlePrepareInstance(w http.ResponseWriter, r *http.Request) 
 		"engineType":    meta.EngineType,
 		"loaderVersion": meta.LoaderVersion,
 		"detectedPaths": meta.DetectedPaths,
+		"worlds":        meta.Worlds,
 	})
 }
 
@@ -122,6 +124,7 @@ func (h *Handler) HandleCreateServerFromInstance(w http.ResponseWriter, r *http.
 	levelName := r.FormValue("levelName")
 	levelSeed := r.FormValue("levelSeed")
 	levelType := r.FormValue("levelType")
+	worldPath := r.FormValue("world")
 
 	if serverID == "" {
 		id, err := runner.GenerateVolumeID()
@@ -205,7 +208,11 @@ func (h *Handler) HandleCreateServerFromInstance(w http.ResponseWriter, r *http.
 		worldGenEnv["level-type"] = levelType
 	}
 
-	_, err = h.InstanceService.Extract(token, localPath)
+	_, err = h.InstanceService.Extract(token, instances.ExtractOptions{
+		TargetDir: localPath,
+		World:     worldPath,
+		LevelName: levelName,
+	})
 	if err != nil {
 		_ = os.RemoveAll(localPath)
 		jsonError(w, fmt.Sprintf("failed to extract instance: %v", err), http.StatusBadRequest)

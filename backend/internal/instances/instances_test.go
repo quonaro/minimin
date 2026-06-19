@@ -140,7 +140,7 @@ func TestExtractPrism(t *testing.T) {
 	defer zr.Close()
 
 	target := t.TempDir()
-	if err := Extract(zr.Reader, FormatPrism, target); err != nil {
+	if err := Extract(zr.Reader, FormatPrism, ExtractOptions{TargetDir: target}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -177,7 +177,7 @@ func TestExtractMrpack(t *testing.T) {
 	defer zr.Close()
 
 	target := t.TempDir()
-	if err := Extract(zr.Reader, FormatMrpack, target); err != nil {
+	if err := Extract(zr.Reader, FormatMrpack, ExtractOptions{TargetDir: target}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -199,7 +199,7 @@ func TestExtractRejectsTraversal(t *testing.T) {
 	defer zr.Close()
 
 	target := t.TempDir()
-	if err := Extract(zr.Reader, FormatPlain, target); err != nil {
+	if err := Extract(zr.Reader, FormatPlain, ExtractOptions{TargetDir: target}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -294,5 +294,61 @@ func TestServicePrepareUsesStoreToken(t *testing.T) {
 	}
 	if meta.InstanceName != "SvcTest" {
 		t.Errorf("instance name: got %q", meta.InstanceName)
+	}
+}
+
+func TestDetectWorlds(t *testing.T) {
+	entries := map[string]string{
+		".minecraft/saves/MyWorld/level.dat": "dat",
+		".minecraft/saves/Other/level.dat":   "dat",
+		".minecraft/mods/foo.jar":            "jar",
+	}
+	path := createZip(t, entries)
+	zr, _, err := openZip(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zr.Close()
+
+	worlds := DetectWorlds(zr.Reader, FormatPrism)
+	if len(worlds) != 2 {
+		t.Fatalf("worlds: got %d, want 2", len(worlds))
+	}
+	names := map[string]bool{}
+	for _, w := range worlds {
+		names[w.Name] = true
+	}
+	if !names["MyWorld"] || !names["Other"] {
+		t.Errorf("expected MyWorld and Other, got %v", names)
+	}
+}
+
+func TestExtractWorld(t *testing.T) {
+	entries := map[string]string{
+		".minecraft/saves/MyWorld/level.dat":        "dat",
+		".minecraft/saves/MyWorld/region/r.0.0.mca": "mca",
+		".minecraft/mods/foo.jar":                   "jar",
+	}
+	path := createZip(t, entries)
+	zr, _, err := openZip(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zr.Close()
+
+	target := t.TempDir()
+	if err := Extract(zr.Reader, FormatPrism, ExtractOptions{
+		TargetDir: target,
+		World:     ".minecraft/saves/MyWorld",
+		LevelName: "MyWorld",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(target, "MyWorld", "level.dat")); err != nil {
+		t.Errorf("expected MyWorld/level.dat: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "MyWorld", "region", "r.0.0.mca")); err != nil {
+		t.Errorf("expected MyWorld/region/r.0.0.mca: %v", err)
 	}
 }

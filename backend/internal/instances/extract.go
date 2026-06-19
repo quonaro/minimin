@@ -11,12 +11,20 @@ import (
 
 // Extract unpacks an archive into a target directory, applying format-specific
 // path normalization and an allowlist of top-level directories.
-// It also mirrors server mods to mods-client so the client archive is ready.
-func Extract(r *zip.Reader, format Format, targetDir string) error {
+// It also mirrors server mods to mods-client so the client archive is ready,
+// and extracts a selected world into the configured level directory.
+func Extract(r *zip.Reader, format Format, opts ExtractOptions) error {
 	strip := stripComponents(format)
+	allowedDirs := allowedTopLevelDirs
+	if len(opts.AllowedDirs) > 0 {
+		allowedDirs = opts.AllowedDirs
+	}
 	allowed := map[string]struct{}{}
-	for _, d := range allowedTopLevelDirs {
+	for _, d := range allowedDirs {
 		allowed[d] = struct{}{}
+	}
+	if opts.StripComponents > 0 {
+		strip = opts.StripComponents
 	}
 
 	for _, f := range r.File {
@@ -37,7 +45,7 @@ func Extract(r *zip.Reader, format Format, targetDir string) error {
 			continue
 		}
 
-		absPath, err := safeJoin(targetDir, rel)
+		absPath, err := safeJoin(opts.TargetDir, rel)
 		if err != nil {
 			return fmt.Errorf("invalid path %q: %w", rel, err)
 		}
@@ -57,9 +65,16 @@ func Extract(r *zip.Reader, format Format, targetDir string) error {
 		}
 	}
 
-	if err := mirrorModsToClientMods(targetDir); err != nil {
+	if err := mirrorModsToClientMods(opts.TargetDir); err != nil {
 		return fmt.Errorf("mirror mods to client: %w", err)
 	}
+
+	if opts.World != "" {
+		if err := extractWorld(r, opts.World, opts.TargetDir, opts.LevelName); err != nil {
+			return fmt.Errorf("extract world: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -129,6 +144,67 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Close()
+}
+
+// extractWorld copies a selected world directory from the archive into the
+// server's level directory.
+func extractWorld(r *zip.Reader, archivePath, targetDir, levelName string) error {
+	if levelName == "" {
+		levelName = "world"
+	}
+	levelName = filepath.Base(levelName)
+
+	worldDir, err := safeJoin(targetDir, levelName)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(worldDir, 0o775); err != nil {
+		return err
+	}
+
+	archivePath = strings.TrimSuffix(filepath.ToSlash(archivePath), "/")
+	prefix := archivePath + "/"
+
+	for _, f := range r.File {
+		name := filepath.ToSlash(f.Name)
+		if name == archivePath {
+			if f.FileInfo().IsDir() {
+				continue
+			}
+			return fmt.Errorf("archive path %q is not a directory", archivePath)
+		}
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		rel := strings.TrimPrefix(name, prefix)
+		if rel == "" {
+			continue
+		}
+		parts := strings.Split(rel, "/")
+		for _, p := range parts {
+			if p == ".." {
+				return fmt.Errorf("world path escapes world directory")
+			}
+		}
+
+		absPath, err := safeJoin(worldDir, rel)
+		if err != nil {
+			return fmt.Errorf("invalid world path %q: %w", rel, err)
+		}
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(absPath, 0o775); err != nil {
+				return fmt.Errorf("create world directory %s: %w", absPath, err)
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(absPath), 0o775); err != nil {
+			return fmt.Errorf("create world directory %s: %w", filepath.Dir(absPath), err)
+		}
+		if err := writeZipEntry(f, absPath); err != nil {
+			return fmt.Errorf("extract world file %s: %w", rel, err)
+		}
+	}
+	return nil
 }
 
 // stripComponents returns how many leading path components to strip for each

@@ -108,6 +108,64 @@ func isAllowedDir(name string) bool {
 	return false
 }
 
+// DetectWorlds scans the archive for directories containing level.dat and
+// returns them as World candidates.
+func DetectWorlds(r *zip.Reader, format Format) []World {
+	worlds := make(map[string]World)
+	for _, f := range r.File {
+		name := filepath.ToSlash(f.Name)
+		lower := strings.ToLower(name)
+		parts := strings.Split(strings.TrimPrefix(lower, "/"), "/")
+		if len(parts) == 0 {
+			continue
+		}
+		if !strings.HasSuffix(lower, "/level.dat") {
+			continue
+		}
+
+		var worldDir string
+		switch format {
+		case FormatPrism:
+			// .minecraft/saves/<WorldName>/level.dat
+			if len(parts) >= 4 && parts[0] == ".minecraft" && parts[1] == "saves" {
+				worldDir = strings.Join(parts[:3], "/")
+			}
+		case FormatMrpack, FormatCurseForge:
+			// overrides/saves/<WorldName>/level.dat
+			if len(parts) >= 4 && parts[0] == "overrides" && parts[1] == "saves" {
+				worldDir = strings.Join(parts[:3], "/")
+			}
+		case FormatPlain:
+			// saves/<WorldName>/level.dat or world/level.dat
+			if len(parts) >= 3 && parts[0] == "saves" {
+				worldDir = strings.Join(parts[:2], "/")
+			} else if len(parts) >= 2 && parts[0] == "world" {
+				worldDir = "world"
+			}
+		}
+		if worldDir == "" {
+			continue
+		}
+
+		originalDir := strings.TrimPrefix(name, "/")
+		if idx := strings.LastIndex(originalDir, "/level.dat"); idx >= 0 {
+			originalDir = originalDir[:idx]
+		}
+		if _, ok := worlds[worldDir]; !ok {
+			worlds[worldDir] = World{
+				Name:        filepath.Base(originalDir),
+				ArchivePath: originalDir,
+			}
+		}
+	}
+
+	result := make([]World, 0, len(worlds))
+	for _, w := range worlds {
+		result = append(result, w)
+	}
+	return result
+}
+
 // readZipEntry reads the full content of a zip entry.
 func readZipEntry(f *zip.File) ([]byte, error) {
 	rc, err := f.Open()
