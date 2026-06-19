@@ -8,6 +8,7 @@ import (
 	"orchestrator/internal/actions"
 	"orchestrator/internal/clientmods"
 	"orchestrator/internal/events"
+	"orchestrator/internal/instances"
 	"orchestrator/internal/mods"
 	"orchestrator/internal/runner"
 	"orchestrator/internal/state"
@@ -18,20 +19,21 @@ import (
 
 // Handler holds dependencies for the orchestrator API.
 type Handler struct {
-	Cli            *client.Client
-	Instance       *state.InstanceFile
-	Actions        *actions.Service
-	Mods           *mods.Service
-	ClientMods     *clientmods.Service
-	APIKey         string
-	ServersDir     string
-	ServersHostDir string
-	ModUploadMaxMB int
-	ContentSources map[string]mm.ContentSource
-	EventsHub      *events.Hub
-	NetworkName    string
-	SecureCookie   bool
-	WSUpgrader     websocket.Upgrader
+	Cli             *client.Client
+	Instance        *state.InstanceFile
+	Actions         *actions.Service
+	Mods            *mods.Service
+	ClientMods      *clientmods.Service
+	InstanceService *instances.Service
+	APIKey          string
+	ServersDir      string
+	ServersHostDir  string
+	ModUploadMaxMB  int
+	ContentSources  map[string]mm.ContentSource
+	EventsHub       *events.Hub
+	NetworkName     string
+	SecureCookie    bool
+	WSUpgrader      websocket.Upgrader
 }
 
 // NewHandler creates a new Handler.

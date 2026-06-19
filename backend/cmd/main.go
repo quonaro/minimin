@@ -20,6 +20,7 @@ import (
 	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
 	"orchestrator/internal/health"
+	"orchestrator/internal/instances"
 	"orchestrator/internal/metrics"
 	"orchestrator/internal/mods"
 	"orchestrator/internal/persistent"
@@ -152,10 +153,19 @@ func main() {
 		}
 	}
 
+	instanceStoreDir := filepath.Join(filepath.Dir(instanceFile), "instance-imports")
+	instanceStore, err := instances.NewStore(instanceStoreDir)
+	if err != nil {
+		slog.Error("failed to create instance import store", "error", err)
+		os.Exit(1)
+	}
+	instanceService := instances.NewService(instanceStore)
+
 	h := handlers.NewHandler(cli, instance, apiKey)
 	h.ServersDir = serversDir
 	h.ServersHostDir = serversHostDir
 	h.ModUploadMaxMB = modUploadMaxMB
+	h.InstanceService = instanceService
 	h.Actions = actions.NewService(instance, cli, serversDir, serversHostDir, networkName)
 	h.Mods = mods.NewService(instance, cli, modUploadMaxMB)
 	h.ClientMods = clientmods.NewService(instance, cli)
@@ -194,6 +204,20 @@ func main() {
 
 	// Background archive cleanup
 	go h.StartArchiveCleanup(ctx)
+
+	// Background instance import temp file cleanup
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				instanceService.Cleanup()
+			}
+		}
+	}()
 
 	// Background metrics poller
 	go metrics.NewPoller(cli, instance, hub).Start(ctx)

@@ -41,6 +41,8 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 
 	// Server CRUD (protected)
 	mux.HandleFunc("POST /api/servers", middleware.WithAuth(apiKey, h.HandleCreateServer))
+	mux.HandleFunc("POST /api/servers/prepare-instance", middleware.WithAuth(apiKey, h.HandlePrepareInstance))
+	mux.HandleFunc("POST /api/servers/from-instance", middleware.WithAuth(apiKey, h.HandleCreateServerFromInstance))
 	mux.HandleFunc("GET /api/servers", middleware.WithAuth(apiKey, h.HandleListServers))
 	mux.HandleFunc("GET /api/servers/{id}", middleware.WithAuth(apiKey, h.HandleGetServer))
 	mux.HandleFunc("PATCH /api/servers/{id}", middleware.WithAuth(apiKey, h.HandleUpdateServer))

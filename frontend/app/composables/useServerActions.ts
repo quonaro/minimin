@@ -70,7 +70,7 @@ export function useServerActions(serverId: string, server: Ref<Server | null>) {
         description: `${serverId} has been removed.`,
       });
       await refreshServers();
-      await navigateTo(`/servers`);
+      await navigateTo(`/`, { replace: true });
     } catch (err: any) {
       const msg = err?.data?.detail || err?.message || "Failed to delete server";
       showToast("error", "Delete failed", { description: msg });

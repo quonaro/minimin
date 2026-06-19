@@ -1,4 +1,5 @@
-import { ref, computed, watchEffect, toValue, type MaybeRefOrGetter } from "vue";
+import { ref, computed, watch, watchEffect, toValue, type MaybeRefOrGetter } from "vue";
+import { useServerEvents } from "./useServerEvents";
 
 export interface ServerConfig {
   content: string;
@@ -66,12 +67,24 @@ async function fetchConfig(serverId: string) {
 
 export function useServerConfig(serverId: MaybeRefOrGetter<string | undefined | null>) {
   const id = computed(() => toValue(serverId) ?? "");
+  const { serverMap } = useServerEvents();
+  const server = computed(() => (id.value ? serverMap.value[id.value] : undefined));
 
   watchEffect(() => {
     if (id.value && !configMap.value[id.value]?.fetched) {
       fetchConfig(id.value);
     }
   });
+
+  watch(
+    () => [server.value?.serverStatus, server.value?.containerStatus],
+    () => {
+      if (!id.value || !server.value) return;
+      if (configMap.value[id.value]?.config?.initialized) return;
+      if (configMap.value[id.value]?.loading) return;
+      refresh();
+    },
+  );
 
   const initialized = computed<boolean>(() => {
     if (!id.value) return true;
