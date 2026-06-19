@@ -100,7 +100,7 @@ async function submit() {
     }
     await createBlank();
   } catch (err: any) {
-    const msg = err?.data?.detail || err?.message || "Failed to create server";
+    const msg = getApiErrorMessage(err, "Failed to create server");
     showToast("error", "Create failed", { description: msg });
   } finally {
     loading.value = false;

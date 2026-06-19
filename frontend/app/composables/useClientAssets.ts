@@ -28,7 +28,7 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
       assets.value = list as ClientAsset[];
     } catch (err: any) {
       show("error", `Failed to load ${type}`, {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       loading.value = false;
@@ -49,7 +49,7 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
       await refresh();
     } catch (err: any) {
       show("error", "Failed to delete", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -69,7 +69,7 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
       await refresh();
     } catch (err: any) {
       show("error", "Upload failed", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       uploadLoading.value = false;
@@ -94,7 +94,7 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
       await refresh();
     } catch (err: any) {
       show("error", "Download failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       downloadLoading.value = false;
@@ -119,7 +119,7 @@ export function useClientAssets(serverId: string, type: "resourcepacks" | "shade
       await refresh();
     } catch (err: any) {
       show("error", "Failed to toggle", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }

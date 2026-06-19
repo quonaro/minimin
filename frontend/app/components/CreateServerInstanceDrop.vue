@@ -96,7 +96,8 @@ function handleFile(file: File) {
       let detail = `Upload failed: ${xhr.status} ${xhr.statusText}`;
       try {
         const parsed = JSON.parse(xhr.responseText);
-        if (parsed && parsed.detail) detail = parsed.detail;
+        if (parsed && parsed.error) detail = parsed.error;
+        else if (parsed && parsed.detail) detail = parsed.detail;
       } catch {
         /* ignore */
       }

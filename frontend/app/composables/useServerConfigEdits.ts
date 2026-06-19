@@ -58,8 +58,8 @@ export function useServerConfigEdits(
       editingPort.value = false;
       await refreshServers();
     } catch (err: any) {
-      const status = err?.status || err?.statusCode;
-      const msg = err?.data?.detail || err?.message || "Failed to update port";
+      const status = getApiErrorStatus(err);
+      const msg = getApiErrorMessage(err, "Failed to update port");
       if (status === 409) {
         showToast("error", "Port unavailable", { description: msg });
       } else {
@@ -92,8 +92,7 @@ export function useServerConfigEdits(
       editingRestartPolicy.value = false;
       await refreshServers();
     } catch (err: any) {
-      const msg =
-        err?.data?.detail || err?.message || "Failed to update restart policy";
+      const msg = getApiErrorMessage(err, "Failed to update restart policy");
       showToast("error", "Update failed", { description: msg });
     } finally {
       restartPolicyLoading.value = false;
@@ -141,8 +140,8 @@ export function useServerConfigEdits(
       editingPublicRcon.value = false;
       await refreshServers();
     } catch (err: any) {
-      const status = err?.status || err?.statusCode;
-      const msg = err?.data?.detail || err?.message || "Failed to update RCON";
+      const status = getApiErrorStatus(err);
+      const msg = getApiErrorMessage(err, "Failed to update RCON");
       if (status === 409) {
         showToast("error", "Port unavailable", { description: msg });
       } else {
@@ -185,8 +184,8 @@ export function useServerConfigEdits(
       editingRam.value = false;
       await refreshServers();
     } catch (err: any) {
-      const status = err?.status || err?.statusCode;
-      const msg = err?.data?.detail || err?.message || "Failed to update RAM";
+      const status = getApiErrorStatus(err);
+      const msg = getApiErrorMessage(err, "Failed to update RAM");
       if (status === 409) {
         showToast("error", "Server running", { description: msg });
       } else {
@@ -237,9 +236,8 @@ export function useServerConfigEdits(
       editingExternalJavaArgs.value = false;
       await refreshServers();
     } catch (err: any) {
-      const status = err?.status || err?.statusCode;
-      const msg =
-        err?.data?.detail || err?.message || "Failed to update external Java args";
+      const status = getApiErrorStatus(err);
+      const msg = getApiErrorMessage(err, "Failed to update external Java args");
       if (status === 409) {
         showToast("error", "Server running", { description: msg });
       } else {

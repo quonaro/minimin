@@ -905,7 +905,7 @@ async function sendRcon(command: string) {
     });
     showToast("success", "Command sent", { description: command });
   } catch (err: any) {
-    const msg = err?.data?.detail || err?.message || "Command failed";
+    const msg = getApiErrorMessage(err, "Command failed");
     showToast("error", "RCON failed", { description: msg });
   }
 }
@@ -925,7 +925,7 @@ async function sendOfflineAction(
     });
     showToast("success", "Action sent", { description: `${action} ${name}` });
   } catch (err: any) {
-    const msg = err?.data?.detail || err?.message || "Action failed";
+    const msg = getApiErrorMessage(err, "Action failed");
     showToast("error", "Action failed", { description: msg });
   }
 }

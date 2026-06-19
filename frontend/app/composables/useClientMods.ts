@@ -41,7 +41,7 @@ export function useClientMods(serverId: string) {
       mods.value = list as ModInfo[];
     } catch (err: any) {
       show("error", "Failed to load client mods", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       loading.value = false;
@@ -62,7 +62,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to delete client mod", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -78,7 +78,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Upload failed", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       uploadLoading.value = false;
@@ -109,7 +109,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Download failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       downloadLoading.value = false;
@@ -132,7 +132,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to toggle mod", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -153,7 +153,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to delete client mods", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -174,7 +174,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to toggle client mods", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -193,7 +193,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to move mod", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -212,7 +212,7 @@ export function useClientMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to copy mod", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -247,7 +247,7 @@ export function useClientMods(serverId: string) {
       };
     } catch (err: any) {
       show("error", "Failed to create archive", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       return null;
     } finally {
@@ -267,7 +267,7 @@ export function useClientMods(serverId: string) {
       return (res as any) ?? [];
     } catch (err: any) {
       show("error", "Failed to load archives", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       return [];
     }
@@ -284,7 +284,7 @@ export function useClientMods(serverId: string) {
       return true;
     } catch (err: any) {
       show("error", "Failed to delete archive", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       return false;
     }

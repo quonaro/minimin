@@ -333,7 +333,7 @@ async function handleCopyAll() {
     showCopyAllModal.value = false;
   } catch (err: any) {
     useToast().show("error", "Failed to copy mods", {
-      description: err?.data?.detail || err?.message || "Unknown error",
+      description: getApiErrorMessage(err, "Unknown error"),
     });
   } finally {
     copyAllLoading.value = false;
@@ -420,7 +420,7 @@ async function handleUploadConfirm() {
     }
   } catch (err: any) {
     useToast().show("error", "Failed to process files", {
-      description: err?.data?.detail || err?.message || "Unknown error",
+      description: getApiErrorMessage(err, "Unknown error"),
     });
   } finally {
     bulkUploadLoading.value = false;

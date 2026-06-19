@@ -41,7 +41,7 @@ async function fetchReports() {
       await viewReport(first.name);
     }
   } catch (err: any) {
-    showToast("error", err?.message || "Failed to load crash reports");
+    showToast("error", getApiErrorMessage(err, "Failed to load crash reports"));
   } finally {
     loading.value = false;
   }
@@ -58,7 +58,7 @@ async function viewReport(name: string) {
     );
     content.value = text;
   } catch (err: any) {
-    showToast("error", err?.message || "Failed to read report");
+    showToast("error", getApiErrorMessage(err, "Failed to read report"));
   } finally {
     contentLoading.value = false;
   }
@@ -82,7 +82,7 @@ async function deleteReport(name: string) {
     }
     await fetchReports();
   } catch (err: any) {
-    showToast("error", err?.message || "Failed to delete report");
+    showToast("error", getApiErrorMessage(err, "Failed to delete report"));
   }
 }
 

@@ -161,7 +161,7 @@ export function useModrinth() {
       });
     } catch (err: any) {
       show("error", "Search failed", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       searchResults.value = [];
       hasMore.value = false;
@@ -231,7 +231,7 @@ export function useModrinth() {
       });
     } catch (err: any) {
       show("error", "Failed to load more", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       searchLoading.value = false;
@@ -280,7 +280,7 @@ export function useModrinth() {
       return versions;
     } catch (err: any) {
       show("error", "Failed to load versions", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       return [];
     }
@@ -315,7 +315,7 @@ export function useModrinth() {
       return version;
     } catch (err: any) {
       show("error", "Failed to load version details", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       return null;
     }
@@ -348,7 +348,7 @@ export function useModrinth() {
       };
     } catch (err: any) {
       show("error", "Install failed", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       return null;
     } finally {
@@ -413,7 +413,7 @@ export function useModrinth() {
       return project;
     } catch (err: any) {
       show("error", "Failed to load project info", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
       return null;
     }

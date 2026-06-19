@@ -61,7 +61,7 @@ export function useVersions() {
       cachedAll = data;
       populateFromCache(data);
     } catch (err: any) {
-      error.value = `Failed to load versions: ${err?.message || err}`;
+      error.value = `Failed to load versions: ${getApiErrorMessage(err, "Unknown error")}`;
     } finally {
       loading.value = false;
       cachedPromise = null;

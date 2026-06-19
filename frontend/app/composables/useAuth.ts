@@ -8,7 +8,7 @@ export const useAuth = () => {
     maxAge: 60 * 60 * 24, // 24 hours
   })
 
-  const login = async (key: string) => {
+  const login = async (key: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await $fetch<LoginResponse>('/api/auth/login', {
         method: 'POST',
@@ -18,12 +18,12 @@ export const useAuth = () => {
 
       if (response.success) {
         isAuthenticated.value = true
-        return true
+        return { success: true }
       }
-      return false
+      return { success: false, error: 'Unexpected response from server' }
     } catch (error) {
       console.error('Login failed:', error)
-      return false
+      return { success: false, error: getApiErrorMessage(error, 'Invalid password or connection failed') }
     }
   }
 

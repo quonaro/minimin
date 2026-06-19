@@ -274,12 +274,12 @@ async function handleLogin() {
   error.value = "";
 
   try {
-    const success = await login(apiKeyInput.value);
-    if (success) {
+    const result = await login(apiKeyInput.value);
+    if (result.success) {
       showToast("success", "Signed in successfully");
       await navigateTo("/");
     } else {
-      error.value = "Invalid password or connection failed";
+      error.value = result.error || "Invalid password or connection failed";
       showToast("error", "Sign in failed", { description: error.value });
     }
   } catch (e) {

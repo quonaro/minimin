@@ -39,9 +39,8 @@ export function useServerActions(serverId: string, server: Ref<Server | null>) {
       });
       await refreshServers();
     } catch (err: any) {
-      const status = err?.status || err?.statusCode;
-      const msg =
-        err?.data?.detail || err?.message || `Failed to ${action} server`;
+      const status = getApiErrorStatus(err);
+      const msg = getApiErrorMessage(err, `Failed to ${action} server`);
       if (status === 409) {
         showToast("error", "Operation in progress", { description: msg });
       } else {
@@ -72,7 +71,7 @@ export function useServerActions(serverId: string, server: Ref<Server | null>) {
       await refreshServers();
       await navigateTo(`/`, { replace: true });
     } catch (err: any) {
-      const msg = err?.data?.detail || err?.message || "Failed to delete server";
+      const msg = getApiErrorMessage(err, "Failed to delete server");
       showToast("error", "Delete failed", { description: msg });
     } finally {
       deleteLoading.value = false;
@@ -96,8 +95,7 @@ export function useServerActions(serverId: string, server: Ref<Server | null>) {
       });
       await refreshServers();
     } catch (err: any) {
-      const msg =
-        err?.data?.detail || err?.message || "Failed to recreate world";
+      const msg = getApiErrorMessage(err, "Failed to recreate world");
       showToast("error", "Recreate failed", { description: msg });
     } finally {
       recreateLoading.value = false;

@@ -59,7 +59,7 @@ async function fetchConfig(serverId: string) {
     configMap.value[serverId] = {
       config: null,
       loading: false,
-      error: err?.message || "Failed to load config",
+      error: getApiErrorMessage(err, "Failed to load config"),
       fetched: true,
     };
   }

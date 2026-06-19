@@ -37,7 +37,7 @@ export function useMods(serverId: string) {
       mods.value = list as ModInfo[];
     } catch (err: any) {
       show("error", "Failed to load mods", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       loading.value = false;
@@ -58,7 +58,7 @@ export function useMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to delete mod", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -74,7 +74,7 @@ export function useMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Upload failed", {
-        description: err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       uploadLoading.value = false;
@@ -105,7 +105,7 @@ export function useMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Download failed", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     } finally {
       downloadLoading.value = false;
@@ -128,7 +128,7 @@ export function useMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to toggle mod", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -149,7 +149,7 @@ export function useMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to delete mods", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }
@@ -170,7 +170,7 @@ export function useMods(serverId: string) {
       await refresh();
     } catch (err: any) {
       show("error", "Failed to toggle mods", {
-        description: err?.data?.detail || err?.message || "Unknown error",
+        description: getApiErrorMessage(err, "Unknown error"),
       });
     }
   }

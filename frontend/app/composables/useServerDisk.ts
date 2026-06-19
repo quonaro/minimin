@@ -59,7 +59,7 @@ async function fetchDisk(serverId: string) {
     diskMap.value[serverId] = {
       disk: null,
       loading: false,
-      error: err?.message || "Failed to load disk usage",
+      error: getApiErrorMessage(err, "Failed to load disk usage"),
       fetched: true,
     };
   }
