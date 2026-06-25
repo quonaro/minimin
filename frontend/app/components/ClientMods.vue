@@ -110,16 +110,13 @@
             "
           >
             <img
-              v-if="serverId && !mod.corrupted"
-              v-show="iconLoaded[mod.filename]"
-              :src="getIconUrl(mod.filename)"
+              v-if="serverId && !mod.corrupted && iconUrl(mod)"
+              :src="iconUrl(mod)"
               class="w-full h-full object-cover"
               alt=""
-              @load="iconLoaded[mod.filename] = true"
-              @error="iconLoaded[mod.filename] = false"
             />
             <div
-              v-show="mod.corrupted || !iconLoaded[mod.filename]"
+              v-show="mod.corrupted || !iconUrl(mod)"
               class="absolute inset-0 flex items-center justify-center"
               :class="mod.corrupted ? 'text-red-500' : 'text-indigo-500'"
             >
@@ -393,12 +390,20 @@ function emitBatchToggle() {
   selected.value = new Set();
 }
 
-const iconLoaded = ref<Record<string, boolean>>({});
+const { loadIcons, getIconUrl } = useModIcons();
 
-function getIconUrl(filename: string): string {
+function iconUrl(mod: ModInfo): string {
   if (!props.serverId) return "";
-  return `${useApiBase()}/servers/${props.serverId}/client-mods/${encodeURIComponent(filename)}/icon`;
+  return getIconUrl(props.serverId, "client", mod.filename);
 }
+
+watch(
+  () => props.mods,
+  (mods) => {
+    if (props.serverId) loadIcons(props.serverId, "client", mods);
+  },
+  { immediate: true },
+);
 
 const filteredMods = computed(() => {
   let list = props.mods;

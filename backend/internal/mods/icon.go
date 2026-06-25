@@ -2,6 +2,8 @@ package mods
 
 import (
 	"archive/zip"
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -9,38 +11,8 @@ import (
 	"strings"
 )
 
-// ZipReadCloser wraps a zip file entry reader and the parent zip.ReadCloser so
-// the underlying jar stays open until the icon has been fully streamed.
-type ZipReadCloser struct {
-	RC io.ReadCloser
-	ZR *zip.ReadCloser
-}
-
-func (z *ZipReadCloser) Read(p []byte) (int, error) {
-	return z.RC.Read(p)
-}
-
-func (z *ZipReadCloser) Close() error {
-	_ = z.RC.Close()
-	return z.ZR.Close()
-}
-
-// GetServerModIcon opens a mod jar and returns the icon file reader and content type.
-func (s *Service) GetServerModIcon(serverID, filename string) (io.ReadCloser, string, error) {
-	st, ok := s.instance.Get(serverID)
-	if !ok {
-		return nil, "", ErrNotFound
-	}
-	if st.VolumePath == "" {
-		return nil, "", ErrVolumeNotInitialized
-	}
-
-	modsDir := filepath.Join(st.VolumePath, "mods")
-	modPath := filepath.Join(modsDir, filename)
-	if !strings.HasPrefix(modPath, modsDir+string(filepath.Separator)) && modPath != modsDir {
-		return nil, "", ErrInvalidFilename
-	}
-
+// ExtractModIcon reads the icon image from a mod .jar and returns its bytes and content type.
+func ExtractModIcon(modPath string) ([]byte, string, error) {
 	var info *ModInfo
 	if fi, statErr := os.Stat(modPath); statErr == nil {
 		info, _ = ParseModInfoCached(modPath, fi.Size(), fi.ModTime())
@@ -50,6 +22,7 @@ func (s *Service) GetServerModIcon(serverID, filename string) (io.ReadCloser, st
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to open jar: %w", err)
 	}
+	defer zr.Close()
 
 	iconPath := ""
 	if info != nil {
@@ -74,15 +47,70 @@ func (s *Service) GetServerModIcon(serverID, filename string) (io.ReadCloser, st
 			if err != nil {
 				return nil, "", fmt.Errorf("failed to read icon: %w", err)
 			}
+			data, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to read icon: %w", err)
+			}
 			contentType := "image/png"
 			lower := strings.ToLower(iconPath)
 			if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") {
 				contentType = "image/jpeg"
 			}
-			return &ZipReadCloser{RC: rc, ZR: zr}, contentType, nil
+			return data, contentType, nil
 		}
 	}
 	return nil, "", ErrNotFound
+}
+
+// GetServerModIcon opens a mod jar and returns the icon file reader and content type.
+func (s *Service) GetServerModIcon(serverID, filename string) (io.ReadCloser, string, error) {
+	st, ok := s.instance.Get(serverID)
+	if !ok {
+		return nil, "", ErrNotFound
+	}
+	if st.VolumePath == "" {
+		return nil, "", ErrVolumeNotInitialized
+	}
+
+	modsDir := filepath.Join(st.VolumePath, "mods")
+	modPath := filepath.Join(modsDir, filename)
+	if !strings.HasPrefix(modPath, modsDir+string(filepath.Separator)) && modPath != modsDir {
+		return nil, "", ErrInvalidFilename
+	}
+
+	data, contentType, err := ExtractModIcon(modPath)
+	if err != nil {
+		return nil, "", err
+	}
+	return io.NopCloser(bytes.NewReader(data)), contentType, nil
+}
+
+// GetServerModIconsBatch returns a map of filename -> data URL for multiple mod icons.
+func (s *Service) GetServerModIconsBatch(serverID string, filenames []string) (map[string]string, error) {
+	st, ok := s.instance.Get(serverID)
+	if !ok {
+		return nil, ErrNotFound
+	}
+	if st.VolumePath == "" {
+		return nil, ErrVolumeNotInitialized
+	}
+
+	modsDir := filepath.Join(st.VolumePath, "mods")
+	result := make(map[string]string, len(filenames))
+	for _, filename := range filenames {
+		modPath := filepath.Join(modsDir, filename)
+		if !strings.HasPrefix(modPath, modsDir+string(filepath.Separator)) && modPath != modsDir {
+			continue
+		}
+		data, contentType, err := ExtractModIcon(modPath)
+		if err != nil {
+			continue
+		}
+		b64 := base64.StdEncoding.EncodeToString(data)
+		result[filename] = fmt.Sprintf("data:%s;base64,%s", contentType, b64)
+	}
+	return result, nil
 }
 
 // GetServerIcon returns the server-icon.png reader.

@@ -38,6 +38,7 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("POST /api/servers/{id}/files/upload", middleware.WithAuth(apiKey, h.UploadServerFile))
 	mux.HandleFunc("POST /api/servers/{id}/mods/upload", middleware.WithAuth(apiKey, h.UploadServerMod))
 	mux.HandleFunc("GET /api/servers/{id}/mods/{filename}/icon", middleware.WithAuth(apiKey, h.GetServerModIcon))
+	mux.HandleFunc("POST /api/servers/{id}/mods/icons", middleware.WithAuth(apiKey, h.GetServerModIconsBatch))
 
 	// Server CRUD (protected)
 	mux.HandleFunc("POST /api/servers", middleware.WithAuth(apiKey, h.HandleCreateServer))
@@ -99,6 +100,7 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("POST /api/servers/{id}/mods/copy", middleware.WithAuth(apiKey, h.HandleCopyMod))
 	mux.HandleFunc("POST /api/servers/{id}/mods/copy-all", middleware.WithAuth(apiKey, h.HandleCopyAllServerMods))
 	mux.HandleFunc("GET /api/servers/{id}/client-mods/{filename}/icon", middleware.WithAuth(apiKey, h.GetClientModIcon))
+	mux.HandleFunc("POST /api/servers/{id}/client-mods/icons", middleware.WithAuth(apiKey, h.GetClientModIconsBatch))
 
 	// Crash Reports (protected)
 	mux.HandleFunc("GET /api/servers/{id}/crash-reports", middleware.WithAuth(apiKey, h.HandleListCrashReports))

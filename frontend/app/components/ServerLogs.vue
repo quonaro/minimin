@@ -152,47 +152,68 @@
               {{ colored ? "Colored" : "Monochrome" }}
             </button>
           </div>
+
+          <div
+            v-if="showFilters"
+            class="flex items-center gap-1 bg-gray-100 dark:bg-neutral-800 rounded-lg p-1 self-stretch"
+          >
+            <button
+              v-for="f in filters"
+              :key="f.value"
+              class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors"
+              :class="
+                (props.filter || 'all') === f.value
+                  ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200'
+              "
+              @click="emit('update:filter', f.value)"
+            >
+              {{ f.label }}
+            </button>
+          </div>
         </div>
 
-        <div class="flex items-center gap-2 self-stretch">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            :class="{
-              'text-green-500': wsStatus === 'Connected',
-              'text-red-500':
-                wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-neutral-400': !wsStatus,
-            }"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
-            />
-          </svg>
-          <span
-            class="text-xs"
-            :class="{
-              'text-green-500': wsStatus === 'Connected',
-              'text-red-500':
-                wsStatus === 'Error' || wsStatus === 'Disconnected',
-              'text-gray-500 dark:text-neutral-400': !wsStatus,
-            }"
-          >
-            {{ wsStatus || "Connecting..." }}
-          </span>
-          <button
-            class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
-            @click="reconnect()"
-          >
-            Reconnect
-          </button>
-        </div>
+        <template v-if="!hideStatus">
+          <div class="flex items-center gap-2 self-stretch">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              :class="{
+                'text-green-500': wsStatus === 'Connected',
+                'text-red-500':
+                  wsStatus === 'Error' || wsStatus === 'Disconnected',
+                'text-gray-500 dark:text-neutral-400': !wsStatus,
+              }"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M9.348 14.652a3.75 3.75 0 0 1 5.304 0m-9.9-3.9a7.5 7.5 0 0 1 14.556 0M1.5 6.75a12 12 0 0 1 21 0"
+              />
+            </svg>
+            <span
+              class="text-xs"
+              :class="{
+                'text-green-500': wsStatus === 'Connected',
+                'text-red-500':
+                  wsStatus === 'Error' || wsStatus === 'Disconnected',
+                'text-gray-500 dark:text-neutral-400': !wsStatus,
+              }"
+            >
+              {{ wsStatus || "Connecting..." }}
+            </span>
+            <button
+              class="px-3 py-2 rounded-lg bg-primary text-white text-sm hover:bg-primary/90"
+              @click="reconnect()"
+            >
+              Reconnect
+            </button>
+          </div>
+        </template>
       </div>
 
       <div
@@ -245,6 +266,13 @@ import { parseLogLevel, getLogLevelClass } from "~/utils/logLevel";
 
 const props = defineProps<{
   serverId: string;
+  filter?: string;
+  hideStatus?: boolean;
+  showFilters?: boolean;
+}>();
+
+const emit = defineEmits<{
+  "update:filter": [value: string];
 }>();
 
 const colored = ref(true);
@@ -253,6 +281,12 @@ const route = useRoute();
 const serverId = props.serverId || (route.params.serverId as string);
 
 const tail = ref(500);
+const filters = [
+  { label: "All", value: "all" },
+  { label: "Logs", value: "log" },
+  { label: "Messages", value: "message" },
+  { label: "RCON", value: "rcon" },
+];
 const searchQueryRaw = ref("");
 const searchQuery = ref("");
 const buffer = ref("");
@@ -389,7 +423,11 @@ function connect() {
   const token = useCookie("auth_token").value || "";
   const tailVal = nextTail !== undefined ? nextTail : tail.value;
   nextTail = undefined;
-  const url = `${wsBase}/ws/servers/${serverId}/logs?tail=${tailVal}&token=${encodeURIComponent(token)}`;
+  const filterParam =
+    props.filter && props.filter !== "all"
+      ? `&filter=${encodeURIComponent(props.filter)}`
+      : "";
+  const url = `${wsBase}/ws/servers/${serverId}/logs?tail=${tailVal}${filterParam}&token=${encodeURIComponent(token)}`;
 
   const socketId = ++socketCounter;
   const socket = new WebSocket(url);
@@ -579,6 +617,13 @@ watch(tail, (value) => {
 
 watch(filteredLines, () => {});
 
+watch(
+  () => props.filter,
+  () => {
+    reconnect();
+  },
+);
+
 onUnmounted(() => {
   unmounted = true;
   if (reconnectTimer) {
@@ -597,5 +642,28 @@ onUnmounted(() => {
   }
 });
 
-defineExpose({ scrollToBottom, reconnect });
+function addExternalLine(text: string, type?: string) {
+  const line = buildLogLine(text);
+  if (type) {
+    if (type === "command") {
+      line.levelClass = "text-primary dark:text-primary-400";
+    } else if (type === "error") {
+      line.levelClass = "text-red-600 dark:text-red-400";
+    } else if (type === "system") {
+      line.levelClass = "text-gray-500 dark:text-neutral-400 italic";
+    }
+  }
+  logLines.value.push(line);
+  if (logLines.value.length > tail.value) {
+    logLines.value = logLines.value.slice(logLines.value.length - tail.value);
+  }
+  recomputeHighlight(logLines.value, searchQuery.value);
+  nextTick(() => {
+    if (!userScrolledUp.value) {
+      scrollToBottom();
+    }
+  });
+}
+
+defineExpose({ scrollToBottom, reconnect, addExternalLine });
 </script>

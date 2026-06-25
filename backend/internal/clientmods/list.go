@@ -1,7 +1,8 @@
 package clientmods
 
 import (
-	"archive/zip"
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -83,43 +84,36 @@ func (s *Service) GetClientModIcon(serverID, filename string) (io.ReadCloser, st
 		return nil, "", mods.ErrInvalidFilename
 	}
 
-	info, _ := mods.ParseModInfo(modPath, 0)
-
-	zr, err := zip.OpenReader(modPath)
+	data, contentType, err := mods.ExtractModIcon(modPath)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to open jar: %w", err)
+		return nil, "", err
+	}
+	return io.NopCloser(bytes.NewReader(data)), contentType, nil
+}
+
+// GetClientModIconsBatch returns a map of filename -> data URL for multiple client mod icons.
+func (s *Service) GetClientModIconsBatch(serverID string, filenames []string) (map[string]string, error) {
+	st, ok := s.instance.Get(serverID)
+	if !ok {
+		return nil, mods.ErrNotFound
+	}
+	if st.VolumePath == "" {
+		return nil, mods.ErrNotFound
 	}
 
-	iconPath := ""
-	if info != nil {
-		iconPath = info.Icon
-	}
-	if iconPath == "" {
-		for _, f := range zr.File {
-			name := strings.ToLower(f.Name)
-			if name == "icon.png" || name == "icon.jpg" || name == "icon.jpeg" {
-				iconPath = f.Name
-				break
-			}
+	modsDir := filepath.Join(st.VolumePath, "mods-client")
+	result := make(map[string]string, len(filenames))
+	for _, filename := range filenames {
+		modPath := filepath.Join(modsDir, filename)
+		if !strings.HasPrefix(modPath, modsDir+string(filepath.Separator)) && modPath != modsDir {
+			continue
 		}
-	}
-	if iconPath == "" {
-		return nil, "", mods.ErrNotFound
-	}
-
-	for _, f := range zr.File {
-		if f.Name == iconPath {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, "", fmt.Errorf("failed to read icon: %w", err)
-			}
-			contentType := "image/png"
-			lower := strings.ToLower(iconPath)
-			if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") {
-				contentType = "image/jpeg"
-			}
-			return &mods.ZipReadCloser{RC: rc, ZR: zr}, contentType, nil
+		data, contentType, err := mods.ExtractModIcon(modPath)
+		if err != nil {
+			continue
 		}
+		b64 := base64.StdEncoding.EncodeToString(data)
+		result[filename] = fmt.Sprintf("data:%s;base64,%s", contentType, b64)
 	}
-	return nil, "", mods.ErrNotFound
+	return result, nil
 }

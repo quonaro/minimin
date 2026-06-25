@@ -249,6 +249,7 @@
 <script setup lang="ts">
 definePageMeta({
   noSidebar: true,
+  middleware: ["guest"],
 });
 
 usePageTitle("Sign In");
@@ -279,7 +280,10 @@ async function handleLogin() {
       showToast("success", "Signed in successfully");
       await navigateTo("/");
     } else {
-      error.value = result.error || "Invalid password or connection failed";
+      const raw = result.error || "";
+      error.value = /unauthorized/i.test(raw)
+        ? "Incorrect password"
+        : raw || "Invalid password or connection failed";
       showToast("error", "Sign in failed", { description: error.value });
     }
   } catch (e) {

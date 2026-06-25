@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -45,6 +46,8 @@ func (h *Handler) WSLogs(w http.ResponseWriter, r *http.Request) {
 	if tailLines > 50000 {
 		tailLines = 50000
 	}
+
+	filter := r.URL.Query().Get("filter")
 
 	conn, err := h.WSUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -91,9 +94,11 @@ func (h *Handler) WSLogs(w http.ResponseWriter, r *http.Request) {
 
 	ww := newWSBatchWriter(conn, 50*time.Millisecond, 100)
 	defer func() { _ = ww.Close() }()
+	fw := newLineFilterWriter(ww, filter)
+	defer func() { _ = fw.Close() }()
 
-	slog.Info("WSLogs: sending tail logs", "server", serverID, "container", s.ContainerID, "tail", tailLines)
-	if err := runner.StreamContainerLogs(ctx, h.Cli, s.ContainerID, ww, ww, tailLines, false); err != nil {
+	slog.Info("WSLogs: sending tail logs", "server", serverID, "container", s.ContainerID, "tail", tailLines, "filter", filter)
+	if err := runner.StreamContainerLogs(ctx, h.Cli, s.ContainerID, fw, fw, tailLines, false); err != nil {
 		if isClientDisconnect(err) {
 			slog.Info("WSLogs: client disconnected during tail logs", "server", serverID)
 		} else if client.IsErrNotFound(err) {
@@ -134,7 +139,7 @@ func (h *Handler) WSLogs(w http.ResponseWriter, r *http.Request) {
 
 		slog.Info("WSLogs: starting live stream", "server", serverID, "container", s.ContainerID)
 		retries = 0
-		if err := runner.StreamContainerLogs(ctx, h.Cli, s.ContainerID, ww, ww, 0, true); err != nil {
+		if err := runner.StreamContainerLogs(ctx, h.Cli, s.ContainerID, fw, fw, 0, true); err != nil {
 			if isClientDisconnect(err) {
 				slog.Info("WSLogs: client disconnected during live stream", "server", serverID)
 			} else if client.IsErrNotFound(err) {
@@ -287,4 +292,77 @@ func (w *wsBatchWriter) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.flushLocked()
+}
+
+// lineFilterWriter buffers writes to newlines, classifies each line, and
+// drops lines that don't match the requested filter.
+type lineFilterWriter struct {
+	w      io.WriteCloser
+	filter string
+	buf    bytes.Buffer
+	mu     sync.Mutex
+}
+
+func newLineFilterWriter(w io.WriteCloser, filter string) *lineFilterWriter {
+	return &lineFilterWriter{w: w, filter: filter}
+}
+
+func (fw *lineFilterWriter) Write(p []byte) (int, error) {
+	fw.mu.Lock()
+	defer fw.mu.Unlock()
+
+	n, err := fw.buf.Write(p)
+	if err != nil {
+		return n, err
+	}
+
+	for {
+		data := fw.buf.Bytes()
+		idx := bytes.IndexByte(data, '\n')
+		if idx == -1 {
+			break
+		}
+		line := string(data[:idx+1])
+		fw.buf.Next(idx + 1)
+		if fw.matches(line) {
+			if _, werr := fw.w.Write([]byte(line)); werr != nil {
+				return n, werr
+			}
+		}
+	}
+	return n, nil
+}
+
+func (fw *lineFilterWriter) matches(line string) bool {
+	if fw.filter == "" || fw.filter == "all" {
+		return true
+	}
+	cat := classifyLogLine(line)
+	return cat == fw.filter
+}
+
+func classifyLogLine(line string) string {
+	// message: Minecraft chat  e.g. "[thread/INFO]: <Player> hello"
+	if strings.Contains(line, "]: <") {
+		return "message"
+	}
+	// rcon: anything mentioning RCON / Rcon
+	if strings.Contains(strings.ToUpper(line), "RCON") || strings.Contains(line, "Rcon:") {
+		return "rcon"
+	}
+	return "log"
+}
+
+func (fw *lineFilterWriter) Close() error {
+	fw.mu.Lock()
+	defer fw.mu.Unlock()
+
+	if fw.buf.Len() > 0 {
+		line := fw.buf.String()
+		if fw.matches(line) {
+			_, _ = fw.w.Write([]byte(line))
+		}
+		fw.buf.Reset()
+	}
+	return fw.w.Close()
 }

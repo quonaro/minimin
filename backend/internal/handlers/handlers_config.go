@@ -186,6 +186,18 @@ func (h *Handler) HandleGetServerLogs(w http.ResponseWriter, r *http.Request) {
 	if len(lines) == 1 && lines[0] == "" {
 		lines = []string{}
 	}
+
+	filter := r.URL.Query().Get("filter")
+	if filter != "" && filter != "all" {
+		filtered := make([]string, 0, len(lines))
+		for _, line := range lines {
+			if classifyLogLine(line) == filter {
+				filtered = append(filtered, line)
+			}
+		}
+		lines = filtered
+	}
+
 	jsonResponse(w, map[string]any{"lines": lines})
 }
 

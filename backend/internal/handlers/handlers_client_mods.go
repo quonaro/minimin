@@ -224,3 +224,28 @@ func (h *Handler) GetClientModIcon(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, rc)
 }
+
+// GetClientModIconsBatch returns base64-encoded icons for multiple client mods.
+func (h *Handler) GetClientModIconsBatch(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req struct {
+		Filenames []string `json:"filenames"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	icons, err := h.ClientMods.GetClientModIconsBatch(id, req.Filenames)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
+		}
+		if err == mods.ErrVolumeNotInitialized {
+			status = http.StatusConflict
+		}
+		jsonError(w, err.Error(), status)
+		return
+	}
+	jsonResponse(w, map[string]any{"icons": icons})
+}

@@ -87,6 +87,31 @@ func (h *Handler) GetServerModIcon(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.Copy(w, rc)
 }
 
+// GetServerModIconsBatch returns base64-encoded icons for multiple mods.
+func (h *Handler) GetServerModIconsBatch(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req struct {
+		Filenames []string `json:"filenames"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	icons, err := h.Mods.GetServerModIconsBatch(id, req.Filenames)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if err == mods.ErrNotFound {
+			status = http.StatusNotFound
+		}
+		if err == mods.ErrVolumeNotInitialized {
+			status = http.StatusConflict
+		}
+		jsonError(w, err.Error(), status)
+		return
+	}
+	jsonResponse(w, map[string]any{"icons": icons})
+}
+
 // UploadServerMod uploads a .jar or .zip into the server's mods directory.
 func (h *Handler) UploadServerMod(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
