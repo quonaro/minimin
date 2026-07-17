@@ -15,7 +15,9 @@ import (
 
 	"orchestrator/external/mm"
 	"orchestrator/external/mm/modrinth"
+	"orchestrator/internal/actionlog"
 	"orchestrator/internal/actions"
+	"orchestrator/internal/backup"
 	"orchestrator/internal/clientmods"
 	"orchestrator/internal/events"
 	"orchestrator/internal/handlers"
@@ -26,6 +28,7 @@ import (
 	"orchestrator/internal/persistent"
 	"orchestrator/internal/routes"
 	"orchestrator/internal/runner"
+	"orchestrator/internal/scheduler"
 	"orchestrator/internal/state"
 	"orchestrator/internal/static"
 
@@ -190,6 +193,28 @@ func main() {
 		},
 	}
 	h.InitArchives()
+
+	// Actions & Backups
+	actionsFile := filepath.Join(filepath.Dir(instanceFile), "actions.yml")
+	actionsStore, err := scheduler.NewStore(actionsFile)
+	if err != nil {
+		slog.Error("failed to load actions store", "error", err)
+		os.Exit(1)
+	}
+	backupsDir := filepath.Join(filepath.Dir(instanceFile), "backups")
+	backupSvc := backup.NewService(instance, backupsDir, serversDir)
+	actionLogPath := filepath.Join(filepath.Dir(instanceFile), "actions-log.yml")
+	actionLogStore, err := actionlog.NewStore(actionLogPath)
+	if err != nil {
+		slog.Error("failed to create action log store", "error", err)
+		os.Exit(1)
+	}
+	schedSvc := scheduler.NewService(actionsStore, instance, cli, h.Actions, backupSvc, hub, actionLogStore)
+	h.Scheduler = schedSvc
+	h.BackupService = backupSvc
+	h.BackupsDir = backupsDir
+	h.ActionLogStore = actionLogStore
+
 	router := routes.SetupRoutes(h, apiKey)
 
 	// Serve embedded SPA in production; nil in dev where web/ is empty.
@@ -201,6 +226,9 @@ func main() {
 		combined.Handle("/", spa)
 		router = combined
 	}
+
+	// Background scheduler
+	go h.Scheduler.Start(ctx)
 
 	// Background archive cleanup
 	go h.StartArchiveCleanup(ctx)

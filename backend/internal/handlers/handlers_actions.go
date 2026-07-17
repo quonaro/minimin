@@ -23,7 +23,12 @@ func (h *Handler) HandleStartServer(w http.ResponseWriter, r *http.Request) {
 	}
 	// Empty body is fine — default to false.
 	_ = decodeJSON(r, &req)
-	go h.Actions.Start(context.Background(), id, req.RemoveExisting)
+	ctx, cancel := context.WithCancel(context.Background())
+	h.Actions.RegisterStartCancel(id, cancel)
+	go func() {
+		defer h.Actions.UnregisterStartCancel(id)
+		h.Actions.Start(ctx, id, req.RemoveExisting)
+	}()
 	jsonResponse(w, s)
 }
 
@@ -34,6 +39,7 @@ func (h *Handler) HandleStopServer(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
+	h.Actions.CancelStart(id)
 	s, ok := h.Instance.TrySetDesired(id, "exited")
 	if !ok {
 		jsonError(w, "operation in progress", http.StatusConflict)
@@ -51,6 +57,7 @@ func (h *Handler) HandleForceStopServer(w http.ResponseWriter, r *http.Request) 
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
+	h.Actions.CancelStart(id)
 	s, ok := h.Instance.TrySetDesired(id, "exited")
 	if !ok {
 		jsonError(w, "operation in progress", http.StatusConflict)

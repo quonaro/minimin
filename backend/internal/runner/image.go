@@ -70,46 +70,63 @@ func PullImageWithProgress(ctx context.Context, cli *client.Client, imageName st
 
 	dec := json.NewDecoder(reader)
 	for {
-		var msg jsonmessage.JSONMessage
-		if err := dec.Decode(&msg); err != nil {
-			if err == io.EOF {
-				break
+		type result struct {
+			msg jsonmessage.JSONMessage
+			err error
+		}
+		ch := make(chan result, 1)
+		go func() {
+			var msg jsonmessage.JSONMessage
+			if err := dec.Decode(&msg); err != nil {
+				ch <- result{err: err}
+				return
 			}
-			return fmt.Errorf("failed to decode pull progress: %w", err)
-		}
-		if msg.Error != nil {
-			return fmt.Errorf("pull error: %s", msg.Error.Message)
-		}
-		if msg.ID == "" {
-			continue
-		}
+			ch <- result{msg: msg}
+		}()
 
-		l := layers[msg.ID]
-		if l == nil {
-			l = &layer{}
-			layers[msg.ID] = l
-		}
-
-		switch msg.Status {
-		case "Already exists", "Pull complete", "Download complete":
-			if l.total > 0 {
-				l.current = l.total
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case res := <-ch:
+			if res.err != nil {
+				if res.err == io.EOF {
+					slog.Info("docker image pulled", "image", imageName)
+					return nil
+				}
+				return fmt.Errorf("failed to decode pull progress: %w", res.err)
 			}
-		default:
-			if msg.Progress != nil && msg.Progress.Total > 0 {
-				l.current = msg.Progress.Current
-				l.total = msg.Progress.Total
+			msg := res.msg
+			if msg.Error != nil {
+				return fmt.Errorf("pull error: %s", msg.Error.Message)
 			}
-		}
+			if msg.ID == "" {
+				continue
+			}
 
-		var totalCurrent, totalSize int64
-		for _, ll := range layers {
-			totalCurrent += ll.current
-			totalSize += ll.total
+			l := layers[msg.ID]
+			if l == nil {
+				l = &layer{}
+				layers[msg.ID] = l
+			}
+
+			switch msg.Status {
+			case "Already exists", "Pull complete", "Download complete":
+				if l.total > 0 {
+					l.current = l.total
+				}
+			default:
+				if msg.Progress != nil && msg.Progress.Total > 0 {
+					l.current = msg.Progress.Current
+					l.total = msg.Progress.Total
+				}
+			}
+
+			var totalCurrent, totalSize int64
+			for _, ll := range layers {
+				totalCurrent += ll.current
+				totalSize += ll.total
+			}
+			onProgress(totalCurrent, totalSize)
 		}
-		onProgress(totalCurrent, totalSize)
 	}
-
-	slog.Info("docker image pulled", "image", imageName)
-	return nil
 }

@@ -120,6 +120,23 @@ func SetupRoutes(h *handlers.Handler, apiKey string) http.Handler {
 	mux.HandleFunc("GET /api/client-archive/{token}/manifest", h.HandleGetClientArchiveManifest)
 	mux.HandleFunc("GET /api/client-archive/{token}/file/{path...}", h.HandleDownloadClientArchiveFile)
 
+	// Tasks (protected)
+	mux.HandleFunc("GET /api/servers/{id}/tasks", middleware.WithAuth(apiKey, h.HandleListTasks))
+	mux.HandleFunc("POST /api/servers/{id}/tasks", middleware.WithAuth(apiKey, h.HandleCreateTask))
+	mux.HandleFunc("PUT /api/servers/{id}/tasks/{taskId}", middleware.WithAuth(apiKey, h.HandleUpdateTask))
+	mux.HandleFunc("DELETE /api/servers/{id}/tasks/{taskId}", middleware.WithAuth(apiKey, h.HandleDeleteTask))
+	mux.HandleFunc("POST /api/servers/{id}/tasks/{taskId}/run", middleware.WithAuth(apiKey, h.HandleRunTask))
+
+	// Backups (protected)
+	mux.HandleFunc("GET /api/servers/{id}/backups", middleware.WithAuth(apiKey, h.HandleListBackups))
+	mux.HandleFunc("POST /api/servers/{id}/backups", middleware.WithAuth(apiKey, h.HandleCreateBackup))
+	mux.HandleFunc("GET /api/servers/{id}/backups/{name}", middleware.WithAuth(apiKey, h.HandleDownloadBackup))
+	mux.HandleFunc("POST /api/servers/{id}/backups/{name}/restore", middleware.WithAuth(apiKey, h.HandleRestoreBackup))
+	mux.HandleFunc("DELETE /api/servers/{id}/backups/{name}", middleware.WithAuth(apiKey, h.HandleDeleteBackup))
+
+	// Action Log (protected)
+	mux.HandleFunc("GET /api/servers/{id}/actions-log", middleware.WithAuth(apiKey, h.HandleListActionLog))
+
 	// Content source proxy (protected)
 	mux.HandleFunc("GET /api/mm/sources", middleware.WithAuth(apiKey, h.HandleMMSources))
 	mux.HandleFunc("GET /api/mm/{source}/search", middleware.WithAuth(apiKey, h.HandleMMSearch))

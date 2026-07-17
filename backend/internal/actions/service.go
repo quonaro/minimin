@@ -25,6 +25,8 @@ type Service struct {
 	networkName    string
 	pullMu         sync.RWMutex
 	pullProgress   map[string]*runner.ImagePullProgress
+	startCancelMu  sync.Mutex
+	startCancels   map[string]context.CancelFunc
 }
 
 // NewService creates a new actions service.
@@ -36,6 +38,7 @@ func NewService(instance *state.InstanceFile, cli *client.Client, serversDir, se
 		serversHostDir: serversHostDir,
 		networkName:    networkName,
 		pullProgress:   make(map[string]*runner.ImagePullProgress),
+		startCancels:   make(map[string]context.CancelFunc),
 	}
 }
 
@@ -46,15 +49,46 @@ func (s *Service) GetPullProgress(id string) *runner.ImagePullProgress {
 	return s.pullProgress[id]
 }
 
+// RegisterStartCancel stores a cancel function for an in-flight start.
+func (s *Service) RegisterStartCancel(id string, cancel context.CancelFunc) {
+	s.startCancelMu.Lock()
+	defer s.startCancelMu.Unlock()
+	s.startCancels[id] = cancel
+}
+
+// UnregisterStartCancel removes the cancel function for a server.
+func (s *Service) UnregisterStartCancel(id string) {
+	s.startCancelMu.Lock()
+	defer s.startCancelMu.Unlock()
+	delete(s.startCancels, id)
+}
+
+// CancelStart cancels an in-flight start operation if one exists.
+func (s *Service) CancelStart(id string) {
+	s.startCancelMu.Lock()
+	defer s.startCancelMu.Unlock()
+	if cancel, ok := s.startCancels[id]; ok {
+		cancel()
+	}
+}
+
 // Start launches or restarts the server container.
 func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 	srv, _ := s.instance.Get(id)
 	prevStatus := srv.Status
+	if prevStatus == "" {
+		prevStatus = srv.ContainerStatus
+	}
 
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Error("start server panic", "server_id", id, "recover", r)
 			s.instance.ClearDesired(id, prevStatus)
+			s.instance.UpdateMeta(id, func(srv *state.ServerState) {
+				if srv.ServerStatus == "pulling_image" {
+					srv.ServerStatus = "stopped"
+				}
+			})
 			_ = s.instance.Save()
 		}
 	}()
@@ -77,6 +111,11 @@ func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 			} else {
 				slog.Error("failed to start container", "server_id", id, "error", err)
 				s.instance.ClearDesired(id, prevStatus)
+				s.instance.UpdateMeta(id, func(srv *state.ServerState) {
+					if srv.ServerStatus == "pulling_image" {
+						srv.ServerStatus = "stopped"
+					}
+				})
 				_ = s.instance.Save()
 				return
 			}
@@ -94,6 +133,11 @@ func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 		if err != nil {
 			slog.Error("no free game port", "server_id", id, "error", err)
 			s.instance.ClearDesired(id, prevStatus)
+			s.instance.UpdateMeta(id, func(srv *state.ServerState) {
+				if srv.ServerStatus == "pulling_image" {
+					srv.ServerStatus = "stopped"
+				}
+			})
 			_ = s.instance.Save()
 			return
 		}
@@ -105,6 +149,11 @@ func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 		if err != nil {
 			slog.Error("no free rcon port", "server_id", id, "error", err)
 			s.instance.ClearDesired(id, prevStatus)
+			s.instance.UpdateMeta(id, func(srv *state.ServerState) {
+				if srv.ServerStatus == "pulling_image" {
+					srv.ServerStatus = "stopped"
+				}
+			})
 			_ = s.instance.Save()
 			return
 		}
@@ -113,6 +162,11 @@ func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 			if err != nil {
 				slog.Error("no free rcon port", "server_id", id, "error", err)
 				s.instance.ClearDesired(id, prevStatus)
+				s.instance.UpdateMeta(id, func(srv *state.ServerState) {
+					if srv.ServerStatus == "pulling_image" {
+						srv.ServerStatus = "stopped"
+					}
+				})
 				_ = s.instance.Save()
 				return
 			}
@@ -148,6 +202,11 @@ func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 		}); err != nil {
 			slog.Error("failed to pull image", "server_id", id, "error", err)
 			s.instance.ClearDesired(id, prevStatus)
+			s.instance.UpdateMeta(id, func(srv *state.ServerState) {
+				if srv.ServerStatus == "pulling_image" {
+					srv.ServerStatus = "stopped"
+				}
+			})
 			_ = s.instance.Save()
 			return
 		}
@@ -167,6 +226,11 @@ func (s *Service) Start(ctx context.Context, id string, removeExisting bool) {
 		if err != nil {
 			slog.Error("failed to start server container", "server_id", id, "error", err)
 			s.instance.ClearDesired(id, prevStatus)
+			s.instance.UpdateMeta(id, func(srv *state.ServerState) {
+				if srv.ServerStatus == "pulling_image" {
+					srv.ServerStatus = "stopped"
+				}
+			})
 			_ = s.instance.Save()
 			return
 		}

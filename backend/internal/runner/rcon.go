@@ -11,8 +11,9 @@ import (
 
 // RCONClient is a minimal Minecraft RCON TCP client.
 type RCONClient struct {
-	conn  net.Conn
-	reqID int32
+	conn    net.Conn
+	reqID   int32
+	timeout time.Duration
 }
 
 // DialRCON connects to addr and authenticates with password.
@@ -21,7 +22,7 @@ func DialRCON(addr, password string, timeout time.Duration) (*RCONClient, error)
 	if err != nil {
 		return nil, err
 	}
-	client := &RCONClient{conn: conn}
+	client := &RCONClient{conn: conn, timeout: timeout}
 	if err := client.authenticate(password); err != nil {
 		_ = conn.Close()
 		return nil, err
@@ -70,6 +71,11 @@ func (c *RCONClient) Close() error {
 }
 
 func (c *RCONClient) sendPacket(pktType int32, body string) (int32, error) {
+	if c.timeout > 0 {
+		if err := c.conn.SetWriteDeadline(time.Now().Add(c.timeout)); err != nil {
+			return 0, err
+		}
+	}
 	c.reqID++
 	id := c.reqID
 	buf := new(bytes.Buffer)
@@ -86,6 +92,11 @@ func (c *RCONClient) sendPacket(pktType int32, body string) (int32, error) {
 }
 
 func (c *RCONClient) readPacket() (int32, string, error) {
+	if c.timeout > 0 {
+		if err := c.conn.SetReadDeadline(time.Now().Add(c.timeout)); err != nil {
+			return 0, "", err
+		}
+	}
 	var length int32
 	if err := binary.Read(c.conn, binary.LittleEndian, &length); err != nil {
 		return 0, "", err

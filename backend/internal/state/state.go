@@ -182,6 +182,13 @@ func (i *InstanceFile) TrySetDesired(serverID, desired string) (ServerState, boo
 	if !ok {
 		return ServerState{}, false
 	}
+	if desired == "exited" {
+		// Stop/force-stop always allowed; it will cancel any pending start.
+		s.DesiredStatus = desired
+		s.UpdatedAt = time.Now().UTC()
+		i.Servers[serverID] = s
+		return s, true
+	}
 	if s.DesiredStatus != "" && s.DesiredStatus != s.ContainerStatus {
 		return s, false
 	}

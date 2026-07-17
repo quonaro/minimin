@@ -1,16 +1,21 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 
 	"orchestrator/external/mm"
+	"orchestrator/internal/actionlog"
 	"orchestrator/internal/actions"
+	"orchestrator/internal/backup"
 	"orchestrator/internal/clientmods"
 	"orchestrator/internal/events"
 	"orchestrator/internal/instances"
 	"orchestrator/internal/mods"
 	"orchestrator/internal/runner"
+	"orchestrator/internal/scheduler"
 	"orchestrator/internal/state"
 
 	"github.com/docker/docker/client"
@@ -34,6 +39,10 @@ type Handler struct {
 	NetworkName     string
 	SecureCookie    bool
 	WSUpgrader      websocket.Upgrader
+	Scheduler       *scheduler.Service
+	BackupService   *backup.Service
+	BackupsDir      string
+	ActionLogStore  *actionlog.Store
 }
 
 // NewHandler creates a new Handler.
@@ -119,6 +128,12 @@ func slicesEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func generateUUID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func jsonError(w http.ResponseWriter, msg string, code int) {
