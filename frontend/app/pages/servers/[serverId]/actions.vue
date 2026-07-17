@@ -13,7 +13,6 @@
 
     <TasksGroup :server-id="serverId" />
     <BackupsGroup :server-id="serverId" />
-    <EventsGroup :server-id="serverId" />
 
     <Teleport to="body">
       <Transition name="slide-right">
@@ -46,6 +45,10 @@
 
 <script setup lang="ts">
 import { Activity, X } from "lucide-vue-next";
+
+definePageMeta({ middleware: "auth" });
+
+usePageTitle("Actions");
 
 const route = useRoute();
 const serverId = computed(() => route.params.serverId as string);

@@ -66,7 +66,8 @@ export function useBackups(serverId: string) {
   }
 
   function getDownloadUrl(name: string): string {
-    return `${useApiBase()}/servers/${serverId}/backups/${encodeURIComponent(name)}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return `${origin}${useApiBase()}/servers/${serverId}/backups/${encodeURIComponent(name)}`;
   }
 
   async function downloadBackup(name: string) {

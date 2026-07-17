@@ -89,24 +89,24 @@
           <div class="flex items-center gap-2 flex-shrink-0">
             <button
               @click="toggleTask(task)"
-              class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-neutral-700 hover:bg-white dark:hover:bg-neutral-600 transition-colors"
+              class="h-9 px-3 py-1.5 text-sm rounded-lg text-white shadow-sm transition-colors"
               :class="
                 task.enabled
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-green-600 dark:text-green-400'
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-green-600 hover:bg-green-700'
               "
             >
               {{ task.enabled ? "Disable" : "Enable" }}
             </button>
             <button
               @click="editTask(task)"
-              class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-neutral-700 hover:bg-white dark:hover:bg-neutral-600 transition-colors"
+              class="h-9 px-3 py-1.5 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-colors"
             >
               Edit
             </button>
             <button
               @click="deleteTask(task.id)"
-              class="px-3 py-1.5 text-sm rounded-lg border border-red-200 dark:border-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+              class="h-9 px-3 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm transition-colors"
             >
               Delete
             </button>
