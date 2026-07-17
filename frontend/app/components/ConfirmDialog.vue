@@ -7,6 +7,7 @@ const props = defineProps<{
   danger?: boolean;
   showWipe?: boolean;
   simple?: boolean;
+  expectedText?: string;
 }>();
 
 const emit = defineEmits<{
@@ -40,8 +41,10 @@ watch(
   },
 );
 
+const targetText = computed(() => props.expectedText ?? randomWord.value);
+
 const isValid = computed(
-  () => props.simple || inputValue.value === randomWord.value,
+  () => props.simple || inputValue.value === targetText.value,
 );
 
 function onConfirm() {
@@ -88,7 +91,7 @@ function onCancel() {
           <code
             class="font-mono font-bold bg-gray-100 dark:bg-neutral-700 px-1 rounded"
           >
-            {{ randomWord }}
+            {{ targetText }}
           </code>
           to confirm:
         </p>
@@ -97,7 +100,7 @@ function onCancel() {
           v-model="inputValue"
           type="text"
           class="w-full mb-6 px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-          :placeholder="randomWord"
+          :placeholder="targetText"
           @keyup.enter="onConfirm"
         />
       </template>

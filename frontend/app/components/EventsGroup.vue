@@ -2,33 +2,39 @@
   <div
     class="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden"
   >
-    <button
-      @click="expanded = !expanded"
+    <div
       class="w-full flex items-center justify-between p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
     >
-      <div class="flex items-center gap-3">
+      <button
+        @click="expanded = !expanded"
+        class="flex items-center gap-3 flex-1 text-left"
+      >
         <Zap class="w-5 h-5 text-amber-500" />
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Events</h2>
+      </button>
+      <div class="flex items-center gap-3">
+        <button
+          @click.stop="showCreate = true"
+          class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+        >
+          New Event Hook
+        </button>
+        <button
+          @click="expanded = !expanded"
+          class="p-1 text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 transition-colors"
+        >
+          <ChevronDown
+            class="w-5 h-5 transition-transform"
+            :class="{ 'rotate-180': expanded }"
+          />
+        </button>
       </div>
-      <ChevronDown
-        class="w-5 h-5 text-gray-500 dark:text-neutral-400 transition-transform"
-        :class="{ 'rotate-180': expanded }"
-      />
-    </button>
+    </div>
 
     <div
       v-show="expanded"
       class="px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6 space-y-4"
     >
-      <div class="flex justify-end">
-        <button
-          @click="showCreate = true"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-        >
-          New Event Hook
-        </button>
-      </div>
-
       <div
         v-if="loading"
         class="text-center py-12 text-gray-500 dark:text-neutral-400"
@@ -48,7 +54,10 @@
         No event hooks yet.
       </div>
 
-      <div v-else class="space-y-3">
+      <div
+        v-else
+        class="max-h-[32rem] overflow-y-auto pr-1 space-y-3 no-scrollbar"
+      >
         <div
           v-for="task in eventTasks"
           :key="task.id"
@@ -173,3 +182,13 @@ async function onSave(task: Task) {
   closeModal();
 }
 </script>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>
