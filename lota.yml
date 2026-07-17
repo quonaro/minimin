@@ -13,7 +13,20 @@ uuid:
     print(uuid.UUID(bytes=bytes(b)))
     "
 
-
 dev:
   desc: Start development environment
-  script: docker compose up --build --force-recreate 
+  script: docker compose up --build --force-recreate
+
+push:
+  desc: Push to GitHub
+  color: cyan
+  args:
+  - "tag:str?"
+  script: |
+    if [ -n "$tag" ]; then
+      git tag -f "$tag"
+      git push origin "$tag" --force
+      git push
+    else
+      git push origin main
+    fi 
