@@ -65,26 +65,26 @@
           <div class="flex items-center gap-2 flex-shrink-0">
             <button
               @click="doDownload(bk.name)"
-              class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors"
+              class="h-9 px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors"
             >
               Download
             </button>
             <button
               @click="doCopyLink(bk.name)"
               title="Copy direct link"
-              class="p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors"
+              class="h-9 w-9 flex items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors"
             >
               <Link class="w-4 h-4" />
             </button>
             <button
               @click="restoreBackup(bk.name)"
-              class="px-3 py-1.5 text-sm rounded-lg bg-amber-600 text-white hover:bg-amber-700 shadow-sm transition-colors"
+              class="h-9 px-3 py-1.5 text-sm rounded-lg bg-amber-600 text-white hover:bg-amber-700 shadow-sm transition-colors"
             >
               Restore
             </button>
             <button
               @click="deleteBackup(bk.name)"
-              class="px-3 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm transition-colors"
+              class="h-9 px-3 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm transition-colors"
             >
               Delete
             </button>
