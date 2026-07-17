@@ -23,11 +23,5 @@
   "devDependencies": {
     "@types/node": "^25.9.2",
     "vue-tsc": "^3.3.3"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "esbuild"
-    ]
   }
 }

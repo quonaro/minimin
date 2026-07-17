@@ -3,7 +3,7 @@
 export default defineNuxtConfig({
   ssr: false,
   compatibilityDate: "2025-07-15",
-  devtools: { enabled: false },
+  devtools: { enabled: true },
   modules: ["@nuxtjs/tailwindcss", "@nuxtjs/color-mode"],
   colorMode: {
     preference: "system",

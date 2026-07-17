@@ -12,3 +12,8 @@ uuid:
     b[8] = (b[8] & 0x3f) | 0x80
     print(uuid.UUID(bytes=bytes(b)))
     "
+
+
+dev:
+  desc: Start development environment
+  script: docker compose up --build --force-recreate 
