@@ -2,15 +2,7 @@ name: Docker Build and Push
 
 on:
   push:
-    branches: [ main ]
     tags: [ 'v*' ]
-    paths:
-    - 'backend/**'
-    - 'frontend/**'
-    - 'Dockerfile'
-    - '.github/workflows/docker-build.yml'
-  pull_request:
-    branches: [ main ]
     paths:
     - 'backend/**'
     - 'frontend/**'
@@ -42,6 +34,13 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Ensure tag is on main
+      run: |
+        git fetch origin main
+        git merge-base --is-ancestor HEAD origin/main || (echo "Tag is not on main branch" && exit 1)
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
