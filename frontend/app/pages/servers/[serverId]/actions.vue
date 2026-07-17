@@ -51,7 +51,10 @@ definePageMeta({ middleware: "auth" });
 usePageTitle("Actions");
 
 const route = useRoute();
-const serverId = computed(() => route.params.serverId as string);
+const serverId = computed(() => {
+  const v = route.params.serverId;
+  return (Array.isArray(v) ? v[0] : v) ?? "";
+});
 
 const logOpen = ref(false);
 </script>

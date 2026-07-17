@@ -59,8 +59,8 @@
         class="max-h-[32rem] overflow-y-auto pr-1 space-y-3 no-scrollbar"
       >
         <div
-          v-for="bk in backups"
-          :key="bk.name"
+          v-for="(bk, index) in backups"
+          :key="`${bk.name}-${index}`"
           class="bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-700 rounded-xl p-4 flex items-center gap-4"
         >
           <div class="flex-1 min-w-0">
@@ -184,7 +184,10 @@ function formatBytes(bytes: number) {
   if (bytes === 0) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(k)),
+    sizes.length - 1,
+  );
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 

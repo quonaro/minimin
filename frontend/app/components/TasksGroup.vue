@@ -82,7 +82,9 @@
             <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
               <template v-if="task.trigger.type === 'event'">
                 Event:
-                <span class="font-mono text-xs">{{ task.trigger.event }}</span>
+                <span class="font-mono text-xs">{{
+                  task.trigger.event || "—"
+                }}</span>
               </template>
               <template v-else>
                 <span class="capitalize">{{ task.trigger.type }}</span>
@@ -198,12 +200,16 @@ function closeModal() {
 }
 
 async function onSave(task: Task) {
-  if (editingTask.value) {
-    await updateTaskApi(task);
-  } else {
-    await createTask(task);
+  try {
+    if (editingTask.value) {
+      await updateTaskApi(task);
+    } else {
+      await createTask(task);
+    }
+    closeModal();
+  } catch {
+    // error already toasted by useTasks; keep modal open
   }
-  closeModal();
 }
 
 function formatDate(iso: string) {

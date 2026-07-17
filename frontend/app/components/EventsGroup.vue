@@ -81,7 +81,9 @@
             </div>
             <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
               Event:
-              <span class="font-mono text-xs">{{ task.trigger.event }}</span>
+              <span class="font-mono text-xs">{{
+                task.trigger.event || "—"
+              }}</span>
               ·
               <span class="capitalize">{{ task.action.type }}</span>
             </p>
@@ -174,12 +176,16 @@ function closeModal() {
 }
 
 async function onSave(task: Task) {
-  if (editingTask.value) {
-    await updateTaskApi(task);
-  } else {
-    await createTask(task);
+  try {
+    if (editingTask.value) {
+      await updateTaskApi(task);
+    } else {
+      await createTask(task);
+    }
+    closeModal();
+  } catch {
+    // error already toasted by useTasks; keep modal open
   }
-  closeModal();
 }
 </script>
 

@@ -59,6 +59,7 @@ export function useTasks(serverId: string) {
       await fetchTasks();
     } catch (e: any) {
       show("error", getApiErrorMessage(e, "Failed to create task"));
+      throw e;
     }
   }
 
@@ -74,6 +75,7 @@ export function useTasks(serverId: string) {
       await fetchTasks();
     } catch (e: any) {
       show("error", getApiErrorMessage(e, "Failed to update task"));
+      throw e;
     }
   }
 
@@ -88,6 +90,7 @@ export function useTasks(serverId: string) {
       await fetchTasks();
     } catch (e: any) {
       show("error", getApiErrorMessage(e, "Failed to delete task"));
+      throw e;
     }
   }
 
@@ -101,6 +104,7 @@ export function useTasks(serverId: string) {
       show("info", "Task execution requested");
     } catch (e: any) {
       show("error", getApiErrorMessage(e, "Failed to run task"));
+      throw e;
     }
   }
 

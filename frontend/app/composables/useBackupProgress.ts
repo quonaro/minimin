@@ -1,3 +1,4 @@
+import { watch } from "vue";
 import type { Backup } from "~/composables/useBackups";
 
 export interface BackupTask {
@@ -25,6 +26,19 @@ function ensureTimer() {
     }
   }, 200);
 }
+
+watch(
+  tasks,
+  (list) => {
+    if (list.some((t) => t.status === "running")) {
+      ensureTimer();
+    } else if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  },
+  { deep: true, immediate: true },
+);
 
 export function addBackupTask(
   serverId: string,

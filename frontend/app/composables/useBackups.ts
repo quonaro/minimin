@@ -33,7 +33,7 @@ export function useBackups(serverId: string) {
       method: "POST",
       credentials: "include",
     });
-    show("info", "Backup started");
+    show("info", "Backup created");
     await fetchBackups();
     return res;
   }
@@ -66,25 +66,43 @@ export function useBackups(serverId: string) {
   }
 
   function getDownloadUrl(name: string): string {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}${useApiBase()}/servers/${serverId}/backups/${encodeURIComponent(name)}`;
+    const apiBase = useApiBase();
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "http://localhost";
+    const base = new URL(
+      apiBase.endsWith("/") ? apiBase : apiBase + "/",
+      origin,
+    );
+    return new URL(
+      `servers/${serverId}/backups/${encodeURIComponent(name)}`,
+      base,
+    ).href;
   }
 
   async function downloadBackup(name: string) {
     const url = getDownloadUrl(name);
-    const response = await fetch(url, { credentials: "include" });
-    if (!response.ok) {
-      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    let objectUrl: string | undefined;
+    let a: HTMLAnchorElement | undefined;
+    try {
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error(
+          `Download failed: ${response.status} ${response.statusText}`,
+        );
+      }
+      const blob = await response.blob();
+      objectUrl = URL.createObjectURL(blob);
+      a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+    } catch (e: any) {
+      show("error", getApiErrorMessage(e, "Failed to download backup"));
+    } finally {
+      if (a && a.parentNode) a.parentNode.removeChild(a);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     }
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(objectUrl);
   }
 
   async function copyDownloadLink(name: string) {
