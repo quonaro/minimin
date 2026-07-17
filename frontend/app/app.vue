@@ -12,6 +12,7 @@
     </main>
     <ToastContainer />
     <UploadProgress v-if="!route.meta.noUploads && uploads.length > 0" />
+    <BackupProgress />
   </div>
 </template>
 
