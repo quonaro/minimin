@@ -55,7 +55,7 @@ nano .env
 # Start the stack
 docker compose up -d
 
-# Open http://localhost:8080
+# Open http://localhost:8081
 ```
 
 ### Docker Compose
@@ -64,7 +64,7 @@ docker compose up -d
 | ---------- | -------------------------------------------------------------------------- |
 | `minimin`  | Single container with Go backend + embedded frontend (port 8081)           |
 | `volumes`  | `./data` — state file (`instance.yml`), `${MC_SERVERS_HOST_DIR}` — servers |
-| `ports`    | `8080:8081` — web UI and API                                               |
+| `ports`    | `8081:8081` — web UI and API                                               |
 | `env_file` | `.env` — all configuration in one file                                     |
 
 ### Environment Variables
