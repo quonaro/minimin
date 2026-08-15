@@ -58,6 +58,15 @@ docker compose up -d
 # 4. Open http://localhost:8080
 ```
 
+### Web UI Access
+
+The web UI requires a password to sign in. The password is the value of the `ORCHESTRATOR_API_KEY` environment variable that you set in `backend/.env`.
+
+- **Production** (`docker compose up`): Use the key you configured in `backend/.env`. The web UI is served by Caddy at **http://localhost:8080**.
+- **Development** (`docker compose -f docker-compose.yml up`): The default API key is **`test`** (set in `docker-compose.yml`). The frontend runs at **http://localhost:3000** and the backend API at **http://localhost:8081**.
+
+> **Note:** There is no separate login — just enter your `ORCHESTRATOR_API_KEY` in the password field on the sign-in page.
+
 ### Docker Compose
 
 | Service   | Description                                                         |
@@ -70,7 +79,7 @@ docker compose up -d
 
 | Variable                 | Default             | Description                                         |
 | ------------------------ | ------------------- | --------------------------------------------------- |
-| `ORCHESTRATOR_API_KEY`   | _(required)_        | Secret key for authentication                       |
+| `ORCHESTRATOR_API_KEY`   | _(required)_        | Secret key for authentication (used as web UI password) |
 | `ORCHESTRATOR_LOG_LEVEL` | `info`              | Backend log level: `debug`, `info`, `warn`, `error` |
 | `MC_SERVERS_DIR`         | `/app/servers`      | Directory for server data inside the container      |
 | `MC_SERVERS_HOST_DIR`    | _(required)_        | Absolute host path that maps to `MC_SERVERS_DIR`    |
@@ -90,6 +99,7 @@ docker compose -f dev.yml up
 
 # 4. Open frontend at http://localhost:3000
 #    Backend API is available at http://localhost:8081
+#    Default dev password: test (set in docker-compose.yml)
 ```
 
 ## Building
