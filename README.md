@@ -32,7 +32,6 @@ A lightweight, web-based control panel for managing multiple Minecraft servers v
 - **Backend**: Go + Docker SDK — orchestrates containers, exposes REST API and WebSocket endpoints
 - **Frontend**: Nuxt 4 + Vue 3 + TailwindCSS — SPA dashboard served by Caddy
 - **Reverse Proxy**: Caddy — serves static frontend and proxies `/api/*` and `/ws/*` to the backend
-- **Process Manager**: supervisord — runs backend and Caddy in a single container
 
 ## Quick Start
 
@@ -44,51 +43,54 @@ A lightweight, web-based control panel for managing multiple Minecraft servers v
 ### Run
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/quonaro/minimin.git
-cd minimin
+mkdir minimin && cd minimin
 
-# 2. Set a strong API key and host server directory
-cp backend/.env.example backend/.env
-# Edit backend/.env and set ORCHESTRATOR_API_KEY and MC_SERVERS_HOST_DIR
+# Download compose file and env template
+curl -O https://raw.githubusercontent.com/quonaro/minimin/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/quonaro/minimin/main/.env.example
 
-# 3. Start the stack
+# Edit .env — set ORCHESTRATOR_API_KEY and MC_SERVERS_HOST_DIR
+nano .env
+
+# Start the stack
 docker compose up -d
 
-# 4. Open http://localhost:8080
+# Open http://localhost:8080
 ```
 
 ### Docker Compose
 
-| Service   | Description                                                         |
-| --------- | ------------------------------------------------------------------- |
-| `minimin` | Main container with Caddy (port 80) + Go backend (port 8081)        |
-| `volumes` | `instance` — state file (`instance.yml`), `./servers` — server data |
-| `ports`   | `8080:80` — web UI and API                                          |
+| Service    | Description                                                                |
+| ---------- | -------------------------------------------------------------------------- |
+| `minimin`  | Single container with Go backend + embedded frontend (port 8081)           |
+| `volumes`  | `./data` — state file (`instance.yml`), `${MC_SERVERS_HOST_DIR}` — servers |
+| `ports`    | `8080:8081` — web UI and API                                               |
+| `env_file` | `.env` — all configuration in one file                                     |
 
 ### Environment Variables
 
-| Variable                 | Default             | Description                                         |
-| ------------------------ | ------------------- | --------------------------------------------------- |
-| `ORCHESTRATOR_API_KEY`   | _(required)_        | Secret key for authentication                       |
-| `ORCHESTRATOR_LOG_LEVEL` | `info`              | Backend log level: `debug`, `info`, `warn`, `error` |
-| `MC_SERVERS_DIR`         | `/app/servers`      | Directory for server data inside the container      |
-| `MC_SERVERS_HOST_DIR`    | _(required)_        | Absolute host path that maps to `MC_SERVERS_DIR`    |
-| `MC_INSTANCE_FILE`       | `/app/instance.yml` | Path to state file                                  |
+All variables live in `.env` (see `.env.example` for the full template):
+
+| Variable                 | Default                  | Description                                         |
+| ------------------------ | ------------------------ | --------------------------------------------------- |
+| `ORCHESTRATOR_API_KEY`   | _(required)_             | Secret key for authentication                       |
+| `ORCHESTRATOR_LOG_LEVEL` | `info`                   | Backend log level: `debug`, `info`, `warn`, `error` |
+| `MC_SERVERS_DIR`         | `/app/servers`           | Directory for server data inside the container      |
+| `MC_SERVERS_HOST_DIR`    | _(required)_             | Absolute host path that maps to `MC_SERVERS_DIR`    |
+| `MC_INSTANCE_FILE`       | `/app/data/instance.yml` | Path to state file                                  |
+| `MODRINTH_CUSTOM_URL`    | _(empty)_                | Optional custom Modrinth API URL                    |
 
 ## Development
 
-The project runs exclusively inside Docker. Use `dev.yml` for hot-reload development.
+Use `dev.yml` for hot-reload development.
 
 ```bash
-# 1. Ensure backend/.env exists with ORCHESTRATOR_API_KEY and MC_SERVERS_HOST_DIR
-# 2. Export the same host directory for the compose file
-export MC_SERVERS_HOST_DIR=/absolute/path/to/servers
+# 1. Edit dev.yml — set your MC_SERVERS_HOST_DIR and ORCHESTRATOR_API_KEY
 
-# 3. Start dev stack
+# 2. Start dev stack
 docker compose -f dev.yml up
 
-# 4. Open frontend at http://localhost:3000
+# 3. Open frontend at http://localhost:3000
 #    Backend API is available at http://localhost:8081
 ```
 
